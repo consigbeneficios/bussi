@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="pt-BR"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
+<title>Corrigir link de pagamento | BUSSI</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;color:#20303d;background:#f3f7f8}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:18px}
+main{width:100%;max-width:690px;background:#fff;border:1px solid #dbe7e8;box-shadow:0 16px 50px #24394310;border-radius:18px;padding:clamp(19px,4vw,38px)}
+.brand{font-size:13px;font-weight:850;letter-spacing:.08em;color:#0c896d}
+h1{font-size:clamp(25px,4vw,35px);line-height:1.14;margin:16px 0}
+p{line-height:1.6;color:#5e7180}
+label{display:block;font-weight:700;margin-top:24px;margin-bottom:9px}
+textarea{width:100%;resize:vertical;border:1px solid #b9c8cd;border-radius:10px;min-height:104px;padding:12px;font:13px/1.5 ui-monospace,Menlo,Consolas,monospace;color:#1f3441;overflow-wrap:anywhere;background:#fafcfc}
+textarea:focus{outline:2px solid #36ad93;outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:12px;margin-top:15px}
+button{border:0;border-radius:10px;font:inherit;font-weight:750;padding:14px 17px;cursor:pointer}
+button:disabled{opacity:.45;cursor:not-allowed}
+.primary{background:#077e66;color:#fff;flex:1}
+.secondary{background:#ebf3f4;color:#245b5b}
+#notice{font-weight:650;margin-top:18px;min-height:25px}
+#notice.error{color:#b42318}#notice.good{color:#087660}
+#details{display:none;background:#f1f8f5;border-radius:12px;padding:15px;margin-top:15px;font-size:14px}
+#details span{display:block;color:#4a5a66}
+#details strong{font-size:18px}
+small{display:block;margin-top:20px;color:#6b7e89;line-height:1.5}
+a{color:#087a65}
+</style></head><body>
+<main>
+<div class="brand">CONSIG BENEFÍCIOS · BUSSI</div>
+<h1>Abra sua fatura sem erro de domínio</h1>
+<p>Se o seu link começa com <strong>pay.consigbeneficio.com.br</strong> e não abre, cole o endereço completo abaixo. O BUSSI trocará somente o domínio, mantendo os dados da cobrança intactos.</p>
+<label for="original">Link completo da fatura (com #p=...)</label>
+<textarea id="original" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://pay.consigbeneficio.com.br/pagamento.html#p=..."></textarea>
+<div class="row">
+<button class="secondary" type="button" id="paste">Usar link copiado</button>
+<button class="primary" type="button" id="open" disabled>Abrir fatura corrigida</button>
+</div>
+<div id="notice" role="status" aria-live="polite">Cole o link para verificar.</div>
+<div id="details"><span>Fatura reconhecida</span><strong id="invoiceName"></strong><span id="amount"></span><div class="row"><button class="secondary" id="copy" type="button">Copiar endereço corrigido</button></div></div>
+<small>A conversão acontece somente no seu navegador; os dados da fatura não são enviados por esta página a um servidor. Se uma cobrança foi encerrada ou venceu, solicite uma nova ao atendimento. <a href="index.html">Voltar ao BUSSI</a>.</small>
+</main>
+<script>
+(()=>{
+ 'use strict';
+ const $=id=>document.getElementById(id);
+ let safe='';
+ function parse(){
+  safe='';$('open').disabled=true;$('details').style.display='none';
+  const value=$('original').value.trim();
+  if(!value){$('notice').textContent='Cole o link para verificar.';$('notice').className='';return;}
+  try{
+   const old=new URL(value);
+   if(old.protocol!=='https:'||!['pay.consigbeneficio.com.br','consigbeneficios.github.io'].includes(old.hostname))
+    throw Error('O endereço informado não pertence ao BUSSI.');
+   if(!old.pathname.endsWith('/pagamento.html'))
+    throw Error('Este não é um endereço de pagamento do BUSSI.');
+   const params=new URLSearchParams(old.hash.slice(1));
+   const encoded=params.get('p')||'';
+   if(!/^[a-zA-Z0-9_-]{30,10000}$/.test(encoded))
+    throw Error('O link está incompleto. Copie o endereço inteiro, incluindo #p=...');
+   let raw=encoded.replace(/-/g,'+').replace(/_/g,'/');
+   while(raw.length%4)raw+='=';
+   const bytes=Uint8Array.from(atob(raw),c=>c.charCodeAt(0));
+   const data=JSON.parse(new TextDecoder().decode(bytes));
+   if(!data||!data.invoice||!data.pix||!(Number(data.amount)>0))
+    throw Error('Os dados da fatura estão incompletos.');
+   const corrected=new URL('pagamento.html',location.href);
+   corrected.hash='p='+encoded;
+   safe=corrected.href;
+   $('invoiceName').textContent=String(data.invoice);
+   $('amount').textContent=Number(data.amount).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+   $('details').style.display='block';
+   $('notice').className='good';$('notice').textContent='Link corrigido. Os dados e o Pix originais foram preservados.';
+   $('open').disabled=false;
+  }catch(err){$('notice').className='error';$('notice').textContent=err.message||'Não foi possível ler este link.';}
+ }
+ $('original').addEventListener('input',parse);
+ $('paste').addEventListener('click',async()=>{
+  try{$('original').value=await navigator.clipboard.readText();parse();}
+  catch{$('original').focus();$('notice').textContent='Cole o link manualmente usando Ctrl + V.';}
+ });
+ $('open').addEventListener('click',()=>{if(safe)location.assign(safe);});
+ $('copy').addEventListener('click',async()=>{
+  if(!safe)return;
+  try{await navigator.clipboard.writeText(safe);$('notice').className='good';$('notice').textContent='Novo link copiado.';}
+  catch{window.prompt('Copie o link corrigido:',safe);}
+ });
+})();
+</script>
+</body></html>
