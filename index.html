@@ -42,6 +42,125 @@ body{letter-spacing:-.005em}.side{background:#111c29}.brandmark{border-radius:15
 @media(max-width:600px){.dashboard-metrics,.events-grid,.finance-grid{grid-template-columns:1fr 1fr}.finance-card{padding:18px}.finance-card .big-number{font-size:26px}.dashboard-title{align-items:flex-start;flex-direction:column}.content{padding:13px}.section{padding:17px}.top h1{font-size:19px}.top .userbox{gap:5px}.top .userpill{font-size:10px}.hero h2{font-size:25px}.event-metric b{font-size:24px}}
 @media(max-width:410px){.dashboard-metrics{grid-template-columns:1fr 1fr}.finance-grid{grid-template-columns:1fr}.events-grid{grid-template-columns:1fr 1fr}.event-metric{padding:11px}.metric{font-size:26px}.top .userpill{display:none}}
 .daily-highlight{font-weight:800;color:#177c68}.daily-total{text-align:right;font-variant-numeric:tabular-nums;font-weight:800}.daily-date{font-weight:850;color:#263442;white-space:nowrap}.daily-zero{color:#abb2ba}
+
+/* BUSSI — acabamento visual e acessibilidade (desktop, tablet e celular) */
+:root{
+ --bg:#f3f6f8;--panel:#fff;--ink:#192532;--muted:#647282;
+ --line:#dfe7ec;--green:#0b826c;--green2:#086a57;--dark:#122333;
+ --r:16px;--shadow:0 4px 22px rgba(19,43,59,.045);
+}
+html{font-size:15px;text-size-adjust:100%;-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{font-size:14px;line-height:1.55;font-weight:400;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{letter-spacing:inherit}
+button{transition:background-color .15s ease,color .15s ease,border-color .15s ease,box-shadow .15s ease}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{
+ outline:2px solid #168d78;outline-offset:3px
+}
+button:disabled{opacity:.5;cursor:not-allowed}
+.side{background:linear-gradient(180deg,#122333,#111e2c);border-right:1px solid rgba(255,255,255,.055)}
+.brand b{font-size:25px;line-height:1.15}
+.side .nav button{border-radius:11px;min-height:44px;font-size:13px;font-weight:650;line-height:1.25}
+.side .nav button:hover,.side .nav button.active{background:#233b4b;color:#fff}
+.sidefoot{color:#a3b0be}
+.top{min-height:76px;height:auto;padding:17px 30px;background:rgba(255,255,255,.97)}
+.top h1{font-size:22px;font-weight:850;line-height:1.15;letter-spacing:-.027em}
+.top .tag{font-size:12px;line-height:1.4}
+.content{padding:28px 30px 40px}
+.hero{border-radius:18px;background:linear-gradient(118deg,#162737,#185347);padding:32px 34px}
+.hero h2{font-size:29px;line-height:1.17;font-weight:850;letter-spacing:-.04em}
+.hero p{font-size:14px;line-height:1.65;max-width:640px}
+.hero .pill{font-weight:800;letter-spacing:.01em}
+.section,.card,.finance-card{border-color:#e1e8ee;box-shadow:var(--shadow)}
+.section{border-radius:17px;padding:23px 24px;margin-top:20px}
+.sectionhead{gap:18px;margin-bottom:17px}
+.sectionhead h2{font-size:19px;line-height:1.25;font-weight:850;letter-spacing:-.025em}
+.sectionhead p{font-size:12.5px;line-height:1.55}
+.label{font-size:12.5px;color:#647282;font-weight:700}
+.metric{font-size:32px;line-height:1.15;font-variant-numeric:tabular-nums}
+.finance-card{border-radius:16px}
+.finance-card .big-number{font-size:34px;overflow-wrap:anywhere}
+.card{border-radius:16px}
+.btn{min-height:40px;padding:10px 15px;border-radius:10px;font-size:13px;line-height:1.25;font-weight:800}
+.btn.sm{min-height:32px;padding:8px 10px;font-size:11.5px}
+.btn.ghost{background:#edf2f5;color:#263849}
+.btn.ghost:hover{background:#dfe9ef}
+.btn.danger,.btn.sm.danger{background:#fff0f0;color:#a33333}
+.btn.danger:hover,.btn.sm.danger:hover{background:#ffe0e0}
+.field{gap:7px}
+.field label{font-size:12.5px;color:#344254;font-weight:750}
+.field input,.field select,.field textarea{min-height:44px;font-size:14px;line-height:1.4;padding:11px 12px;border-color:#d3dfe5;border-radius:10px}
+.field input[readonly]{background:#f5f8fa;color:#5f6e7c}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:#238e77;box-shadow:0 0 0 3px rgba(16,130,107,.12)}
+.tablewrap{border-radius:12px}
+.table th{font-size:10.5px;line-height:1.4;letter-spacing:.035em;background:#f5f8fa;color:#536273}
+.table td{font-size:12.5px;line-height:1.5;vertical-align:middle;color:#283542}
+.table tbody tr:hover{background:#fafcfd}
+.table th,.table td{padding:12px 13px}
+.table .toolbar{gap:6px}
+.notice{font-size:12.5px;line-height:1.55;border-color:#dfe7ed}
+.authcard{padding:30px;border:1px solid rgba(255,255,255,.08)}
+.authbrand{margin-bottom:21px}
+.authbrand b{font-size:28px;line-height:1.2;letter-spacing:-.04em}
+.authcard h2{font-size:23px;line-height:1.25}
+.authcard p{font-size:13px}
+.authcard .btn{min-height:45px}
+.dashboard-title h2{font-size:19px;letter-spacing:-.02em}
+.event-metric{border-radius:13px;padding:17px}
+.event-metric b{font-size:29px;line-height:1.15;font-variant-numeric:tabular-nums}
+.data-note{font-size:12px;line-height:1.6}
+.dialog{border-radius:20px;padding:26px}
+.dialog h3{font-size:21px;letter-spacing:-.025em}
+.linkbox input{font-size:13px}
+@media(max-width:1180px){
+ .content{padding:22px}
+ .dashboard-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .events-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:950px){
+ .side{padding:15px;gap:13px}
+ .nav{gap:6px}
+ .side .nav button{flex:0 0 auto;min-height:43px}
+ .top{padding:15px 19px}
+ .content{padding:20px}
+ .hero{padding:26px 28px}
+}
+@media(max-width:600px){
+ html{scroll-behavior:auto}
+ .side{padding:14px 12px}
+ .top{gap:10px;padding:13px 15px}
+ .top h1{font-size:19px}
+ .userbox{flex-shrink:0}
+ .content{padding:14px 12px 30px}
+ .hero{padding:24px 22px;border-radius:15px}
+ .hero h2{font-size:25px}
+ .hero .pill{white-space:normal}
+ .section{padding:17px 14px}
+ .sectionhead{align-items:flex-start;flex-wrap:wrap}
+ .sectionhead .toolbar{width:100%}
+ .cards,.dashboard-metrics,.events-grid{gap:10px}
+ .card{padding:16px}
+ .metric{font-size:26px}
+ .finance-card{padding:16px}
+ .finance-card .big-number{font-size:27px}
+ .event-metric{padding:14px}
+ .event-metric b{font-size:25px}
+ .table th,.table td{padding:11px 10px}
+ .dialog{padding:20px 17px}
+ .rowend{flex-wrap:wrap}
+ .rowend .btn{flex:1}
+}
+@media(max-width:390px){
+ .finance-grid{grid-template-columns:1fr}
+ .sectionhead .toolbar{gap:7px}
+ .sectionhead .toolbar .btn{flex:1}
+ .authcard{padding:23px 19px}
+ .userbox .userpill{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+ html{scroll-behavior:auto}
+ *,*:before,*:after{transition:none!important;animation-duration:.01ms!important}
+}
+
 </style>
 </head>
 <body>
