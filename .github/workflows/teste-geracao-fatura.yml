@@ -46,7 +46,7 @@ jobs:
               await page.locator('#pixName').fill('TESTE NAO PAGAVEL');
               await page.locator('#pixCity').fill('SAO PAULO');
               await page.locator('button[data-view="charges"]').click();
-              await page.locator('#chargeClient option').first().waitFor();
+              if(!await page.locator('#chargeClient').inputValue())throw new Error('Nenhum cliente selecionado');
               await page.locator('#chargeOriginal').fill('1200,00');
               await page.locator('#chargeDiscount').fill('50');
               await page.locator('#generateCharge').click();
