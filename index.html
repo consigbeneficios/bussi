@@ -292,7 +292,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
           <div class="field"><label>Vencimento (automático — hoje)</label><input id="chargeDue" type="date" readonly title="O link vence no dia em que é emitido"></div>
         </div>
         <div class="notice" style="margin-top:12px"><b>Validade da cobrança:</b> emitida e vencendo no mesmo dia. O link deixa de exibir o Pix a partir de 00h do dia seguinte, horário de São Paulo, ou quando o pagamento for confirmado.</div><div class="toolbar" style="margin-top:16px"><button class="btn primary" id="generateCharge">Gerar cobrança e link</button><button class="btn ghost" id="printInvoice">Visualizar fatura</button></div>
-        <div id="generatedBox" class="notice" style="display:none;margin-top:16px"><b>Fatura gerada: <span id="generatedInvoiceNumber"></span></b><div style="margin-top:9px;font-size:12px">Link funcional para enviar ao cliente:</div><div class="linkbox" style="margin-top:8px"><input id="generatedLink" readonly><button class="btn dark" id="copyGenerated">Copiar</button><button class="btn primary" id="openGenerated">Abrir</button></div><div class="pending-domain" style="margin-top:10px">Endereço curto reservado: <strong id="plannedPaymentAddress"></strong><span>Ativação pendente de DNS e servidor de faturas. Use o link funcional acima enquanto isso.</span></div></div>
+        <div id="generatedBox" class="notice" style="display:none;margin-top:16px"><b>Fatura gerada: <span id="generatedInvoiceNumber"></span></b><div style="margin-top:9px;font-size:12px">Link funcional para enviar ao cliente:</div><div class="linkbox" style="margin-top:8px"><input id="generatedLink" readonly><button class="btn dark" id="copyGenerated">Copiar</button><button class="btn primary" id="openGenerated">Abrir</button></div></div>
       </div>
       <div class="section"><div class="sectionhead"><div><h2>Histórico de cobranças</h2><p>Somente faturas efetivamente geradas no BUSSI, com opção de exclusão individual.</p></div></div><div class="tablewrap"><table class="table"><thead><tr><th>Fatura</th><th>Cliente</th><th>Original</th><th>Desconto</th><th>Valor a ser pago</th><th>Status</th><th>Ações</th></tr></thead><tbody id="chargeRows"></tbody></table></div></div>
     </section>
@@ -572,7 +572,6 @@ function nextInvoiceNumber(){
  return Math.max(11,Number.isSafeInteger(fromStore)&&fromStore>0?fromStore:11,highest+1)
 }
 function invoiceName(n){return 'fatura'+String(n).padStart(4,'0')}
-function plannedPaymentUrl(invoice){return PAYMENT_HOST+encodeURIComponent(invoice)}
 function reserveInvoiceNumber(){
  const n=nextInvoiceNumber();
  localStorage.setItem(INVOICE_SEQUENCE_KEY,String(n+1));
@@ -595,13 +594,12 @@ $('generateCharge').onclick=()=>{
   const snap=makeSnapshot();
   popup=window.open('','_blank');
   snap.invoice=reserveInvoiceNumber();
-  const url=new URL('pagamento.html',location.href);
+  const url=new URL('pagamento.html',PAYMENT_HOST);
   url.hash='p='+b64url(snap);
   lastLink=url.href;
   $('generatedLink').value=lastLink;
   $('generatedBox').style.display='block';
   $('generatedInvoiceNumber').textContent=snap.invoice;
-  $('plannedPaymentAddress').textContent=plannedPaymentUrl(snap.invoice);
   charges.unshift({id:snap.chargeId,invoice:snap.invoice,contract:snap.contract||snap.invoice,customer:snap.customer,phone:snap.phone,description:snap.description,original:snap.original,discount:snap.discount,amount:snap.amount,status:'Aguardando confirmação',due:snap.due,issueDate:snap.issueDate,createdAt:new Date().toISOString(),shortCode:snap.invoice,url:lastLink});
   save(K.charges,charges);
   try{window.BussiEvents?.record(snap,'charge_created')}catch{}
