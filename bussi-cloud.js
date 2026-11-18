@@ -188,6 +188,40 @@ window.BussiCloud={
  updateStatus,
  async isAuthenticated(){return !!(await getUser())}
 };
+const importButton=document.getElementById('cloudImportLink');
+const legacyInput=document.getElementById('cloudLegacyLink');
+if(importButton&&legacyInput)importButton.addEventListener('click',async()=>{
+ const link=legacyInput.value.trim();
+ let url;
+ try{url=new URL(link)}catch{say('Cole um endereço de fatura válido.');return}
+ if(!['pay.consigbeneficio.com.br','consigbeneficios.github.io'].includes(url.hostname)){
+  say('Este endereço não pertence ao BUSSI. Use um link de pagamento emitido no sistema.');return;
+ }
+ const snap=parseLink(link);
+ if(!snap||!snap.pix||!/^fatura\d{4,}$/i.test(String(snap.invoice||''))||!(Number(snap.amount)>0)){
+  say('Não foi possível importar: os dados da fatura estão incompletos ou inválidos.');return;
+ }
+ const id=Number(snap.chargeId);
+ if(!Number.isSafeInteger(id)||id<=0){say('Identificador de cobrança inválido.');return}
+ if(charges.some(x=>String(x.id)===String(id))){
+  say('Esta fatura já está no histórico. Abra o histórico ou clique em Sincronizar faturas.');return;
+ }
+ const charge={
+  id,invoice:String(snap.invoice).toLowerCase(),contract:String(snap.contract||snap.invoice),
+  customer:String(snap.customer||'Cliente'),phone:String(snap.phone||''),
+  description:String(snap.description||''),original:Number(snap.original??snap.amount),
+  discount:Number(snap.discount??0),amount:Number(snap.amount),
+  status:'Aguardando confirmação',due:safeDate(snap.due),issueDate:safeDate(snap.issueDate),
+  createdAt:new Date().toISOString(),shortCode:String(snap.invoice).toLowerCase(),
+  url:publicPaymentUrl(link)
+ };
+ charges.unshift(charge);save(K.charges,charges);renderAll();
+ legacyInput.value='';
+ if(await getUser()){
+  const result=await sync();
+  if(result?.ok)say('Fatura '+charge.invoice+' recuperada e sincronizada. Copie o novo link no histórico da nuvem.');
+ }else say('Fatura '+charge.invoice+' recuperada neste navegador. Conecte a conta da nuvem para salvar online.');
+});
 syncButton.addEventListener('click',sync);
 
 db.auth.onAuthStateChange((_event,_session)=>{setTimeout(render,0)});
