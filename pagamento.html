@@ -70,7 +70,7 @@ if(!d||!d.pix){app.innerHTML='<div class="error"><h2>Link de cobrança inválido
  const original=Number(d.original??d.amount),finalVal=Number(d.amount||0);
  const discountPct=Number.isFinite(Number(d.discount))?Number(d.discount):original>0?Math.round((1-finalVal/original)*100):0;
  const dueText=d.due?'Vencimento em '+naturalDate(d.due):'Pagamento disponível via PIX';
- const desc=String(d.description||'P/Consignado').replace(/^Black Friday 50% OFF\s*[—-]?\s*/i,'');
+ const desc=String(d.description||'Black Friday 50% OFF — P/Consignado — Competência: Dezembro').trim();
  app.innerHTML=`<section class="checkout">
  <section class="top-shell">
  <button class="download" id="downloadCharge" type="button" aria-label="Baixar fatura"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v12m0 0 5-5m-5 5-5-5M5 20h14"/></svg><span>Baixar fatura</span></button>
@@ -108,7 +108,7 @@ window.addEventListener('storage',e=>{if(e.key==='bussi.charges.v1'&&blockReason
 setTimeout(()=>{if(!blockReason(d))toStatus();else app.innerHTML=blockedHtml(blockReason(d))},40000);
  function invoiceMarkup(qrImage){
   const issue=String(d.issueDate||'').split('-').reverse().join('.');
-  const descFull=(discountPct>0?'Black Friday '+discountPct.toLocaleString('pt-BR',{maximumFractionDigits:2})+'% OFF — ':'')+desc+' — Competência: Dezembro';
+  const descFull=/^Black Friday\s+\d+(?:[.,]\d+)?%\s*OFF/i.test(desc)?desc:(discountPct>0?'Black Friday '+discountPct.toLocaleString('pt-BR',{maximumFractionDigits:2})+'% OFF — ':'')+desc.replace(/\s*[—-]\s*Competência:\s*Dezembro\s*$/i,'')+' — Competência: Dezembro';
   const logoUrl=new URL('logo-consig.svg',location.href).href;
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Fatura ${esc(d.invoice||'')}</title><style>
   @page{size:A4;margin:0}html,body{margin:0;background:#fff;font-family:"Helvetica Neue",Arial,Helvetica,sans-serif;color:#161616}*{box-sizing:border-box}
