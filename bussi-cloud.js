@@ -70,51 +70,126 @@ async function refreshList(){
  }
  if(!data?.length)list.textContent='Nenhuma fatura sincronizada nesta conta.';
 }
+function statusOf(charge){
+ return charge.status==='Pagamento confirmado'?'confirmed':
+  charge.status==='Pagamento recusado'?'refused':'pending';
+}
+function invoiceNameCloud(n){return 'fatura'+String(n).padStart(4,'0')}
+function rewriteLocalInvoice(charge,invoice){
+ const raw=parseLink(charge.url);
+ if(!raw)return;
+ raw.invoice=invoice;
+ charge.url=new URL('pagamento.html#p='+b64url(raw),'https://consigbeneficios.github.io/bussi/').href;
+ charge.invoice=invoice;
+ charge.shortCode=invoice;
+}
 async function sync(){
- if(busy)return;busy=true;syncButton.disabled=true;
+ if(busy)return {ok:false,reason:'Sincronização em andamento'};
+ busy=true;syncButton.disabled=true;
  try{
-  const user=await getUser();if(!user)throw Error('Entre na conta da nuvem antes de sincronizar');
-  const {data:registered,error:readError}=await db.from('bussi_invoices').select('invoice_number,access_token,status').limit(1000);
+  const user=await getUser();
+  if(!user)throw Error('Entre na conta Supabase em Integrações antes de sincronizar');
+  const {data:registered,error:readError}=await db.from('bussi_invoices')
+   .select('invoice_number,access_token,status,source_charge_id')
+   .order('created_at',{ascending:false}).limit(1000);
   if(readError)throw readError;
   const known=new Map((registered||[]).map(x=>[x.invoice_number,x]));
-  let count=0,skipped=0;
-  for(const charge of charges){
-   if(!charge.invoice||!/^fatura\d{4,}$/.test(charge.invoice)){skipped++;continue}
-   const existing=known.get(charge.invoice);
-   if(existing){
-    charge.cloudUrl=cloudLink(existing.access_token);
+  const bySource=new Map((registered||[]).filter(x=>x.source_charge_id).map(x=>[x.source_charge_id,x]));
+  let highest=[...known.keys()].reduce((n,name)=>{const m=/^fatura(\d+)$/.exec(name);return m?Math.max(n,Number(m[1])):n},10);
+  let created=0,updated=0,ignored=0,renumbered=0;
+  for(const charge of [...charges].reverse()){
+   if(!charge?.id||!/^fatura\d{4,}$/i.test(String(charge.invoice||''))){ignored++;continue;}
+   const sourceId=String(charge.id);
+   const linked=bySource.get(sourceId);
+   if(linked){
+    charge.cloudUrl=cloudLink(linked.access_token);
+    if(linked.invoice_number!==charge.invoice)rewriteLocalInvoice(charge,linked.invoice_number);
+    const desired=statusOf(charge);
+    // Somente estados finais podem ser propagados automaticamente; nunca reabrir uma cobrança confirmada.
+    if(linked.status!=='confirmed'&&desired!=='pending'&&linked.status!==desired){
+     const {error}=await db.from('bussi_invoices').update({status:desired})
+      .eq('source_charge_id',sourceId).neq('status','confirmed');
+     if(error)throw Error('Status da '+charge.invoice+': '+error.message);
+     linked.status=desired;updated++;
+    }
     continue;
    }
-   const raw=parseLink(charge.url);
-   if(!raw?.pix){skipped++;continue}
-   const entry={
-    owner_id:user.id,invoice_number:String(charge.invoice),customer_name:String(charge.customer||raw.customer||'Cliente'),
-    customer_phone:String(charge.phone||raw.phone||''),contract_number:String(charge.contract||raw.contract||''),
-    amount:Number(charge.amount||raw.amount),original_amount:Number(charge.original||raw.original||raw.amount),
-    discount_pct:Number(charge.discount||raw.discount||0),description:String(charge.description||raw.description||''),
-    issue_date:safeDate(charge.issueDate||raw.issueDate)||new Date().toISOString().slice(0,10),
-    due_date:safeDate(charge.due||raw.due),pix_payload:String(raw.pix),
-    status:charge.status==='Pagamento confirmado'?'confirmed':charge.status==='Pagamento recusado'?'refused':'pending'
-   };
-   const {data,error}=await db.from('bussi_invoices').insert(entry).select('access_token,invoice_number').single();
-   if(error){if(error.code==='23505'){skipped++;continue}throw Error(charge.invoice+': '+error.message)}
-   charge.cloudUrl=cloudLink(data.access_token);known.set(data.invoice_number,data);count++;
+   const snapshot=parseLink(charge.url);
+   if(!snapshot?.pix){ignored++;continue;}
+   let invoice=String(charge.invoice).toLowerCase();
+   let result=null;
+   for(let attempt=0;attempt<15;attempt++){
+    if(known.has(invoice)){
+     highest=Math.max(highest,Number(invoice.slice(6))||10)+1;
+     invoice=invoiceNameCloud(highest);continue;
+    }
+    const entry={
+     owner_id:user.id,source_charge_id:sourceId,invoice_number:invoice,
+     customer_name:String(charge.customer||snapshot.customer||'Cliente'),
+     customer_phone:String(charge.phone||snapshot.phone||''),
+     contract_number:String(charge.contract||snapshot.contract||''),
+     amount:Number(charge.amount??snapshot.amount),
+     original_amount:Number(charge.original??snapshot.original??snapshot.amount),
+     discount_pct:Number(charge.discount??snapshot.discount??0),
+     description:String(charge.description||snapshot.description||''),
+     issue_date:safeDate(charge.issueDate||snapshot.issueDate)||new Date().toISOString().slice(0,10),
+     due_date:safeDate(charge.due||snapshot.due),pix_payload:String(snapshot.pix),
+     status:statusOf(charge),
+    };
+    const {data,error}=await db.from('bussi_invoices').insert(entry)
+     .select('access_token,invoice_number,source_charge_id,status').single();
+    if(!error){result=data;break;}
+    if(error.code!=='23505')throw Error(charge.invoice+': '+error.message);
+    // Outro aparelho reservou o número: obtenha o próximo e nunca ligue uma fatura ao token de outro cliente.
+    const {data:recent,error:reloadError}=await db.from('bussi_invoices').select('invoice_number')
+     .order('created_at',{ascending:false}).limit(1000);
+    if(reloadError)throw reloadError;
+    for(const row of recent||[]){
+     const m=/^fatura(\d+)$/.exec(row.invoice_number||'');if(m)highest=Math.max(highest,Number(m[1]));
+    }
+    highest++;invoice=invoiceNameCloud(highest);
+   }
+   if(!result)throw Error('Não foi possível reservar número para '+charge.invoice+'. Tente sincronizar novamente.');
+   if(charge.invoice!==invoice){rewriteLocalInvoice(charge,invoice);renumbered++;}
+   charge.cloudUrl=cloudLink(result.access_token);
+   known.set(invoice,result);bySource.set(sourceId,result);created++;
+   highest=Math.max(highest,Number(invoice.slice(6))||10);
+   localStorage.setItem(K.charges,JSON.stringify(charges));
   }
   save(K.charges,charges);
-  const highest=[...known.keys()].reduce((n,x)=>{const m=/^fatura(\d+)$/.exec(x);return m?Math.max(n,Number(m[1])):n},10);
-  if(highest>=11){const next=Math.max(nextInvoiceNumber(),highest+1);localStorage.setItem(INVOICE_SEQUENCE_KEY,String(next));}
-  const last=charges[0];if(last?.cloudUrl&&lastLink){
-    lastLink=last.cloudUrl;
-    const field=document.getElementById('generatedLink');if(field)field.value=last.cloudUrl;
+  if(highest>=11)localStorage.setItem(INVOICE_SEQUENCE_KEY,String(Math.max(nextInvoiceNumber(),highest+1)));
+  if(charges[0]?.cloudUrl&&lastLink){
+   lastLink=charges[0].cloudUrl;
+   const field=document.getElementById('generatedLink');
+   if(field)field.value=lastLink;
   }
   renderAll();
-  say('Sincronização concluída: '+count+' nova(s) fatura(s), '+skipped+' ignorada(s). Os links ficam disponíveis abaixo.');
+  say('Nuvem sincronizada: '+created+' nova(s), '+updated+' status atualizado(s), '+ignored+' sem dados Pix. '+(renumbered?'Algumas faturas foram renumeradas para evitar duplicidade.':''));
   await refreshList();
- }catch(err){say('Erro de sincronização: '+(err.message||'falha'));}
- finally{busy=false;syncButton.disabled=false}
+  return {ok:true,created,updated,ignored};
+ }catch(err){
+  const message=err.message||'falha não identificada';
+  say('Erro de sincronização: '+message);
+  return {ok:false,reason:message};
+ }finally{busy=false;syncButton.disabled=false;}
 }
+async function updateStatus(charge){
+ if(!charge?.id)return;
+ const user=await getUser();if(!user)return;
+ try{
+  const {error}=await db.from('bussi_invoices').update({status:statusOf(charge)})
+   .eq('source_charge_id',String(charge.id)).neq('status','confirmed');
+  if(error)throw error;
+  await refreshList();
+ }catch(err){say('Não foi possível atualizar o status da fatura na nuvem: '+(err.message||err))}
+}
+window.BussiCloud={
+ sync,
+ updateStatus,
+ async isAuthenticated(){return !!(await getUser())}
+};
 syncButton.addEventListener('click',sync);
-document.getElementById('generateCharge')?.addEventListener('click',()=>setTimeout(async()=>{if(await getUser())await sync();},650));
+
 db.auth.onAuthStateChange((_event,_session)=>{setTimeout(render,0)});
 render();
 })();
