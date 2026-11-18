@@ -19,6 +19,17 @@ jobs:
           done
           curl --fail --location --silent --show-error --max-time 30 'https://consigbeneficios.github.io/bussi/?utm_source=chatgpt.com' | grep -q '<title>BUSSI'
           echo 'HTML BUSSI encontrado'
+      - name: Testar protecao da API de faturas
+        run: |
+          set -e
+          base='https://qzelhgfwrppkhdmolhys.supabase.co/functions/v1/bussi-invoice'
+          code=$(curl --silent --show-error --output /tmp/bussi-invalid.json --write-out '%{http_code}' --max-time 25 "$base?token=invalido")
+          echo "TOKEN INVALIDO HTTP=$code"
+          test "$code" = 400
+          code=$(curl --silent --show-error --output /tmp/bussi-absent.json --write-out '%{http_code}' --max-time 25 "$base?token=00000000-0000-4000-8000-000000000000")
+          echo "TOKEN INEXISTENTE HTTP=$code"
+          test "$code" = 404
+          echo 'API nao divulgou fatura sem token valido'
       - name: Instalar verificador de navegador
         run: |
           npm install --prefix /tmp/bussi-e2e --no-audit --no-fund playwright-core
