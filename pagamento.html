@@ -12,8 +12,8 @@ body{background:#eef0f3;-webkit-font-smoothing:antialiased}button{font:inherit;c
 .checkout{width:100%;min-height:100vh;background:#fff}.top-shell{max-width:480px;margin:0 auto;padding:52px 38px 42px;background:#fff}
 .download{display:flex;align-items:center;justify-content:center;gap:10px;width:max-content;margin:0 auto 62px;border:0;background:transparent;color:#111;font-size:16px;font-weight:800;text-decoration:underline;text-underline-offset:4px;padding:0}
 .download svg{width:21px;height:21px;stroke-width:2}
-.hero{text-align:center}.company-logo{width:88px;height:88px;border-radius:50%;object-fit:cover;display:block;margin:0 auto 22px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
-.company-name{font-size:24px;line-height:1.1;font-weight:800;text-transform:uppercase;margin:0 0 4px;letter-spacing:-.02em;color:#13151a}
+.hero{text-align:center}.company-logo{width:122px;height:122px;border-radius:50%;object-fit:cover;display:block;margin:0 auto 24px;box-shadow:0 4px 14px rgba(15,23,42,.09)}
+.company-name{font-size:24px;line-height:1.15;font-weight:800;text-transform:uppercase;margin:0 0 4px;letter-spacing:-.02em;color:#13151a}
 .amount{font-size:47px;line-height:1.02;font-weight:900;letter-spacing:-.035em;margin:0 0 4px;font-variant-numeric:tabular-nums;color:#0f1116}
 .due{font-size:20px;line-height:1.2;margin:0 auto 22px;max-width:380px;font-weight:400;color:#374151}
 .charge{font-size:23px;font-weight:800;margin:0 0 12px}.saving-badge{display:inline-flex;align-items:center;justify-content:center;padding:7px 12px;border-radius:999px;background:#ecfdf5;color:#047857;font-size:13px;font-weight:800;margin-bottom:24px}
@@ -41,7 +41,7 @@ body{background:#eef0f3;-webkit-font-smoothing:antialiased}button{font:inherit;c
  body{padding:46px 24px;background:#eef0f3}
  .checkout{max-width:1060px;min-height:0;margin:0 auto;border-radius:18px;overflow:hidden;box-shadow:var(--shadow);display:grid;grid-template-columns:minmax(0,1.08fr) minmax(390px,.92fr);background:#fff}
  .top-shell{max-width:none;margin:0;padding:46px 68px 54px;display:flex;flex-direction:column;justify-content:flex-start}
- .download{margin:0 0 45px;align-self:flex-start}.company-logo{width:96px;height:96px;margin-bottom:24px}.company-name{font-size:26px}.amount{font-size:52px}.due{font-size:19px}.charge{font-size:24px}.rule{margin-bottom:34px}
+ .download{margin:0 0 45px;align-self:flex-start}.company-logo{width:134px;height:134px;margin-bottom:27px}.company-name{font-size:26px}.amount{font-size:52px}.due{font-size:19px}.charge{font-size:24px}.rule{margin-bottom:34px}
  .pay-band{padding:42px;background:#f0f1f3;display:flex;align-items:center}.pay-card{width:100%;max-width:440px;padding:42px 36px;margin:auto;box-shadow:0 8px 24px rgba(0,0,0,.05)}
  .footer{grid-column:1/-1;padding:20px 30px 24px;background:#e9ebee;border-top:1px solid #dde0e3}
 }
@@ -69,7 +69,7 @@ if(!d||!d.pix){app.innerHTML='<div class="error"><h2>Link de cobrança inválido
  <button class="download" id="downloadCharge" type="button" aria-label="Baixar fatura"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v12m0 0 5-5m-5 5-5-5M5 20h14"/></svg><span>Baixar fatura</span></button>
  <div class="hero"><img class="company-logo" src="logo-consig.svg" alt="CONSIG BENEFÍCIOS"><h1 class="company-name">${esc(d.company||'CONSIG BENEFÍCIO S/A')}</h1>
  <div class="amount">${money(finalVal)}</div><p class="due">${esc(dueText)}</p><div class="charge">Cobrança n.º ${esc(d.invoice||'—')}</div>
- <div class="saving-badge">${discountPct.toLocaleString('pt-BR',{maximumFractionDigits:2})}% OFF aplicado</div></div>
+ <div class="saving-badge">Black Friday ${discountPct.toLocaleString('pt-BR',{maximumFractionDigits:2})}% OFF aplicado</div></div>
  <div class="rule"></div>
  <div class="collapsible" id="detailsBlock"><div class="details">
  <div class="item-head"><div><div class="item-title">Consig Benefícios</div><div class="qty">Quantidade: ${Number(d.quantity||1)}</div><div class="qty" style="margin-top:5px">${esc(desc)}</div></div><div class="item-price">${money(finalVal)}</div></div>
