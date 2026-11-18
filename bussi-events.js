@@ -1,7 +1,7 @@
 /* BUSSI — eventos locais, totais diários duráveis e envio opcional a endpoint. */
 (()=>{
 'use strict';
-const KEY='bussi.events.v1',DAILY_KEY='bussi.events.daily.v1',LIMIT=5000;
+const KEY='bussi.events.v1',DAILY_KEY='bussi.events.daily.v1',ACTIVITY_KEY='bussi.events.activity.v1',LIMIT=5000;
 const TYPES=new Set(['link_opened','pay_clicked','pix_copied','invoice_downloaded','status_opened','payment_confirmed','payment_refused','charge_created']);
 function readJson(key,defaultValue){try{const data=JSON.parse(localStorage.getItem(key)||'null');return data===null?defaultValue:data}catch{return defaultValue}}
 function all(){const events=readJson(KEY,[]);return Array.isArray(events)?events:[]}
@@ -27,13 +27,32 @@ function daily(){
  return rebuildDaily()
 }
 function value(d,key){const x=d?.[key];return x==null?'':String(x).slice(0,120)}
+function eventKey(e){return e.chargeId?'id:'+String(e.chargeId):e.invoice?'invoice:'+String(e.invoice):''}
+function rebuildActivity(events=all()){
+ const map={};
+ for(const event of events){
+  if(!TYPES.has(event.type))continue;
+  const key=eventKey(event);if(!key||!Number.isFinite(new Date(event.at).getTime()))continue;
+  const record=map[key]??={invoice:event.invoice||'',chargeId:event.chargeId||'',times:{}};
+  if(!record.times[event.type]||event.at>record.times[event.type])record.times[event.type]=event.at
+ }
+ try{localStorage.setItem(ACTIVITY_KEY,JSON.stringify(map))}catch{}
+ return map
+}
+function activity(){
+ const existing=readJson(ACTIVITY_KEY,null);
+ if(existing&&typeof existing==='object'&&!Array.isArray(existing))return existing;
+ return rebuildActivity()
+}
 function record(d,type){
  if(!TYPES.has(type))return null;
  const event={id:(globalThis.crypto?.randomUUID?.()||Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)),type,at:new Date().toISOString(),chargeId:value(d,'chargeId')||value(d,'id'),invoice:value(d,'invoice')};
- const rollup=daily(),day=dayInSaoPaulo(event.at);
+ const rollup=daily(),day=dayInSaoPaulo(event.at),byCharge=activity(),key=eventKey(event);
  if(day){rollup[day]??={};rollup[day][type]=(rollup[day][type]||0)+1}
+ if(key){const entry=byCharge[key]??={invoice:event.invoice,chargeId:event.chargeId,times:{}};entry.times[type]=event.at}
  try{
   localStorage.setItem(DAILY_KEY,JSON.stringify(rollup));
+  if(key)localStorage.setItem(ACTIVITY_KEY,JSON.stringify(byCharge));
   const records=all();records.push(event);
   localStorage.setItem(KEY,JSON.stringify(records.slice(-LIMIT)));
   window.dispatchEvent(new Event('bussi:event'))
@@ -48,6 +67,7 @@ function record(d,type){
  }
  return event
 }
-window.BussiEvents={all,daily,record,rebuildDaily,dayInSaoPaulo,key:KEY,dailyKey:DAILY_KEY};
-daily(); // Migração única: os eventos existentes viram totais diários sem duplicação.
+window.BussiEvents={all,daily,activity,record,rebuildDaily,rebuildActivity,dayInSaoPaulo,key:KEY,dailyKey:DAILY_KEY,activityKey:ACTIVITY_KEY};
+daily(); // Migração única: totais diários de eventos anteriores.
+activity(); // Preserva o último horário registrado por cobrança e tipo de interação.
 })();
