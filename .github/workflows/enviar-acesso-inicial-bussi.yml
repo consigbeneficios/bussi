@@ -1,0 +1,28 @@
+name: Enviar acesso inicial BUSSI
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/enviar-acesso-inicial-bussi.yml']
+permissions:
+  contents: read
+jobs:
+  solicitar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Solicitar email de confirmacao ao administrador
+        run: |
+          set -eu
+          status=$(curl --silent --show-error --max-time 30 --output /tmp/resultado-bussi.json --write-out '%{http_code}' --request POST             'https://qzelhgfwrppkhdmolhys.supabase.co/auth/v1/otp?redirect_to=https%3A%2F%2Fconsigbeneficios.github.io%2Fbussi%2Findex.html'             --header 'apikey: sb_publishable_KCmjXZQbnFBkB977wPFLDg_4YiNvUw0'             --header 'content-type: application/json'             --data '{"email":"sac@consigbeneficio.com.br","create_user":true}')
+          echo "SUPABASE_OTP_HTTP=$status"
+          if [ "$status" != "200" ]; then
+            python3 - <<'PY'
+          import json
+          try:
+              d=json.load(open("/tmp/resultado-bussi.json"))
+              print("Erro no Supabase:", d.get("msg") or d.get("message") or d.get("error_code") or "status nao esperado")
+          except Exception:
+              print("Resposta de erro nao interpretavel")
+          PY
+            exit 1
+          fi
+          echo 'Solicitacao de e-mail aceita pelo Supabase. Entrega e confirmacao dependem da caixa postal do destinatario.'
