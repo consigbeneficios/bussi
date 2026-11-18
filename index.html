@@ -339,6 +339,12 @@ button:disabled{opacity:.5;cursor:not-allowed}
             <button class="btn dark" type="button" id="cloudSync" disabled>Sincronizar faturas</button>
           </div>
           <div class="notice" style="margin-top:12px" id="cloudStatus" role="status">Conexão com banco de dados inicializando...</div>
+          <div class="field" style="margin-top:18px">
+            <label for="cloudLegacyLink">Recuperar fatura por link antigo</label>
+            <textarea id="cloudLegacyLink" rows="3" placeholder="Cole aqui o link completo de pagamento com #p=..."></textarea>
+            <div class="toolbar"><button class="btn ghost" type="button" id="cloudImportLink">Importar fatura</button></div>
+            <p class="muted" style="font-size:12px;margin:4px 0">Importa os dados do link para o histórico local. Se estiver conectado à nuvem, também salva no Supabase. Não é necessário abrir o domínio antigo.</p>
+          </div>
           <div id="cloudInvoiceList" style="margin-top:12px"></div>
           <div class="notice" style="margin-top:12px">Os links da nuvem incluem um identificador secreto. Não compartilhe senhas de acesso nem publique dados dos clientes no GitHub. O endereço pay.consigbeneficio.com.br permanece indisponível até regularizar seu certificado SSL.</div>
         </div>
