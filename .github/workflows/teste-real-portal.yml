@@ -1,0 +1,61 @@
+name: Teste real portal BUSSI
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/teste-real-portal.yml', 'index.html', 'pagamento.html']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Testar resposta exata, HTML e recursos
+        run: |
+          set -e
+          for url in 'https://consigbeneficios.github.io/bussi/?utm_source=chatgpt.com' 'https://consigbeneficios.github.io/bussi/' 'https://consigbeneficios.github.io/bussi/bussi-events.js' 'https://consigbeneficios.github.io/bussi/pagamento.html'; do
+            echo "URL $url"
+            curl --fail --location --silent --show-error --max-time 30 --output /dev/null --write-out 'HTTP=%{http_code} DESTINO=%{url_effective} TLS=%{ssl_verify_result}\n' "$url"
+          done
+          curl --fail --location --silent --show-error --max-time 30 'https://consigbeneficios.github.io/bussi/?utm_source=chatgpt.com' | grep -q '<title>BUSSI'
+          echo 'HTML BUSSI encontrado'
+      - name: Instalar verificador de navegador
+        run: |
+          npm install --prefix /tmp/bussi-e2e --no-audit --no-fund playwright-core
+          command -v google-chrome || true
+          command -v chromium || true
+      - name: Abrir portal em navegador real e testar login inicial
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const {chromium}=require('/tmp/bussi-e2e/node_modules/playwright-core');
+          (async()=>{
+            const executables=['/usr/bin/google-chrome','/usr/bin/chromium','/opt/google/chrome/chrome'];
+            const exe=executables.find(x=>fs.existsSync(x));
+            if(!exe)throw new Error('Chrome/Chromium indisponivel no executor');
+            const browser=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox']});
+            try{
+              const page=await browser.newPage();
+              const errors=[];
+              page.on('pageerror',e=>errors.push('JS: '+e.message));
+              page.on('requestfailed',r=>errors.push('RECURSO: '+r.url()+' '+r.failure()?.errorText));
+              const resp=await page.goto('https://consigbeneficios.github.io/bussi/?utm_source=chatgpt.com',{waitUntil:'domcontentloaded',timeout:30000});
+              await page.waitForTimeout(2000);
+              console.log('BROWSER STATUS',resp.status(),'URL',page.url());
+              const setup=await page.locator('#setupAuth').isVisible();
+              const login=await page.locator('#loginAuth').isVisible();
+              console.log('TELA: CONFIGURAR=',setup,'LOGIN=',login);
+              if(resp.status()!==200||(!setup&&!login))throw new Error('Portal nao abriu tela de acesso');
+              if(setup){
+                await page.locator('#setupPass').fill('TesteTemporario987!');
+                await page.locator('#setupPass2').fill('TesteTemporario987!');
+                await page.locator('#createAccess').click();
+                await page.waitForTimeout(1500);
+                console.log('PAINEL VISIVEL=',await page.locator('#mainApp').isVisible());
+                if(!await page.locator('#mainApp').isVisible())throw new Error('Nao entrou no painel apos criar acesso temporario');
+              }
+              console.log('BROWSER ERRORS',JSON.stringify(errors.slice(0,12)));
+              if(errors.some(e=>e.startsWith('JS:')))throw new Error('Javascript falhou no navegador');
+            }finally{await browser.close()}
+          })().catch(e=>{console.error('FALHA',e.message);process.exit(1)})
+          NODE
