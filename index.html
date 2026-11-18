@@ -292,7 +292,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
           <div class="field"><label>Vencimento (automático — hoje)</label><input id="chargeDue" type="date" readonly title="O link vence no dia em que é emitido"></div>
         </div>
         <div class="notice" style="margin-top:12px"><b>Validade da cobrança:</b> emitida e vencendo no mesmo dia. O link deixa de exibir o Pix a partir de 00h do dia seguinte, horário de São Paulo, ou quando o pagamento for confirmado.</div><div class="toolbar" style="margin-top:16px"><button class="btn primary" id="generateCharge">Gerar cobrança e link</button><button class="btn ghost" id="printInvoice">Visualizar fatura</button></div>
-        <div id="generatedBox" class="notice" style="display:none;margin-top:16px"><b>Fatura gerada: <span id="generatedInvoiceNumber"></span></b><div style="margin-top:9px;font-size:12px">Link funcional para enviar ao cliente:</div><div class="linkbox" style="margin-top:8px"><input id="generatedLink" readonly><button class="btn dark" id="copyGenerated">Copiar</button><button class="btn primary" id="openGenerated">Abrir</button></div></div>
+        <div id="generatedBox" class="notice" style="display:none;margin-top:16px"><b>Fatura gerada: <span id="generatedInvoiceNumber"></span></b><div style="margin-top:9px;font-size:12px">Link funcional para enviar ao cliente:</div><div class="linkbox" style="margin-top:8px"><input id="generatedLink" readonly><button class="btn dark" id="copyGenerated">Copiar</button><button class="btn primary" id="openGenerated">Abrir</button></div><p data-bussi-cloud-help class="muted" style="margin-top:8px;font-size:12px">Para links persistentes, conecte o armazenamento na nuvem em Integrações.</p></div>
       </div>
       <div class="section"><div class="sectionhead"><div><h2>Histórico de cobranças</h2><p>Somente faturas efetivamente geradas no BUSSI, com opção de exclusão individual.</p></div></div><div class="tablewrap"><table class="table"><thead><tr><th>Fatura</th><th>Cliente</th><th>Original</th><th>Desconto</th><th>Valor a ser pago</th><th>Status</th><th>Ações</th></tr></thead><tbody id="chargeRows"></tbody></table></div></div>
     </section>
@@ -644,7 +644,7 @@ function makeSnapshot(invoiceId){
  const inv=invoiceId||invoiceName(nextInvoiceNumber());
  return {v:4,chargeId:Date.now()*1000+Math.floor(Math.random()*1000),invoice:inv,contract:c.contract||inv,customer:c.name,phone:c.phone,amount:f,original:o,discount:d,final:f,quantity:1,description:$('chargeDesc').value.trim()||'Black Friday 50% OFF — P/Consignado — Competência: Dezembro',due:saoPauloToday(),issueDate:saoPauloToday(),pix,company:'CONSIG BENEFÍCIO S/A',companyAddress:'Avenida Doutor Cardoso de Melo, nº 1.855, Vila Olímpia, São Paulo/SP, CEP 04548-005',email:'sac@consigbeneficio.com.br',cnpj:'66.754.630/0001-60',trackingEndpoint:settings.trackingEndpoint||'',paymentStatusEndpoint:settings.paymentStatusEndpoint||''}
 }
-$('generateCharge').onclick=()=>{
+$('generateCharge').onclick=async()=>{
  let popup=null;
  try{
   // Valide antes de reservar um número; a pré-visualização não consome a sequência.
@@ -661,8 +661,27 @@ $('generateCharge').onclick=()=>{
   save(K.charges,charges);
   try{window.BussiEvents?.record(snap,'charge_created')}catch{}
   renderAll();
+  if(window.BussiCloud&&await window.BussiCloud.isAuthenticated()){
+   const saved=await window.BussiCloud.sync();
+   if(!saved?.ok||!charges[0]?.cloudUrl){
+    lastLink='';
+    $('generatedLink').value='Fatura salva localmente; sincronização da nuvem pendente.';
+    $('copyGenerated').disabled=true;
+    $('openGenerated').disabled=true;
+    if(popup&&!popup.closed)popup.close();
+    alert('A fatura foi salva neste navegador, mas o link da nuvem ainda não está disponível. Abra Integrações e clique em Sincronizar faturas antes de compartilhar.');
+    return;
+   }
+   lastLink=charges[0].cloudUrl;
+   $('generatedLink').value=lastLink;
+  } else {
+   const help=$('generatedBox').querySelector('[data-bussi-cloud-help]');
+   if(help)help.textContent='Link temporário. Para armazenar online, entre na nuvem na seção Integrações.';
+  }
+  $('copyGenerated').disabled=false;
+  $('openGenerated').disabled=false;
   if(popup){popup.location.href=lastLink;popup.focus()}
-  else alert('Cobrança gerada. O link funcional está disponível para copiar.')
+  else alert('Cobrança gerada. O link está disponível para copiar.')
  }catch(e){if(popup&&!popup.closed)popup.close();alert(e.message)}
 };
 $('copyGenerated').onclick=async()=>{if(!lastLink)return;try{await navigator.clipboard.writeText(lastLink);$('copyGenerated').textContent='Copiado';setTimeout(()=>$('copyGenerated').textContent='Copiar',1200)}catch{prompt('Copie o link da fatura:',lastLink)}};$('openGenerated').onclick=()=>lastLink&&window.open(lastLink,'_blank');
@@ -704,7 +723,7 @@ function openSettlement(id){
  c.transactionId=c.transactionId||'';
  c.txid=c.txid||'';
  c.receiptUrl=receiptUrlFor(c);
- save(K.charges,charges);try{window.BussiEvents?.record(c,'payment_confirmed')}catch{}renderAll();
+ save(K.charges,charges);try{window.BussiEvents?.record(c,'payment_confirmed')}catch{}renderAll();void window.BussiCloud?.updateStatus(c);
  const w=window.open(c.receiptUrl,'_blank');
  if(!w)alert('Pagamento registrado. Clique em Comprovante para abrir o documento.')
 }
@@ -713,7 +732,7 @@ function refuseCharge(id){
  if(!confirm('Registrar a cobrança '+c.invoice+' como PAGAMENTO RECUSADO pela CONSIG? Esta ação não significa que o banco recusou a transação.'))return;
  c.status='Pagamento recusado';c.refusedAt=new Date().toISOString();c.refusedBy='consibeneficio';
  delete c.receiptUrl;delete c.receiptNumber;
- save(K.charges,charges);try{window.BussiEvents?.record(c,'payment_refused')}catch{}renderAll()
+ save(K.charges,charges);try{window.BussiEvents?.record(c,'payment_refused')}catch{}renderAll();void window.BussiCloud?.updateStatus(c)
 }
 function deleteCharge(id){
  const charge=charges.find(c=>String(c.id)===String(id));if(!charge)return;
@@ -728,7 +747,7 @@ function deleteCharge(id){
 function reopenCharge(id){
  const c=charges.find(x=>x.id===id);if(!c||c.status!=='Pagamento recusado')return;
  if(!confirm('Reabrir esta cobrança para aguardar nova conferência manual?'))return;
- c.status='Aguardando confirmação';delete c.refusedAt;delete c.refusedBy;save(K.charges,charges);renderAll()
+ c.status='Aguardando confirmação';delete c.refusedAt;delete c.refusedBy;save(K.charges,charges);renderAll();void window.BussiCloud?.updateStatus(c)
 }
 function receiptNumber(c){const d=new Date(),p=n=>String(n).padStart(2,'0');return 'CLP-'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+String(c.id).slice(-6)}
 function makeReceiptPayload(c){
