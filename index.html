@@ -92,7 +92,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.app{min-height:
 
     <section class="view" id="crm">
       <div class="section">
-        <div class="sectionhead"><div><h2>CRM / Clientes</h2><p>Base operacional usada para campanhas e cobranças.</p></div><div class="toolbar"><input type="file" id="importFile" accept=".xlsx,.xls,.csv" hidden><button class="btn ghost" id="downloadTemplate">Baixar modelo Excel</button><button class="btn ghost" id="importBtn">Importar planilha</button><button class="btn primary" id="newClient">Novo cliente</button></div></div>
+        <div class="sectionhead"><div><h2>CRM / Clientes</h2><p>Base operacional usada para campanhas e cobranças.</p></div><div class="toolbar"><input type="file" id="importFile" accept=".xlsx,.xls,.csv" hidden><button class="btn ghost" id="downloadTemplate">Baixar modelo Excel</button><button class="btn ghost" id="downloadTestSheet">Baixar planilha teste</button><button class="btn ghost" id="loadTestClients">Carregar clientes de teste</button><button class="btn ghost" id="importBtn">Importar planilha</button><button class="btn primary" id="newClient">Novo cliente</button></div></div>
         <div class="grid2" style="margin-bottom:14px">
           <div class="field"><label>Pesquisar cliente</label><input id="clientSearch" placeholder="Nome, contrato ou telefone"></div>
           <div class="field"><label>Resultados</label><input id="clientSearchCount" readonly value="0 cliente(s)"></div>
@@ -202,8 +202,29 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.app{min-height:
 
 <script>
 const K={clients:'bussi.clients.v1',campaigns:'bussi.campaigns.v1',charges:'bussi.charges.v1',settings:'bussi.settings.v1'};
-const defaultClients=[];
-let clients=load(K.clients,[])||[],campaigns=load(K.campaigns,[]),charges=load(K.charges,[]),settings=load(K.settings,{pixType:'auto',pixKey:'',pixName:'CONSIG BENEFICIO SA',pixCity:'SAO PAULO',pixTxid:'***',pixDesc:'FATURA CONSIG',trackingEndpoint:'',metaPhoneId:'',metaWabaId:'',trackingEnv:'',paymentProvider:'',paymentWebhook:'',authResetEndpoint:'',authEmail:'sac@consigbeneficio.com.br'}),editClientIndex=-1,lastLink='';
+const defaultClients=[
+{name:'Cliente Teste 01',contract:'TESTE-0001',phone:'(00) 90000-0001',original:1200.00,final:600.00},
+{name:'Cliente Teste 02',contract:'TESTE-0002',phone:'(00) 90000-0002',original:985.40,final:492.70},
+{name:'Cliente Teste 03',contract:'TESTE-0003',phone:'(00) 90000-0003',original:1740.80,final:870.40},
+{name:'Cliente Teste 04',contract:'TESTE-0004',phone:'(00) 90000-0004',original:650.00,final:325.00},
+{name:'Cliente Teste 05',contract:'TESTE-0005',phone:'(00) 90000-0005',original:2310.50,final:1155.25},
+{name:'Cliente Teste 06',contract:'TESTE-0006',phone:'(00) 90000-0006',original:1425.30,final:712.65},
+{name:'Cliente Teste 07',contract:'TESTE-0007',phone:'(00) 90000-0007',original:799.90,final:399.95},
+{name:'Cliente Teste 08',contract:'TESTE-0008',phone:'(00) 90000-0008',original:3180.00,final:1590.00},
+{name:'Cliente Teste 09',contract:'TESTE-0009',phone:'(00) 90000-0009',original:1120.60,final:560.30},
+{name:'Cliente Teste 10',contract:'TESTE-0010',phone:'(00) 90000-0010',original:2675.20,final:1337.60},
+{name:'Cliente Teste 11',contract:'TESTE-0011',phone:'(00) 90000-0011',original:930.00,final:465.00},
+{name:'Cliente Teste 12',contract:'TESTE-0012',phone:'(00) 90000-0012',original:1548.70,final:774.35},
+{name:'Cliente Teste 13',contract:'TESTE-0013',phone:'(00) 90000-0013',original:2050.00,final:1025.00},
+{name:'Cliente Teste 14',contract:'TESTE-0014',phone:'(00) 90000-0014',original:745.80,final:372.90},
+{name:'Cliente Teste 15',contract:'TESTE-0015',phone:'(00) 90000-0015',original:1899.90,final:949.95},
+{name:'Cliente Teste 16',contract:'TESTE-0016',phone:'(00) 90000-0016',original:1288.40,final:644.20},
+{name:'Cliente Teste 17',contract:'TESTE-0017',phone:'(00) 90000-0017',original:3560.00,final:1780.00},
+{name:'Cliente Teste 18',contract:'TESTE-0018',phone:'(00) 90000-0018',original:1044.20,final:522.10},
+{name:'Cliente Teste 19',contract:'TESTE-0019',phone:'(00) 90000-0019',original:2215.60,final:1107.80},
+{name:'Cliente Teste 20',contract:'TESTE-0020',phone:'(00) 90000-0020',original:875.00,final:437.50}
+];
+let clients=load(K.clients,null)||defaultClients,campaigns=load(K.campaigns,[]),charges=load(K.charges,[]),settings=load(K.settings,{pixType:'auto',pixKey:'',pixName:'CONSIG BENEFICIO SA',pixCity:'SAO PAULO',pixTxid:'***',pixDesc:'FATURA CONSIG',trackingEndpoint:'',metaPhoneId:'',metaWabaId:'',trackingEnv:'',paymentProvider:'',paymentWebhook:'',authResetEndpoint:'',authEmail:'sac@consigbeneficio.com.br'}),editClientIndex=-1,lastLink='';
 function $(id){return document.getElementById(id)}function load(k,f){try{const v=localStorage.getItem(k);return v?JSON.parse(v):f}catch{return f}}function save(k,v){localStorage.setItem(k,JSON.stringify(v));if($('saveState'))$('saveState').textContent='Salvo às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
 const AUTH_USER='consibeneficio';
 const AUTH_KEY='bussi.auth.local.v2';
@@ -298,6 +319,21 @@ $('downloadTemplate').onclick=()=>{
   ws['!cols']=[{wch:30},{wch:16},{wch:20},{wch:18},{wch:28}];
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Clientes');
   XLSX.writeFile(wb,'TEMPLATE_IMPORTACAO_BUSSI.xlsx')
+};
+$('downloadTestSheet').onclick=()=>{
+  if(typeof XLSX==='undefined'){alert('Não foi possível carregar o módulo de planilhas. Tente novamente com conexão à internet.');return}
+  const rows=[{"Nome completo":"Cliente Teste 01","Contrato":"TESTE-0001","Telefone":"(00) 90000-0001","Valor original":1200,"Valor com 50% de desconto":600},{"Nome completo":"Cliente Teste 02","Contrato":"TESTE-0002","Telefone":"(00) 90000-0002","Valor original":985.4,"Valor com 50% de desconto":492.7},{"Nome completo":"Cliente Teste 03","Contrato":"TESTE-0003","Telefone":"(00) 90000-0003","Valor original":1740.8,"Valor com 50% de desconto":870.4},{"Nome completo":"Cliente Teste 04","Contrato":"TESTE-0004","Telefone":"(00) 90000-0004","Valor original":650,"Valor com 50% de desconto":325},{"Nome completo":"Cliente Teste 05","Contrato":"TESTE-0005","Telefone":"(00) 90000-0005","Valor original":2310.5,"Valor com 50% de desconto":1155.25},{"Nome completo":"Cliente Teste 06","Contrato":"TESTE-0006","Telefone":"(00) 90000-0006","Valor original":1425.3,"Valor com 50% de desconto":712.65},{"Nome completo":"Cliente Teste 07","Contrato":"TESTE-0007","Telefone":"(00) 90000-0007","Valor original":799.9,"Valor com 50% de desconto":399.95},{"Nome completo":"Cliente Teste 08","Contrato":"TESTE-0008","Telefone":"(00) 90000-0008","Valor original":3180,"Valor com 50% de desconto":1590},{"Nome completo":"Cliente Teste 09","Contrato":"TESTE-0009","Telefone":"(00) 90000-0009","Valor original":1120.6,"Valor com 50% de desconto":560.3},{"Nome completo":"Cliente Teste 10","Contrato":"TESTE-0010","Telefone":"(00) 90000-0010","Valor original":2675.2,"Valor com 50% de desconto":1337.6},{"Nome completo":"Cliente Teste 11","Contrato":"TESTE-0011","Telefone":"(00) 90000-0011","Valor original":930,"Valor com 50% de desconto":465},{"Nome completo":"Cliente Teste 12","Contrato":"TESTE-0012","Telefone":"(00) 90000-0012","Valor original":1548.7,"Valor com 50% de desconto":774.35},{"Nome completo":"Cliente Teste 13","Contrato":"TESTE-0013","Telefone":"(00) 90000-0013","Valor original":2050,"Valor com 50% de desconto":1025},{"Nome completo":"Cliente Teste 14","Contrato":"TESTE-0014","Telefone":"(00) 90000-0014","Valor original":745.8,"Valor com 50% de desconto":372.9},{"Nome completo":"Cliente Teste 15","Contrato":"TESTE-0015","Telefone":"(00) 90000-0015","Valor original":1899.9,"Valor com 50% de desconto":949.95},{"Nome completo":"Cliente Teste 16","Contrato":"TESTE-0016","Telefone":"(00) 90000-0016","Valor original":1288.4,"Valor com 50% de desconto":644.2},{"Nome completo":"Cliente Teste 17","Contrato":"TESTE-0017","Telefone":"(00) 90000-0017","Valor original":3560,"Valor com 50% de desconto":1780},{"Nome completo":"Cliente Teste 18","Contrato":"TESTE-0018","Telefone":"(00) 90000-0018","Valor original":1044.2,"Valor com 50% de desconto":522.1},{"Nome completo":"Cliente Teste 19","Contrato":"TESTE-0019","Telefone":"(00) 90000-0019","Valor original":2215.6,"Valor com 50% de desconto":1107.8},{"Nome completo":"Cliente Teste 20","Contrato":"TESTE-0020","Telefone":"(00) 90000-0020","Valor original":875,"Valor com 50% de desconto":437.5}];
+  const ws=XLSX.utils.json_to_sheet(rows,{header:['Nome completo','Contrato','Telefone','Valor original','Valor com 50% de desconto']});
+  ws['!cols']=[{wch:24},{wch:16},{wch:18},{wch:18},{wch:28}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Clientes');
+  XLSX.writeFile(wb,'BUSSI_CLIENTES_FICTICIOS_TESTE.xlsx')
+};
+$('loadTestClients').onclick=()=>{
+  const existing=new Set(clients.map(c=>String(c.contract||'')));
+  const add=defaultClients.filter(c=>!existing.has(c.contract));
+  clients=[...clients,...add];
+  save(K.clients,clients);renderAll();
+  alert(add.length?add.length+' cliente(s) fictício(s) carregado(s).':'A base fictícia já está carregada.')
 };
 $('importBtn').onclick=()=>$('importFile').click();
 $('importFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const buf=await f.arrayBuffer();const wb=XLSX.read(buf,{type:'array'}),ws=wb.Sheets[wb.SheetNames[0]],rows=XLSX.utils.sheet_to_json(ws,{defval:''});const added=rows.map(r=>({name:r['Nome completo']||r.Nome||r.nome||'',contract:String(r['Contrato']||r.contrato||''),phone:String(r['Telefone']||r.telefone||''),original:parseMoney(r['Valor original']||r.original||0),final:parseMoney(r['Valor com 50% de desconto']||r['Valor com desconto']||r.final||0)})).filter(x=>x.name);clients=[...clients,...added];save(K.clients,clients);renderAll();alert(added.length+' cliente(s) importado(s).')}catch(err){alert('Não foi possível importar a planilha.')}e.target.value=''};
