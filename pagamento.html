@@ -4,6 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#ffffff"><title>Fatura — CONSIG BENEFÍCIOS</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="bussi-events.js"></script>
 <style>
 :root{--ink:#111827;--muted:#6b7280;--line:#d9dde3;--paper:#fff;--pix:#37b6a6;--black:#111318;--shadow:0 14px 40px rgba(15,23,42,.09)}
 *{box-sizing:border-box}html{background:#eef0f3}html,body{margin:0;min-height:100%;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;color:var(--ink)}
@@ -53,7 +54,7 @@ function decodeData(s){try{s=s.replace(/-/g,'+').replace(/_/g,'/');while(s.lengt
 function money(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function naturalDate(iso){if(!iso)return '';const p=String(iso).split('-').map(Number);if(p.length!==3||!p[0])return '';return new Intl.DateTimeFormat('pt-BR',{day:'numeric',month:'long',year:'numeric'}).format(new Date(p[0],p[1]-1,p[2]))}
-function track(d,event){if(!d.trackingEndpoint)return;const payload=JSON.stringify({event,invoice:d.invoice,at:new Date().toISOString()});try{navigator.sendBeacon?.(d.trackingEndpoint,new Blob([payload],{type:'text/plain;charset=UTF-8'}))}catch{}}
+function track(d,event){try{window.BussiEvents?.record(d,event)}catch{}}
 const PIX_ICON=`<svg viewBox="0 0 64 40" aria-hidden="true"><g fill="#49b8ab"><path d="M19.3 2.5a7 7 0 0 1 9.9 0l5.6 5.6-6.1 6.1-5.5-5.5a1.8 1.8 0 0 0-2.6 0l-9.2 9.2a1.8 1.8 0 0 0 0 2.6l9.2 9.2a1.8 1.8 0 0 0 2.6 0l5.5-5.5 6.1 6.1-5.6 5.6a7 7 0 0 1-9.9 0L3.9 20.5a1.8 1.8 0 0 1 0-2.6L19.3 2.5Z"/><path d="m35.3 8.2 5.6-5.6a7 7 0 0 1 9.9 0l9.3 9.3-6.1 6.1-9.2-9.2a1.8 1.8 0 0 0-2.6 0l-.8.8-6.1-6.1Z" opacity=".92"/><path d="m54 22 6.1 6.1-9.3 9.3a7 7 0 0 1-9.9 0l-5.6-5.6 6.1-6.1.8.8a1.8 1.8 0 0 0 2.6 0L54 22Z" opacity=".92"/></g></svg>`;
 const raw=location.hash.startsWith('#p=')?location.hash.slice(3):new URLSearchParams(location.hash.slice(1)).get('p')||'';
 const d=decodeData(raw),app=document.getElementById('app');
@@ -114,7 +115,7 @@ if(!d||!d.pix){app.innerHTML='<div class="error"><h2>Link de cobrança inválido
   <div class="totals-model"><div class="trm original"><span>Parcela original</span><span>${money(original)}</span></div><div class="trm"><span>Parcela com desconto</span><span>${money(finalVal)}</span></div><div class="trm total"><span>VALOR A SER PAGO</span><span>${money(finalVal)}</span></div></div>
   <div class="pay-area-model"><div class="pay-model"><div class="qrbox-model">${qrImage?'<img src="'+qrImage+'" alt="QR Pix">':''}</div><div class="pay-caption">Pagar agora</div></div><div class="footer-model"><strong>${esc(d.company||'CONSIG BENEFÍCIO S/A')}</strong><br>${esc(d.companyAddress||'')}<br>Email: ${esc(d.email||'sac@consigbeneficio.com.br')} · CNPJ: ${esc(d.cnpj||'66.754.630/0001-60')}<div class="page-no">Página 1 de 1 da Fatura ${esc(d.invoice||'')}</div></div></div></div></body></html>`
  }
- document.getElementById('downloadCharge').onclick=()=>{
+ document.getElementById('downloadCharge').onclick=()=>{track(d,'invoice_downloaded');
   const w=window.open('','_blank');if(!w)return alert('Permita pop-ups para baixar a fatura.');
   let qrImage='';
   try{if(typeof QRCode!=='undefined'){const buf=document.getElementById('qrBuffer');buf.innerHTML='';new QRCode(buf,{text:d.pix,width:180,height:180,correctLevel:QRCode.CorrectLevel.M});const canvas=buf.querySelector('canvas');if(canvas)qrImage=canvas.toDataURL('image/png')}}catch{}
