@@ -59,6 +59,7 @@ const PIX_ICON=`<svg viewBox="0 0 64 40" aria-hidden="true"><g fill="#49b8ab"><p
 const raw=location.hash.startsWith('#p=')?location.hash.slice(3):new URLSearchParams(location.hash.slice(1)).get('p')||'';
 const d=decodeData(raw),app=document.getElementById('app');
 if(!d||!d.pix){app.innerHTML='<div class="error"><h2>Link de cobrança inválido</h2><p>Solicite um novo link ao atendimento.</p></div>'}else{
+ track(d,'link_opened');
  const startedAt=Date.now();
  const original=Number(d.original??d.amount),finalVal=Number(d.amount||0);
  const discountPct=Number.isFinite(Number(d.discount))?Number(d.discount):original>0?Math.round((1-finalVal/original)*100):0;
