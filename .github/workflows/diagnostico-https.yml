@@ -40,6 +40,16 @@ jobs:
           except Exception as e:
               print('Falha de diagnostico:', type(e).__name__, str(e)[:500])
           PY
+      - name: Validar portal e paginas de fatura por HTTPS
+        run: |
+          set -e
+          for url in 'https://consigbeneficios.github.io/bussi/' 'https://consigbeneficios.github.io/bussi/pagamento.html' 'https://consigbeneficios.github.io/bussi/status-pagamento.html'; do
+            echo "TESTE_SEGURO $url"
+            resultado=$(curl --location --silent --show-error --output /dev/null --max-time 25 --write-out '%{http_code} %{url_effective} TLS=%{ssl_verify_result}' "$url")
+            echo "$resultado"
+            case "$resultado" in '200 '* ) ;; * ) echo 'FALHA DE HTTPS'; exit 1 ;; esac
+          done
+
       - name: Testar URLs publicas e certificados
         run: |
           for url in 'https://consigbeneficios.github.io/bussi/' 'https://pay.consigbeneficio.com.br/' 'https://pay.consigbeneficio.com.br/pagamento.html'; do
