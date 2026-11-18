@@ -10,6 +10,86 @@
 *{box-sizing:border-box}body{margin:0;background:#eef0f3;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}.page{max-width:1060px;margin:auto;min-height:100vh;background:#fff}.top{padding:28px 30px 36px}.download{border:0;background:transparent;padding:0;display:inline-flex;align-items:center;gap:8px;font-weight:750;color:#242930}.download svg{width:18px}.brandline{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-top:30px}.logo{width:70px;height:70px;border-radius:14px;object-fit:cover;display:block}.company{font-size:25px;font-weight:850;letter-spacing:-.03em;margin:22px 0 3px}.cnpj{font-size:12px;color:#787e86;margin-bottom:17px}.amount{font-size:48px;font-weight:900;letter-spacing:-.045em}.due{font-size:16px;color:#343a42;margin-top:7px}.invoice{font-size:18px;font-weight:750;margin-top:22px}.badge{display:inline-flex;margin-top:8px;background:#e8f7f3;color:#13715f;border-radius:999px;padding:6px 9px;font-size:11px;font-weight:800}.rule{border-top:1px solid var(--line);margin:28px 0 0}.details{padding-top:22px}.item{display:flex;justify-content:space-between;gap:20px;margin-bottom:20px}.item small{display:block;color:var(--muted);margin-top:4px}.row{display:flex;justify-content:space-between;gap:20px;padding:9px 0;font-size:14px}.row b{font-variant-numeric:tabular-nums}.row.original b{text-decoration:line-through;text-decoration-thickness:2px;color:#565c64}.row.discount{color:#17705c}.row.total{margin-top:8px;background:#e6e7e8;padding:14px 12px;font-size:16px;font-weight:900}.payband{background:#eef0f2;padding:32px 25px}.card{max-width:520px;margin:auto;background:#fff;border-radius:20px;padding:28px;box-shadow:0 8px 26px rgba(0,0,0,.05)}.card h2{margin:0;font-size:20px}.card p{color:var(--muted);font-size:13px;line-height:1.5}.status{background:#fff7e8;border:1px solid #f4dfb8;border-radius:13px;padding:14px;margin:18px 0;color:#725016;font-size:13px;line-height:1.45}.status b{display:block;color:#4c360f;margin-bottom:4px}.qr{display:grid;place-items:center;margin:20px auto;width:220px;height:220px;background:#fff}.pixcode{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;background:#f8f9fa;font-size:11px;min-height:66px;word-break:break-all}.btn{width:100%;border:0;border-radius:12px;padding:13px;font-weight:800;margin-top:10px}.btn.pay{background:var(--green);color:#fff}.btn.pay:hover{background:var(--green2)}.legal{text-align:center;background:#eef0f2;padding:18px 20px 28px;color:#6d737c;font-size:11px;line-height:1.6}.legal a{color:inherit;margin:0 6px}.error{max-width:600px;margin:80px auto;background:#fff;padding:30px;border-radius:16px}.error h1{font-size:22px}
 @media(min-width:850px){.page{display:grid;grid-template-columns:1.05fr .95fr;grid-template-rows:1fr auto}.top{padding:46px 60px}.payband{display:flex;align-items:center;padding:48px}.card{width:100%}.legal{grid-column:1/-1}.logo{width:86px;height:86px}.amount{font-size:54px}}
 @media(max-width:500px){.top{padding:24px}.amount{font-size:43px}.company{font-size:22px}.payband{padding:22px 14px}.card{padding:22px}.qr{width:200px;height:200px}}
+
+/* Refinamento visual baseado no layout BUSSI/CONSIG V12 previamente aprovado */
+html{background:#eef0f3}
+html,body{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;color:#111827}
+body{background:#eef0f3;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+button{font-family:inherit}
+.page{width:100%;max-width:none;min-height:100vh;background:#fff;display:block;box-shadow:none}
+.top{max-width:480px;margin:0 auto;padding:52px 38px 44px;min-width:0}
+.download{display:flex;align-items:center;justify-content:center;gap:10px;width:max-content;margin:0 auto 62px;padding:0;border:0;background:transparent;color:#111318;font-size:16px;font-weight:800;text-decoration:underline;text-underline-offset:4px;line-height:1.25}
+.download svg{width:21px;height:21px;stroke-width:2}
+.brandline{display:flex;justify-content:center;align-items:center;margin:0 0 22px}
+.logo{width:88px;height:88px;border-radius:50%;object-fit:cover;display:block;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.company{font-size:24px;line-height:1.12;font-weight:800;letter-spacing:-.02em;text-align:center;margin:0 0 7px;color:#13151a}
+.cnpj{font-size:12px;line-height:1.3;text-align:center;color:#6b7280;margin:0 0 13px}
+.amount{font-size:47px;line-height:1.04;font-weight:900;letter-spacing:-.035em;text-align:center;font-variant-numeric:tabular-nums;margin:0 0 6px;color:#0f1116}
+.due{font-size:20px;line-height:1.24;font-weight:400;text-align:center;color:#374151;margin:0 auto 24px;max-width:380px}
+.invoice{font-size:23px;line-height:1.2;font-weight:800;text-align:center;margin:0 0 13px;color:#111827}
+.badge{display:table;width:max-content;max-width:100%;margin:0 auto 24px;padding:7px 12px;border-radius:999px;background:#ecfdf5;color:#047857;font-size:13px;line-height:1.3;font-weight:800}
+.rule{border-top:2px solid #111318;margin:0 0 32px}
+.details{padding:0;text-align:left}
+.item{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin:0 0 30px;padding:0}
+.item b{font-size:17px;font-weight:800;color:#111827}
+.item small{font-size:14px;line-height:1.45;margin-top:4px;color:#6b7280}
+.item>b{white-space:nowrap;font-size:16px;align-self:flex-end;padding-bottom:1px}
+.row{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:5px 0;font-size:17px;line-height:1.35;color:#1f2937}
+.row b{font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}
+.row.original b{color:#374151;text-decoration:line-through;text-decoration-thickness:1.5px}
+.row.discount{color:#4b5563}
+.row.discount b{color:#0f766e;font-weight:800}
+.row.total{margin:8px 0 0;border-top:1px solid #e5e7eb;background:transparent;padding:14px 0 0;font-size:18px;color:#111827}
+.row.total b{font-weight:900}
+.payband{background:#eef0f3;padding:46px 18px 40px}
+.card{max-width:480px;margin:0 auto;padding:39px 38px 36px;background:#fff;border:1px solid #e8eaee;border-radius:18px;box-shadow:0 8px 28px rgba(15,23,42,.06)}
+.pix-brand{display:flex;align-items:center;gap:9px;color:#9398a0;margin:0 0 22px}
+.pix-mark{width:36px;height:32px;display:block;flex:0 0 auto}
+.pix-word{font-size:27px;line-height:1;font-weight:300;letter-spacing:-.04em;color:#8d9196}
+.card h2{font-size:18px;line-height:1.3;margin:0 0 9px;font-weight:800;color:#111318}
+.card p{font-size:16px;line-height:1.4;margin:0 0 24px;color:#17191d}
+.qr{width:224px;height:224px;margin:0 auto 23px;display:grid;place-items:center}
+.pix-label,.pixlabel{font-size:13px;font-weight:800;line-height:1.3;margin:0 0 7px;text-transform:none;letter-spacing:normal;color:#202126}
+.pixcode{min-height:64px;max-height:100px;overflow:auto;border:1px solid #d9dadd;border-radius:9px;background:#fafafa;padding:12px;font:11px/1.45 ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;word-break:break-all;color:#373a40}
+.btn.pay{height:48px;margin-top:12px;padding:0 16px;border-radius:10px;background:#111318;color:#fff;font-size:15px;font-weight:800}
+.btn.pay:hover{background:#262a30}
+.legal{background:#eef0f3;padding:18px 24px 30px;font-size:12px;line-height:1.5;color:#6d7178;text-align:center}
+.legal a{display:inline-block;padding:2px 1px;text-underline-offset:2px}
+@media(min-width:860px){
+  body{padding:46px 24px}
+  .page{max-width:1060px;min-height:0;display:grid;grid-template-columns:minmax(0,1.08fr) minmax(390px,.92fr);grid-template-rows:minmax(0,1fr) auto;margin:0 auto;border-radius:18px;overflow:hidden;box-shadow:0 14px 40px rgba(15,23,42,.09)}
+  .top{max-width:none;display:flex;flex-direction:column;margin:0;padding:46px 68px 54px}
+  .download{align-self:flex-start;margin:0 0 45px}
+  .brandline{margin:0 0 24px}
+  .logo{width:96px;height:96px}
+  .company{font-size:26px}
+  .amount{font-size:52px}
+  .invoice{font-size:24px}
+  .payband{padding:42px;display:flex;align-items:center;justify-content:center;min-width:0}
+  .card{width:100%;max-width:440px;margin:auto;padding:40px 35px 36px;box-shadow:0 8px 24px rgba(0,0,0,.05)}
+  .legal{grid-column:1/-1;padding:20px 30px 24px;background:#e9ebee;border-top:1px solid #dde0e3}
+}
+@media(max-width:859px){
+  .page{display:block}
+  .top{max-width:480px}
+  .payband{display:block}
+  .legal{display:block}
+}
+@media(max-width:430px){
+  .top{padding:42px 25px 42px}
+  .download{margin-bottom:56px}
+  .company{font-size:23px}
+  .amount{font-size:43px}
+  .due{font-size:18px}
+  .invoice{font-size:21px}
+  .item>b{font-size:15px}
+  .row{font-size:16px}
+  .row.total{font-size:17px}
+  .card{padding:32px 24px}
+  .qr{width:208px;height:208px}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation-duration:.01ms!important}}
+
 </style>
 </head>
 <body><div id="app"></div>
@@ -41,7 +121,7 @@ document.getElementById('app').innerHTML=`<main class="page">
 <div class="row total"><span>Valor a ser pago</span><b>${money(d.amount)}</b></div>
 </div>
 </section>
-<section class="payband"><div class="card"><h2>Pagamento via Pix</h2><p>Escaneie o QR Code ou copie o código Pix abaixo.</p><div class="qr" id="qr"></div><div class="pixcode">${esc(d.pix||'')}</div><button class="btn pay" id="copyPix">Copiar código PIX</button></div></section>
+<section class="payband"><div class="card"><div class="pix-brand"><svg class="pix-mark" viewBox="0 0 40 36" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M20 4 10.6 13.4a6.3 6.3 0 0 1-8.9 0L0 11.7l10-10a10 10 0 0 1 14.1 0l9.8 9.8-1.8 1.8a6.3 6.3 0 0 1-8.9 0L20 10.1l-3.2 3.2a10 10 0 0 1-14.1 0l-2.3 2.3 9.9 9.9a10 10 0 0 0 14.1 0L34 15.9l-2.3-2.3a10 10 0 0 1-14.1 0L20 16l2.7-2.7a6.3 6.3 0 0 1 8.9 0l1.8 1.8 1.7-1.7 4.9 4.9-5.1 5.1-1.7-1.7a6.3 6.3 0 0 0-8.9 0L20 26l-4.3-4.3a6.3 6.3 0 0 0-8.9 0L5 23.5l10 10a7 7 0 0 0 9.9 0L40 18.3l-4.9-4.9" fill="#46b8ac" transform="translate(2 2) scale(.88)"/></svg><span class="pix-word">pix</span></div><h2>Pagamento via Pix</h2><p>Escaneie o QR Code ou copie o código Pix abaixo.</p><div class="qr" id="qr"></div><div class="pixcode">${esc(d.pix||'')}</div><button class="btn pay" id="copyPix">Copiar código PIX</button></div></section>
 <footer class="legal">Cobrança emitida por <b>${esc(d.company||'CONSIG BENEFÍCIO S/A')}</b> · CNPJ ${esc(d.cnpj||'66.754.630/0001-60')}<br>${esc(d.email||'sac@consigbeneficio.com.br')}<br><a href="termos-de-uso.html">Termos de Uso</a> · <a href="politica-de-privacidade.html">Política de Privacidade</a> · <a href="exclusao-de-dados.html">Exclusão de Dados</a></footer>
 </main>`;
 new QRCode(document.getElementById('qr'),{text:d.pix||'',width:200,height:200,correctLevel:QRCode.CorrectLevel.M});
