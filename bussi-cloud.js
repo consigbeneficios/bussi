@@ -86,11 +86,22 @@ async function verifyEmailAccess(){
   } else {
    let url;
    try{url=new URL(raw)}catch{throw Error('Cole o endereço completo recebido no e-mail, não o texto do botão.')}
-   if(url.hostname!=='qzelhgfwrppkhdmolhys.supabase.co'||url.pathname!=='/auth/v1/verify')throw Error('Link não pertence ao servidor de autenticação do BUSSI.');
-   const hash=url.searchParams.get('token_hash')||url.searchParams.get('token');
-   const type=url.searchParams.get('type');
-   if(!hash||!['magiclink','email','signup'].includes(type))throw Error('Este link não é uma confirmação de acesso válida.');
-   result=await db.auth.verifyOtp({token_hash:hash,type:type==='magiclink'?'magiclink':'email'});
+   if(url.hostname==='localhost'&&url.port==='3000'){
+    // A configuração original do Supabase redireciona e-mails para localhost;
+    // a sessão só é recuperada no próprio navegador, sem enviar tokens ao BUSSI servidor.
+    const fragments=new URLSearchParams(url.hash.replace(/^#/,''));
+    const access=fragments.get('access_token');
+    const refresh=fragments.get('refresh_token');
+    if(!access||!refresh)throw Error('O endereço do localhost não contém uma sessão válida. Solicite novo e-mail e copie o link antes de abri-lo.');
+    result=await db.auth.setSession({access_token:access,refresh_token:refresh});
+   }else{
+    if(url.hostname!=='qzelhgfwrppkhdmolhys.supabase.co'||url.pathname!=='/auth/v1/verify'||url.protocol!=='https:')throw Error('O link não pertence à autenticação do BUSSI.');
+    const hash=url.searchParams.get('token_hash')||url.searchParams.get('token');
+    const type=url.searchParams.get('type');
+    if(!hash||!['magiclink','email','signup','invite','recovery'].includes(type))throw Error('Este link não é uma confirmação de acesso válida.');
+    // Precisamos preservar "signup": converter para "email" invalida o token de cadastro.
+    result=await db.auth.verifyOtp({token_hash:hash,type:type});
+   }
   }
   if(result.error)throw result.error;
   magicInput.value='';
