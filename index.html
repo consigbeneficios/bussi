@@ -224,7 +224,15 @@ const defaultClients=[
 {name:'Cliente Teste 19',contract:'TESTE-0019',phone:'(00) 90000-0019',original:2215.60,final:1107.80},
 {name:'Cliente Teste 20',contract:'TESTE-0020',phone:'(00) 90000-0020',original:875.00,final:437.50}
 ];
-let clients=load(K.clients,null)||defaultClients,campaigns=load(K.campaigns,[]),charges=load(K.charges,[]),settings=load(K.settings,{pixType:'auto',pixKey:'',pixName:'CONSIG BENEFICIO SA',pixCity:'SAO PAULO',pixTxid:'***',pixDesc:'FATURA CONSIG',trackingEndpoint:'',metaPhoneId:'',metaWabaId:'',trackingEnv:'',paymentProvider:'',paymentWebhook:'',authResetEndpoint:'',authEmail:'sac@consigbeneficio.com.br'}),editClientIndex=-1,lastLink='';
+let clients=load(K.clients,[])||[],campaigns=load(K.campaigns,[]),charges=load(K.charges,[]),settings=load(K.settings,{pixType:'auto',pixKey:'',pixName:'CONSIG BENEFICIO SA',pixCity:'SAO PAULO',pixTxid:'***',pixDesc:'FATURA CONSIG',trackingEndpoint:'',metaPhoneId:'',metaWabaId:'',trackingEnv:'',paymentProvider:'',paymentWebhook:'',authResetEndpoint:'',authEmail:'sac@consigbeneficio.com.br'}),editClientIndex=-1,lastLink='';
+const TEST_SEED_KEY='bussi.test.clients.seed.v1';
+if(!localStorage.getItem(TEST_SEED_KEY)){
+  const existingContracts=new Set(clients.map(c=>String(c.contract||'')));
+  const seed=defaultClients.filter(c=>!existingContracts.has(String(c.contract||'')));
+  clients=[...clients,...seed];
+  localStorage.setItem(K.clients,JSON.stringify(clients));
+  localStorage.setItem(TEST_SEED_KEY,'1');
+}
 function $(id){return document.getElementById(id)}function load(k,f){try{const v=localStorage.getItem(k);return v?JSON.parse(v):f}catch{return f}}function save(k,v){localStorage.setItem(k,JSON.stringify(v));if($('saveState'))$('saveState').textContent='Salvo às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
 const AUTH_USER='consibeneficio';
 const AUTH_KEY='bussi.auth.local.v2';
