@@ -336,13 +336,13 @@ button:disabled{opacity:.5;cursor:not-allowed}
             <button class="btn primary" type="button" id="cloudMagicSend">Receber acesso por e-mail</button>
           </div>
           <div class="field" style="margin-top:12px">
-            <label for="cloudMagicInput">Link de acesso recebido no e-mail ou código de 6 dígitos</label>
-            <textarea id="cloudMagicInput" rows="2" placeholder="Cole aqui o link do Supabase (sem enviá-lo pelo chat) ou digite o código"></textarea>
+            <label for="cloudMagicInput">Link do Supabase, código do e-mail ou endereço do navegador (localhost)</label>
+            <textarea id="cloudMagicInput" rows="2" placeholder="Cole o link de ativação ou, se foi redirecionado ao localhost, cole a URL completa exibida no navegador"></textarea>
             <div class="toolbar" style="margin-top:8px">
               <button class="btn dark" type="button" id="cloudMagicConfirm">Confirmar acesso</button>
             </div>
             <p class="muted" style="font-size:12px;margin:6px 0">
-              Se chegar um link de confirmação, copie o endereço do botão no e-mail e cole acima, sem abri-lo primeiro. Se chegar um código, digite-o. O código ou link nunca deve ser compartilhado com terceiros.
+              Se o e-mail abriu uma página com erro em <b>localhost:3000</b>, copie o endereço completo da barra do navegador e cole aqui, sem compartilhar no chat. Se o link já expirou ou não contém um código de sessão, clique em <b>Receber acesso por e-mail</b> e cole o novo link antes de abri-lo.
             </p>
           </div>
           <div class="toolbar" style="margin-top:14px">
