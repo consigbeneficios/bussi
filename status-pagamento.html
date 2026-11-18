@@ -37,22 +37,26 @@ if(!d){document.getElementById('body').innerHTML='<h1>Link inválido</h1><p clas
 const originalHash=location.hash.slice(1).replace(/&s=[^&]*/g,'');
 function paymentUrl(){const u=new URL('pagamento.html',location.href);u.hash=originalHash;return u.href}
 function summary(){return '<div class="summary"><div class="row"><span>Cliente</span><b>'+esc(d.customer||'—')+'</b></div><div class="row"><span>Cobrança</span><b>'+esc(d.invoice||'—')+'</b></div><div class="row"><span>Valor</span><b>'+money(d.amount)+'</b></div></div>'}
-function localManualReceipt(){try{const list=JSON.parse(localStorage.getItem('bussi.charges.v1')||'[]');const c=list.find(x=>String(x.invoice)===String(d.invoice)&&x.status==='Pagamento confirmado');return c&&c.receiptUrl?c.receiptUrl:null}catch{return null}}
-function renderChecking(){
-  document.getElementById('body').innerHTML='<div class="icon checking"><div class="spin"></div></div><h1>Estamos verificando seu pagamento</h1><p class="lead">A confirmação é realizada manualmente pela equipe após a conferência do crédito recebido. Você não precisa realizar um novo Pix enquanto esta verificação estiver em andamento.</p>'+summary()+'<a class="btn" href="'+paymentUrl()+'">Voltar ao pagamento</a><div class="note" id="pollNote">'+(d.paymentStatusEndpoint?'Atualizando o status automaticamente...':'Aguardando integração com o provedor financeiro para confirmação automática.')+'</div>'
+function localDecision(){
+ try{
+  const list=JSON.parse(localStorage.getItem('bussi.charges.v1')||'[]');
+  return list.find(x=>d.chargeId?String(x.id)===String(d.chargeId):String(x.invoice)===String(d.invoice)&&String(x.customer)===String(d.customer))||null
+ }catch{return null}
 }
-function renderConfirmed(data){
-  const receipt=data&&data.receiptUrl?'<a class="btn green" target="_blank" rel="noopener" href="'+esc(data.receiptUrl)+'">Abrir comprovante</a>':'';
-  document.getElementById('body').innerHTML='<div class="icon confirmed">✓</div><h1>Pagamento confirmado</h1><p class="lead">Recebemos a confirmação financeira desta cobrança.</p>'+summary()+receipt+'<div class="note">Se o comprovante não estiver disponível agora, ele poderá ser disponibilizado após a liquidação completa.</div>'
+function renderChecking(){
+ document.getElementById('body').innerHTML='<div class="icon checking"><div class="spin"></div></div><h1>Estamos verificando seu pagamento</h1><p class="lead">A equipe da CONSIG fará a confirmação manual após conferir o recebimento. Se você já pagou, não faça um segundo Pix.</p>'+summary()+'<a class="btn" href="'+paymentUrl()+'">Voltar ao pagamento</a><div class="note">Aguarde a confirmação da empresa. Para receber o comprovante em outro dispositivo, utilize o link que a equipe enviar.</div>'
+}
+function renderRefused(){
+ document.getElementById('body').innerHTML='<div class="icon checking">!</div><h1>Pagamento não confirmado</h1><p class="lead">A equipe da CONSIG registrou a recusa desta cobrança após conferência manual. Isso não significa recusa pelo banco. Entre em contato com o atendimento antes de realizar outro Pix.</p>'+summary()+'<div class="note">Atendimento: sac@consigbeneficio.com.br</div>'
 }
 renderChecking();
-let stopped=false;
-async function poll(){
-  if(stopped)return;
-  const localReceipt=localManualReceipt();if(localReceipt){stopped=true;location.href=localReceipt;return}
-  const data=await queryPayment(d);
-  if(data&&isPaidStatus(data.status)){stopped=true;renderConfirmed(data);return}
-  setTimeout(poll,5000)
+let lastStatus='';
+function poll(){
+ const c=localDecision();
+ if(c?.status==='Pagamento confirmado'&&c.receiptUrl){location.href=c.receiptUrl;return}
+ if(c?.status==='Pagamento recusado'){if(lastStatus!=='Pagamento recusado')renderRefused();lastStatus='Pagamento recusado'}
+ else if(lastStatus==='Pagamento recusado'){renderChecking();lastStatus=''}
+ setTimeout(poll,5000)
 }
 poll();
 </script>
