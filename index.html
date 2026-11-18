@@ -326,6 +326,22 @@ button:disabled{opacity:.5;cursor:not-allowed}
             <div class="notice" style="margin-top:10px">Quando conectado, o link consulta este endpoint e muda para “Pagamento confirmado” somente após resposta positiva do provedor.</div>
           </div>
         </div>
+        <div class="section" style="margin-top:18px">
+          <div class="sectionhead"><div><h2>Armazenamento de faturas na nuvem</h2><p>Supabase · banco protegido por conta. Faturas novas podem ser sincronizadas automaticamente depois do login.</p></div></div>
+          <div class="grid2">
+            <div class="field"><label>E-mail da conta Supabase</label><input id="cloudEmail" type="email" autocomplete="email" value="sac@consigbeneficio.com.br"></div>
+            <div class="field"><label>Senha da conta Supabase</label><input id="cloudPassword" type="password" autocomplete="current-password" placeholder="Pelo menos 8 caracteres"></div>
+          </div>
+          <div class="toolbar" style="margin-top:14px">
+            <button class="btn primary" type="button" id="cloudSignIn">Entrar na nuvem</button>
+            <button class="btn ghost" type="button" id="cloudSignUp">Criar conta</button>
+            <button class="btn ghost" type="button" id="cloudSignOut" disabled>Sair da nuvem</button>
+            <button class="btn dark" type="button" id="cloudSync" disabled>Sincronizar faturas</button>
+          </div>
+          <div class="notice" style="margin-top:12px" id="cloudStatus" role="status">Conexão com banco de dados inicializando...</div>
+          <div id="cloudInvoiceList" style="margin-top:12px"></div>
+          <div class="notice" style="margin-top:12px">Os links da nuvem incluem um identificador secreto. Não compartilhe senhas de acesso nem publique dados dos clientes no GitHub. O endereço pay.consigbeneficio.com.br permanece indisponível até regularizar seu certificado SSL.</div>
+        </div>
         <div class="toolbar" style="margin-top:16px"><button class="btn primary" id="saveIntegrations">Salvar integrações</button></div>
       </div>
     </section>
@@ -579,12 +595,12 @@ function publicPaymentUrl(value){
 }
 function openPaymentCharge(id){
  const c=charges.find(x=>Number(x.id)===Number(id));
- if(c?.url)window.open(publicPaymentUrl(c.url),'_blank','noopener,noreferrer');
+ if(c?.url)window.open(c.cloudUrl||publicPaymentUrl(c.url),'_blank','noopener,noreferrer');
 }
 async function copyPaymentCharge(id){
  const charge=charges.find(x=>Number(x.id)===Number(id));
  if(!charge?.url)return alert('Esta cobrança não tem um link salvo.');
- const url=publicPaymentUrl(charge.url);
+ const url=charge.cloudUrl||publicPaymentUrl(charge.url);
  try{
   await navigator.clipboard.writeText(url);
   alert('Link seguro da fatura '+charge.invoice+' copiado.');
@@ -938,5 +954,7 @@ $('chargeDue').value=saoPauloToday();
 $('chargeDue').readOnly=true;
 window.addEventListener('focus',()=>{if($('chargeDue'))$('chargeDue').value=saoPauloToday();});
 </script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.94.1/dist/umd/supabase.min.js"></script>
+<script src="bussi-cloud.js"></script>
 </body>
 </html>
