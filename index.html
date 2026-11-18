@@ -19,6 +19,28 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.app{min-height:
 .integration-card{border:1px solid var(--line);border-radius:15px;padding:18px;background:#fff}.integration-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:14px}.integration-head h3{margin:0;font-size:16px}.integration-head p{margin:4px 0 0;color:var(--muted);font-size:12px}.statuschip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 9px;font-size:10px;font-weight:800;background:#fff4df;color:#8a5a08}.statuschip.on{background:#e5f7f0;color:#087052}
 @media(max-width:950px){.app{grid-template-columns:1fr}.side{position:static;height:auto;padding:14px}.brand{padding:0}.nav{display:flex;overflow:auto}.nav button{white-space:nowrap}.sidefoot{display:none}.top{top:0;padding:0 18px}.content{padding:18px}.cards{grid-template-columns:1fr 1fr}.grid3{grid-template-columns:1fr}.hero{align-items:flex-start;flex-direction:column}}
 @media(max-width:600px){.cards,.grid2{grid-template-columns:1fr}.hero h2{font-size:25px}.content{padding:13px}.section{padding:16px}.top .tag{display:none}}
+
+/* BUSSI — identidade visual gerencial */
+:root{--bg:#f3f6f8;--ink:#18222d;--muted:#687481;--line:#e2e8ee;--green:#087e67;--green2:#096450;--dark:#121d2a;--soft:#ecf7f3;--shadow:0 12px 30px rgba(22,42,59,.05)}
+body{letter-spacing:-.005em}.side{background:#111c29}.brandmark{border-radius:15px}.brandmark img{object-fit:cover}.side .brandmark{width:56px;height:56px}.authbrand .brandmark{width:72px;height:72px;flex:0 0 auto}.authbrand b{font-size:27px}.brand b{font-size:26px}
+.top{height:84px}.top h1{font-size:23px;font-weight:850}.top .tag{margin-top:4px}.userpill{font-size:12px}.side .nav button{font-size:13px;padding:13px 14px}
+.content{padding:32px;max-width:1480px}.hero{padding:32px 34px;box-shadow:none;background:linear-gradient(125deg,#152534,#1d3e47)}.hero h2{font-size:30px;line-height:1.15}.hero p{font-size:14px;line-height:1.6}.hero .pill{white-space:nowrap}
+.section{padding:23px;border-color:#e4e8ec;box-shadow:0 3px 15px rgba(16,23,34,.025)}.sectionhead h2{font-size:19px;font-weight:850}.sectionhead p{font-size:13px;line-height:1.5}
+.card{padding:21px;border-color:#e4e8ed;box-shadow:0 3px 13px rgba(16,23,34,.025)}.label{font-size:12px;font-weight:700;color:#6c7782}.metric{font-size:31px;font-weight:850;letter-spacing:-.045em}.metric.small{font-size:25px}
+.dashboard-title{display:flex;align-items:center;justify-content:space-between;margin:26px 0 16px;gap:16px}.dashboard-title h2{margin:0;font-size:19px}.dashboard-title p{font-size:12px;color:var(--muted);margin:5px 0 0}
+.dashboard-metrics{grid-template-columns:repeat(4,minmax(0,1fr));margin:0 0 17px}
+.finance-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.finance-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:25px;min-width:0}
+.finance-card .label{font-size:13px}.finance-card .big-number{font-size:36px;line-height:1.1;font-weight:850;letter-spacing:-.045em;margin-top:10px;font-variant-numeric:tabular-nums}.finance-card .subline{color:#77828c;font-size:12px;margin-top:9px}.finance-card.revenue{border-top:4px solid #138b70}.finance-card.pending{border-top:4px solid #e7b562}
+.events-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:16px 0}.event-metric{background:#f8fafb;border:1px solid #e8edf1;border-radius:14px;padding:16px;min-width:0}.event-metric b{display:block;margin-top:8px;font-size:28px;font-weight:850;font-variant-numeric:tabular-nums}.event-metric span{font-size:12px;line-height:1.4;color:#56616c}
+.table th,.table td{font-size:12px;vertical-align:middle}.table th{font-size:10px;font-weight:800}.table td{line-height:1.5}
+.eventyes{color:#087e67;font-weight:850}.eventno{color:#b4bbc3}.data-note{margin-top:16px;padding:13px 15px;background:#f7f9fb;border:1px solid #e4eaf0;border-radius:12px;font-size:12px;color:#606b77;line-height:1.6}
+.compact-status{font-size:12px;font-weight:700;color:#526172}.grid2.finance-grid{display:grid}
+.authgate{background:linear-gradient(135deg,#0f1b29,#21434b)}.authcard{border-radius:22px;max-width:450px}.authcard h2{font-size:23px}.authcard input{min-height:43px}
+.btn.primary{background:#0a806a}.btn.primary:hover{background:#086750}
+@media(max-width:1180px){.dashboard-metrics,.events-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.content{padding:24px}}
+@media(max-width:950px){.side{height:auto}.side .brandmark{width:48px;height:48px}.content{padding:20px}.top{padding:0 18px}.side .nav{gap:4px}.hero{padding:28px}}
+@media(max-width:600px){.dashboard-metrics,.events-grid,.finance-grid{grid-template-columns:1fr 1fr}.finance-card{padding:18px}.finance-card .big-number{font-size:26px}.dashboard-title{align-items:flex-start;flex-direction:column}.content{padding:13px}.section{padding:17px}.top h1{font-size:19px}.top .userbox{gap:5px}.top .userpill{font-size:10px}.hero h2{font-size:25px}.event-metric b{font-size:24px}}
+@media(max-width:410px){.dashboard-metrics{grid-template-columns:1fr 1fr}.finance-grid{grid-template-columns:1fr}.events-grid{grid-template-columns:1fr 1fr}.event-metric{padding:11px}.metric{font-size:26px}.top .userpill{display:none}}
 </style>
 </head>
 <body>
@@ -73,22 +95,36 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.app{min-height:
   <header class="top"><div><h1 id="pageTitle">Visão geral</h1><div class="tag">BUSSI • ambiente operacional</div></div><div class="userbox"><div class="tag" id="saveState">Dados salvos neste navegador</div><span class="userpill">consibeneficio</span><button class="btn sm ghost" id="logoutBtn">Sair</button></div></header>
   <div class="content">
     <section class="view active" id="dashboard">
-      <div class="hero"><div><h2>Central operacional BUSSI</h2><p>Gerencie clientes, campanhas e cobranças em um único ambiente. A integração com WhatsApp pode ser conectada depois sem alterar os links públicos do portal.</p></div><div class="pill">Plataforma online</div></div>
-      <div class="cards">
-        <div class="card"><div class="label">Clientes no CRM</div><div class="metric" id="mClients">0</div></div>
-        <div class="card"><div class="label">Campanhas</div><div class="metric" id="mCampaigns">0</div></div>
-        <div class="card"><div class="label">Cobranças geradas</div><div class="metric" id="mCharges">0</div></div>
-        <div class="card"><div class="label">Rastreamento central</div><div class="metric" style="font-size:18px" id="mTracking">Não conectado</div></div>
+      <div class="hero"><div><h2>Resultados da operação</h2><p>Acompanhe cobranças emitidas, confirmações manuais, receita registrada e interações com links Pix em um só painel.</p></div><div class="pill">BUSSI • Dashboard</div></div>
+      <div class="dashboard-title"><div><h2>Indicadores gerais</h2><p>Atualização automática conforme os dados disponíveis na plataforma.</p></div><button class="btn ghost" id="exportDashboard">Exportar relatório CSV</button></div>
+      <div class="cards dashboard-metrics">
+        <div class="card"><div class="label">Clientes cadastrados</div><div class="metric" id="mClients">0</div></div>
+        <div class="card"><div class="label">Campanhas criadas</div><div class="metric" id="mCampaigns">0</div></div>
+        <div class="card"><div class="label">Faturas geradas</div><div class="metric" id="mCharges">0</div></div>
+        <div class="card"><div class="label">Pagamentos confirmados</div><div class="metric" id="mConfirmed">0</div></div>
+      </div>
+      <div class="grid2 finance-grid">
+        <div class="finance-card revenue"><div class="label">Valor recebido • confirmação manual</div><div class="big-number" id="mPaidValue">R$ 0,00</div><div class="subline" id="mPaidCount">0 pagamentos registrados</div></div>
+        <div class="finance-card pending"><div class="label">Valor aguardando confirmação</div><div class="big-number" id="mPendingValue">R$ 0,00</div><div class="subline" id="mPendingCount">0 cobranças pendentes</div></div>
       </div>
       <div class="section">
-        <div class="sectionhead"><div><h2>Fluxo recomendado</h2><p>Da base de clientes até a confirmação da cobrança.</p></div></div>
-        <div class="grid3">
-          <div class="notice"><b>1. CRM</b><br>Cadastre ou importe clientes e mantenha os dados organizados.</div>
-          <div class="notice"><b>2. Campanha / cobrança</b><br>Prepare a comunicação e gere um link individual de pagamento.</div>
-          <div class="notice"><b>3. Confirmação</b><br>O cliente visualiza a cobrança e recebe o aviso de confirmação. A confirmação automática exige API/webhook financeiro.</div>
+        <div class="sectionhead"><div><h2>Interações de pagamento</h2><p>Quantidade de cobranças com cada interação registrada.</p></div><div class="compact-status" id="mTracking">Não configurado</div></div>
+        <div class="events-grid">
+          <div class="event-metric"><span>Link da cobrança aberto</span><b id="mLinkOpen">0</b></div>
+          <div class="event-metric"><span>Botão Pagar / Pix aberto</span><b id="mPixOpen">0</b></div>
+          <div class="event-metric"><span>Código Pix copiado</span><b id="mPixCopy">0</b></div>
+          <div class="event-metric"><span>Fatura baixada</span><b id="mInvoiceDownload">0</b></div>
         </div>
+        <div class="data-note"><b>Alcance dos dados:</b> as interações aparecem neste painel quando registradas neste navegador. Cliques de clientes em outros aparelhos só poderão ser consolidados após a conexão de uma API/banco central. Um clique ou cópia do Pix não significa que houve pagamento.</div>
       </div>
-      <div class="section"><div class="notice good"><b>Links jurídicos preservados.</b> Termos de Uso, Política de Privacidade e Exclusão de Dados continuam nos mesmos arquivos da raiz do repositório.</div></div>
+      <div class="section">
+        <div class="sectionhead"><div><h2>Jornada por cobrança</h2><p>Indicadores individuais para identificar quais etapas foram realizadas.</p></div></div>
+        <div class="tablewrap"><table class="table"><thead><tr><th>Cliente / contrato</th><th>Valor</th><th>Link aberto</th><th>Pix exibido</th><th>Código copiado</th><th>Fatura baixada</th><th>Situação</th></tr></thead><tbody id="dashboardChargeRows"></tbody></table></div>
+      </div>
+      <div class="section">
+        <div class="sectionhead"><div><h2>Atividade recente</h2><p>Últimas interações disponíveis neste navegador.</p></div></div>
+        <div class="tablewrap"><table class="table"><thead><tr><th>Data e hora</th><th>Cobrança</th><th>Evento</th></tr></thead><tbody id="dashboardEventRows"></tbody></table></div>
+      </div>
     </section>
 
     <section class="view" id="crm">
@@ -203,6 +239,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.app{min-height:
 </div><div class="rowend"><button class="btn ghost" data-close="clientModal">Cancelar</button><button class="btn primary" id="saveClient">Salvar cliente</button></div></div></div>
 <div class="modal" id="campaignModal"><div class="dialog"><h3>Nova campanha</h3><div class="grid2"><div class="field"><label>Nome da campanha</label><input id="campName"></div><div class="field"><label>Público</label><select id="campAudience"><option>Todos os clientes</option><option>Clientes com cobrança</option><option>Segmento manual</option></select></div></div><div class="field" style="margin-top:14px"><label>Mensagem</label><textarea id="campMessage" placeholder="Ex.: Olá, {{nome}}. Sua condição especial está disponível..."></textarea></div><div class="rowend"><button class="btn ghost" data-close="campaignModal">Cancelar</button><button class="btn primary" id="saveCampaign">Salvar campanha</button></div></div></div>
 
+<script src="bussi-events.js"></script>
 <script>
 const K={clients:'bussi.clients.v1',campaigns:'bussi.campaigns.v1',charges:'bussi.charges.v1',settings:'bussi.settings.v1'};
 const defaultClients=[
