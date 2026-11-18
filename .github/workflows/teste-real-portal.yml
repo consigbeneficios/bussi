@@ -117,6 +117,7 @@ jobs:
                   description:'Teste de importação',issueDate:'2026-11-18',due:'2026-11-18',pix:'000201260014br.gov.bcb.pix'};
                 return 'https://pay.consigbeneficio.com.br/pagamento.html#p='+b64url(snap);
               });
+              await page.locator('.nav button[data-view="integrations"]').click();
               await page.locator('#cloudLegacyLink').fill(legacyLink);
               await page.locator('#cloudImportLink').click();
               await page.waitForTimeout(800);
@@ -138,6 +139,7 @@ jobs:
                 document.getElementById('pixType').value='email';
                 key.dispatchEvent(new Event('input',{bubbles:true}));
               });
+              await page.locator('.nav button[data-view="charges"]').click();
               await page.locator('#generateCharge').click();
               await page.waitForTimeout(900);
               const shared=await page.locator('#generatedLink').inputValue();
