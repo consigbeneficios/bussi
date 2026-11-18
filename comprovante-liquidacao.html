@@ -8,13 +8,13 @@
 :root{--ink:#12161c;--muted:#6a717b;--line:#e0e4e8;--green:#0d8768;--greenbg:#eaf8f3;--soft:#f6f7f8}
 *{box-sizing:border-box}body{margin:0;background:#edf0f2;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
 .shell{max-width:760px;margin:28px auto;background:#fff;box-shadow:0 18px 60px rgba(0,0,0,.08);border-radius:20px;overflow:hidden}
-.top{padding:26px 30px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:20px}.logo{width:82px;height:82px;border-radius:16px;object-fit:cover}.topright{text-align:right}.topright b{display:block;font-size:13px}.topright span{font-size:11px;color:var(--muted)}
+.top{padding:30px 26px 26px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:15px;text-align:center}.logo{width:152px;height:152px;border-radius:23px;object-fit:cover;display:block;margin:0 auto;box-shadow:0 8px 20px rgba(0,0,0,.08)}.topright{text-align:center}.topright b{display:block;font-size:15px;letter-spacing:-.015em}.topright span{display:block;margin-top:5px;font-size:12px;color:var(--muted)}
 .body{padding:30px}.confirmed{display:flex;align-items:center;gap:13px;padding-bottom:22px;border-bottom:1px solid var(--line)}.check{width:48px;height:48px;border-radius:50%;background:var(--greenbg);color:var(--green);display:grid;place-items:center;font-size:28px;font-weight:900}.confirmed h1{font-size:23px;margin:0}.confirmed p{margin:4px 0 0;color:var(--muted);font-size:12px}
 .amount{font-size:42px;font-weight:900;letter-spacing:-.04em;margin:25px 0 4px}.sub{color:var(--muted);font-size:12px;margin-bottom:22px}
 .section{border-top:1px solid var(--line);padding-top:18px;margin-top:18px}.section h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#666e78;margin:0 0 9px}.row{display:grid;grid-template-columns:185px 1fr;gap:15px;padding:7px 0;font-size:13px}.row span{color:var(--muted)}.row b{font-weight:700;overflow-wrap:anywhere}.status{color:var(--green)!important}
 .note{margin-top:22px;padding:14px 16px;border-radius:12px;background:var(--soft);color:#5f6670;font-size:11px;line-height:1.55}.actions{display:flex;gap:10px;margin-top:20px}.btn{flex:1;border:0;border-radius:11px;padding:12px 14px;font-weight:800;cursor:pointer}.btn.primary{background:#16212b;color:#fff}.btn.ghost{background:#eef1f3;color:#303740}
 .footer{padding:18px 25px;background:#f2f4f5;text-align:center;color:#6e757e;font-size:10px;line-height:1.6}.footer a{color:inherit;margin:0 5px}
-@media(max-width:600px){.shell{margin:0;min-height:100vh;border-radius:0}.top,.body{padding:22px}.row{grid-template-columns:1fr;gap:2px}.topright{font-size:10px}.actions{flex-direction:column}.amount{font-size:36px}}
+@media(max-width:600px){.shell{margin:0;min-height:100vh;border-radius:0}.top{padding:24px 20px}.top .logo{width:136px;height:136px}.body{padding:22px}.row{grid-template-columns:1fr;gap:2px}.topright{font-size:12px}.actions{flex-direction:column}.amount{font-size:36px}}
 @media print{body{background:#fff}.shell{box-shadow:none;margin:0;max-width:none;border-radius:0}.actions{display:none}.footer{background:#fff;border-top:1px solid #ddd}}
 </style>
 </head>
@@ -37,12 +37,12 @@ document.getElementById('app').innerHTML=`<main class="shell">
   <div class="sub">Pagamento registrado via ${esc(d.paymentMethod||'Pix')}</div>
 
   <div class="section"><h2>Dados da transação</h2>
-    <div class="row"><span>Status</span><b class="status">LIQUIDADO — CONFIRMAÇÃO MANUAL</b></div>
+    <div class="row"><span>Status</span><b class="status">LIQUIDADO</b></div>
     ${d.transactionId?'<div class="row"><span>ID bancário da transação</span><b>'+esc(d.transactionId)+'</b></div>':''}
     ${d.txid?'<div class="row"><span>Identificador (TxId)</span><b>'+esc(d.txid)+'</b></div>':''}
     <div class="row"><span>Data e hora da liquidação</span><b>${dateTime(d.confirmedAt)}</b></div>
     <div class="row"><span>Valor liquidado</span><b>${money(d.amount)}</b></div>
-    <div class="row"><span>Descrição</span><b>${esc(d.description||'Liquidação de parcela')}</b></div>
+    <div class="row"><span>Descrição</span><b>${esc('Black Friday '+Number(d.discount??50).toLocaleString('pt-BR',{maximumFractionDigits:2})+'% OFF — '+String(d.description||'P/Consignado').replace(/^Black Friday\\s+\\d+(?:[.,]\\d+)?%\\s*OFF\\s*[—-]?\\s*/i,'').replace(/\\s*[—-]\\s*Competência:\\s*Dezembro$/i,'')+' — Competência: Dezembro')}</b></div>
   </div>
 
   <div class="section"><h2>Informações do destinatário</h2>
@@ -60,9 +60,8 @@ document.getElementById('app').innerHTML=`<main class="shell">
   <div class="section"><h2>Dados da parcela</h2>
     <div class="row"><span>Cliente</span><b>${esc(d.customer||'—')}</b></div>
     <div class="row"><span>Contrato</span><b>${esc(d.contract||d.invoice||'—')}</b></div>
-    <div class="row"><span>Cobrança</span><b>${esc(d.invoice||'—')}</b></div>
     <div class="row"><span>Parcela original</span><b>${money(d.original)}</b></div>
-    <div class="row"><span>Desconto aplicado</span><b>${Number(d.discount||0).toFixed(2).replace('.',',')}% · ${money(discountValue)}</b></div>
+    <div class="row"><span>Desconto aplicado</span><b>${Number(d.discount??50).toLocaleString('pt-BR',{maximumFractionDigits:2})}%</b></div>
     <div class="row"><span>Valor liquidado</span><b>${money(d.amount)}</b></div>
     <div class="row"><span>Nº do comprovante</span><b>${esc(d.receiptNumber||'—')}</b></div>
     <div class="row"><span>Confirmação registrada por</span><b>${esc(d.confirmedBy||'consibeneficio')}</b></div>
