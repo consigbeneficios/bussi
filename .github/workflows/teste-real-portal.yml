@@ -2,7 +2,7 @@ name: Teste real portal BUSSI
 on:
   push:
     branches: [main]
-    paths: ['.github/workflows/teste-real-portal.yml', 'index.html', 'pagamento.html', 'bussi-cloud.js', 'fatura.html']
+    paths: ['.github/workflows/teste-real-portal.yml', 'index.html', 'pagamento.html', 'bussi-cloud.js', 'fatura.html', 'corrigir-pagamento.html']
   workflow_dispatch:
 permissions:
   contents: read
@@ -181,6 +181,18 @@ jobs:
               const shared=await page.locator('#generatedLink').inputValue();
               if(!shared.startsWith('https://consigbeneficios.github.io/bussi/fatura.html?token='))throw new Error('Gerador nao selecionou o link seguro da nuvem');
               console.log('GERADOR USA TOKEN DA NUVEM',true);
+              const repair=await browser.newPage();
+              const oldPayment='https://pay.consigbeneficio.com.br/pagamento.html#p='+
+                Buffer.from(JSON.stringify({v:4,invoice:'fatura0023',customer:'Cliente Teste',amount:492.70,pix:'000201260014br.gov.bcb.pix'})).toString('base64url');
+              const repairResponse=await repair.goto('https://consigbeneficios.github.io/bussi/corrigir-pagamento.html',{waitUntil:'domcontentloaded',timeout:30000});
+              if(repairResponse.status()!==200)throw new Error('Pagina de recuperacao nao publicada');
+              await repair.locator('#original').fill(oldPayment);
+              if(!await repair.locator('#notice').textContent().then(s=>s.includes('Link corrigido')))throw new Error('Recuperacao nao aceitou a fatura de teste');
+              await repair.locator('#open').click();
+              await repair.waitForURL('https://consigbeneficios.github.io/bussi/pagamento.html#p=*',{timeout:15000});
+              if(repair.url()!=='https://consigbeneficios.github.io/bussi/pagamento.html'+new URL(oldPayment).hash)throw new Error('Recuperacao alterou o payload original da fatura');
+              console.log('LINK ANTIGO PAY RECUPERADO COM MESMO HASH',true);
+              await repair.close();
               console.log('BROWSER ERRORS',JSON.stringify(errors.slice(0,12)));
               if(errors.some(e=>e.startsWith('JS:')))throw new Error('Javascript falhou no navegador');
             }finally{await browser.close()}
