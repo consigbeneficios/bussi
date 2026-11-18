@@ -29,6 +29,14 @@ function maskDoc(v){const d=String(v||'').replace(/\D/g,'');if(d.length===11)ret
 const d=decode();
 if(!d){document.getElementById('app').innerHTML='<div class="shell"><div class="body"><h1>Comprovante inválido</h1><p>Não foi possível identificar este documento.</p></div></div>';throw new Error('invalid receipt')}
 const discountValue=Math.max(0,Number(d.original||0)-Number(d.amount||0));
+
+const pct=Number.isFinite(Number(d.discount))?Number(d.discount):50;
+const cleanDescription=String(d.description||'P/Consignado')
+ .replace(/^Black Friday\s+\d+(?:[.,]\d+)?%\s*OFF\s*[—-]?\s*/i,'')
+ .replace(/\s*[—-]\s*Competência:\s*Dezembro\s*$/i,'')
+ .trim()||'P/Consignado';
+const receiptDescription='Black Friday '+pct.toLocaleString('pt-BR',{maximumFractionDigits:2})+'% OFF — '+cleanDescription+' — Competência: Dezembro';
+
 document.getElementById('app').innerHTML=`<main class="shell">
 <header class="top"><img class="logo" src="logo-consig.svg" alt="CONSIG BENEFÍCIOS"><div class="topright"><b>CONSIG BENEFÍCIO S/A</b><span>CNPJ 66.754.630/0001-60</span></div></header>
 <section class="body">
@@ -42,7 +50,7 @@ document.getElementById('app').innerHTML=`<main class="shell">
     ${d.txid?'<div class="row"><span>Identificador (TxId)</span><b>'+esc(d.txid)+'</b></div>':''}
     <div class="row"><span>Data e hora da liquidação</span><b>${dateTime(d.confirmedAt)}</b></div>
     <div class="row"><span>Valor liquidado</span><b>${money(d.amount)}</b></div>
-    <div class="row"><span>Descrição</span><b>${esc('Black Friday '+Number(d.discount??50).toLocaleString('pt-BR',{maximumFractionDigits:2})+'% OFF — '+String(d.description||'P/Consignado').replace(/^Black Friday\\s+\\d+(?:[.,]\\d+)?%\\s*OFF\\s*[—-]?\\s*/i,'').replace(/\\s*[—-]\\s*Competência:\\s*Dezembro$/i,'')+' — Competência: Dezembro')}</b></div>
+    <div class="row"><span>Descrição</span><b>${esc(receiptDescription)}</b></div>
   </div>
 
   <div class="section"><h2>Informações do destinatário</h2>
