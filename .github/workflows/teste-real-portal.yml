@@ -82,6 +82,35 @@ jobs:
               const cloudText=await page.locator('#cloudStatus').textContent();
               console.log('SUPABASE SDK',cloudOk,'CLOUD STATUS',cloudText);
               if(!cloudOk||!cloudText||cloudText.includes('inicializando')||cloudText.includes('Não foi possível carregar'))throw new Error('Conexao Supabase nao iniciou');
+              const tab=await browser.newPage();
+              const token='00000000-0000-4000-8000-000000000001';
+              const endpoint='https://qzelhgfwrppkhdmolhys.supabase.co/functions/v1/bussi-invoice';
+              let closed=false;
+              await tab.route(endpoint+'?token=*',async route=>{
+                if(closed){
+                  await route.fulfill({status:410,headers:{'content-type':'application/json','access-control-allow-origin':'*'},body:JSON.stringify({error:'invoice_closed'})});
+                } else {
+                  const sample={v:4,chargeId:'00000000-0000-4000-8000-000000000002',invoice:'fatura9999',
+                    customer:'Cliente de Teste',contract:'TESTE-9999',amount:150,original:300,discount:50,
+                    description:'Cobrança de simulação',pix:'000201260014br.gov.bcb.pix',
+                    issueDate:'2026-11-18',due:'2026-11-18'};
+                  await route.fulfill({status:200,headers:{'content-type':'application/json','access-control-allow-origin':'*'},body:JSON.stringify(sample)});
+                }
+              });
+              const pageUrl='https://consigbeneficios.github.io/bussi/fatura.html?token='+token;
+              const pageResponse=await tab.goto(pageUrl,{waitUntil:'domcontentloaded',timeout:30000});
+              await tab.waitForSelector('#checkout:visible',{timeout:15000});
+              if(pageResponse.status()!==200||!tab.url().includes('?token=')||tab.url().includes('#p='))throw new Error('Fatura segura nao manteve o link por token');
+              if(!await tab.locator('#amount').textContent().then(v=>v.includes('150,00')))throw new Error('Valor da fatura simulada incorreto');
+              await tab.locator('#showPix').click();
+              await tab.waitForSelector('#pixPanel:visible',{timeout:5000});
+              if(!await tab.locator('#pixCode').textContent().then(v=>v.includes('00020126')))throw new Error('Pix nao exibido no teste');
+              closed=true;
+              await tab.locator('#showPix').click();
+              await tab.waitForTimeout(300);
+              if(!await tab.locator('#message').textContent().then(v=>v.includes('encerrada')||v.includes('venceu')))throw new Error('Fatura encerrada ainda permite Pix');
+              console.log('FATURA SEGURA',pageResponse.status(),'TOKEN SEM PAYLOAD',true,'BLOQUEIO DE COBRANCA',true);
+              await tab.close();
               console.log('BROWSER ERRORS',JSON.stringify(errors.slice(0,12)));
               if(errors.some(e=>e.startsWith('JS:')))throw new Error('Javascript falhou no navegador');
             }finally{await browser.close()}
