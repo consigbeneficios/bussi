@@ -24,7 +24,16 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.app{min-height:
 <div class="authgate" id="authGate">
   <div class="authcard">
     <div class="authbrand"><div class="brandmark">B</div><div><b>BUSSI</b><div class="tag">Acesso administrativo</div></div></div>
-    <div id="loginAuth">
+    <div id="setupAuth" style="display:none">
+      <h2>Configurar acesso</h2>
+      <p>Usuário fixo: <b>consibeneficio</b>. Defina sua senha neste dispositivo.</p>
+      <div class="field"><label>Usuário</label><input value="consibeneficio" readonly></div>
+      <div class="field" style="margin-top:10px"><label>Nova senha</label><input id="setupPass" type="password" autocomplete="new-password" placeholder="Mínimo de 8 caracteres"></div>
+      <div class="field" style="margin-top:10px"><label>Confirmar senha</label><input id="setupPass2" type="password" autocomplete="new-password"></div>
+      <button class="btn primary" id="createAccess" style="width:100%;margin-top:16px">Salvar senha e entrar</button>
+      <div class="autherror" id="setupError"></div>
+    </div>
+    <div id="loginAuth" style="display:none">
       <h2>Entrar no BUSSI</h2>
       <p>Acesso restrito ao administrador da CONSIG BENEFÍCIOS.</p>
       <div class="field"><label>Usuário</label><input id="loginUser" value="consibeneficio" autocomplete="username"></div>
@@ -32,8 +41,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.app{min-height:
       <button class="btn primary" id="loginBtn" style="width:100%;margin-top:16px">Entrar</button>
       <div class="autherror" id="loginError"></div>
     </div>
-    <div style="display:none">
-      <h2>Entrar no BUSSI</h2>
+<h2>Entrar no BUSSI</h2>
       <p>Use seu acesso administrativo.</p>
       <div class="field"><label>Usuário</label><input id="loginUser" value="consibeneficio" autocomplete="username"></div>
       <div class="field" style="margin-top:10px"><label>Senha</label><input id="loginPass" type="password" autocomplete="current-password"></div>
@@ -153,6 +161,17 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.app{min-height:
         <div id="pixStatus" class="notice" style="margin-top:14px">Informe a chave Pix.</div>
       </div>
       <div class="section">
+        <div class="sectionhead"><div><h2>Dados e backup</h2><p>Salve e restaure sua base operacional neste dispositivo.</p></div></div>
+        <div class="notice good"><b>Salvamento automático ativo.</b> Clientes, campanhas, cobranças e configurações ficam salvos neste navegador.</div>
+        <input type="file" id="backupFile" accept=".json" hidden>
+        <div class="toolbar" style="margin-top:14px">
+          <button class="btn primary" id="saveAllNow">Salvar agora</button>
+          <button class="btn ghost" id="exportBackup">Exportar backup</button>
+          <button class="btn ghost" id="importBackup">Importar backup</button>
+        </div>
+        <div class="notice" style="margin-top:12px">O backup contém dados do CRM. Guarde o arquivo em local seguro e não publique no GitHub.</div>
+      </div>
+      <div class="section">
         <div class="sectionhead"><div><h2>Rastreamento e sincronização</h2><p>Opcional. Necessário para registrar cliques em um banco central e visualizar os mesmos dados em vários dispositivos.</p></div></div>
         <div class="field"><label>Endpoint de eventos (API/webhook)</label><input id="trackingEndpoint" placeholder="https://api.seudominio.com/events"></div>
         <div class="notice" style="margin-top:12px">Sem um backend configurado, o portal continua funcionando normalmente, mas CRM/histórico ficam no navegador atual e os cliques dos clientes não retornam automaticamente para o painel.</div>
@@ -176,25 +195,44 @@ const defaultClients=[];
 let clients=load(K.clients,[])||[],campaigns=load(K.campaigns,[]),charges=load(K.charges,[]),settings=load(K.settings,{pixType:'auto',pixKey:'',pixName:'CONSIG BENEFICIO SA',pixCity:'SAO PAULO',pixTxid:'***',pixDesc:'FATURA CONSIG',trackingEndpoint:'',metaPhoneId:'',metaWabaId:'',trackingEnv:'',paymentProvider:'',paymentWebhook:''}),editClientIndex=-1,lastLink='';
 function $(id){return document.getElementById(id)}function load(k,f){try{const v=localStorage.getItem(k);return v?JSON.parse(v):f}catch{return f}}function save(k,v){localStorage.setItem(k,JSON.stringify(v));if($('saveState'))$('saveState').textContent='Salvo às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
 const AUTH_USER='consibeneficio';
-const AUTH_SALT='ed2bbcc1bd1bb8ba5054b2049c8e59f3';
-const AUTH_ITERATIONS=210000;
-const AUTH_HASH='1b083e15234b4a0ab6e998881fcffc887bd1ccb27e7f4c386b759f472d704ea4';
-async function passwordHash(password){
+const AUTH_KEY='bussi.auth.local.v2';
+async function passwordHash(password,salt){
   const enc=new TextEncoder();
   const key=await crypto.subtle.importKey('raw',enc.encode(password),'PBKDF2',false,['deriveBits']);
-  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:enc.encode(AUTH_SALT),iterations:AUTH_ITERATIONS,hash:'SHA-256'},key,256);
+  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:enc.encode(salt),iterations:210000,hash:'SHA-256'},key,256);
   return [...new Uint8Array(bits)].map(x=>x.toString(16).padStart(2,'0')).join('');
 }
-function showAuth(){$('authGate').style.display='grid';$('mainApp').style.display='none';$('loginPass').value='';$('loginError').classList.remove('show')}
+function authState(){try{return JSON.parse(localStorage.getItem(AUTH_KEY)||'null')}catch{return null}}
+function showAuth(){
+  const a=authState();
+  $('authGate').style.display='grid';
+  $('mainApp').style.display='none';
+  $('setupAuth').style.display=a?'none':'block';
+  $('loginAuth').style.display=a?'block':'none';
+  if($('loginPass'))$('loginPass').value='';
+  if($('loginError'))$('loginError').classList.remove('show');
+  if($('setupError'))$('setupError').classList.remove('show')
+}
 function enterApp(){sessionStorage.setItem('bussi.session','1');$('authGate').style.display='none';$('mainApp').style.display='grid'}
+$('createAccess').onclick=async()=>{
+  const p=$('setupPass').value,p2=$('setupPass2').value,e=$('setupError');
+  e.classList.remove('show');
+  if(p.length<8){e.textContent='A senha deve ter pelo menos 8 caracteres.';e.classList.add('show');return}
+  if(p!==p2){e.textContent='As senhas não conferem.';e.classList.add('show');return}
+  const salt=crypto.getRandomValues(new Uint32Array(4)).join('-');
+  const hash=await passwordHash(p,salt);
+  localStorage.setItem(AUTH_KEY,JSON.stringify({user:AUTH_USER,salt,hash,createdAt:new Date().toISOString()}));
+  enterApp()
+};
 $('loginBtn').onclick=async()=>{
-  const u=$('loginUser').value.trim(),p=$('loginPass').value,e=$('loginError');
+  const a=authState(),u=$('loginUser').value.trim(),p=$('loginPass').value,e=$('loginError');
   e.classList.remove('show');
   const attempts=Number(sessionStorage.getItem('bussi.login.attempts')||0);
   const lockUntil=Number(sessionStorage.getItem('bussi.login.lockUntil')||0);
   if(Date.now()<lockUntil){e.textContent='Muitas tentativas. Tente novamente em alguns instantes.';e.classList.add('show');return}
-  const hash=await passwordHash(p);
-  if(u!==AUTH_USER||hash!==AUTH_HASH){
+  if(!a||u!==AUTH_USER){e.textContent='Usuário ou senha inválidos.';e.classList.add('show');return}
+  const hash=await passwordHash(p,a.salt);
+  if(hash!==a.hash){
     const next=attempts+1;sessionStorage.setItem('bussi.login.attempts',String(next));
     if(next>=5){sessionStorage.setItem('bussi.login.lockUntil',String(Date.now()+30000));sessionStorage.setItem('bussi.login.attempts','0')}
     e.textContent='Usuário ou senha inválidos.';e.classList.add('show');return
@@ -203,7 +241,7 @@ $('loginBtn').onclick=async()=>{
 };
 $('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')$('loginBtn').click()});
 $('logoutBtn').onclick=()=>{sessionStorage.removeItem('bussi.session');showAuth()};
-if(sessionStorage.getItem('bussi.session')==='1')enterApp();else showAuth()
+if(sessionStorage.getItem('bussi.session')==='1'&&authState())enterApp();else showAuth()
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function money(n){return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
 function parseMoney(v){if(typeof v==='number')return v;v=String(v||'').trim().replace(/R\$\s?/g,'').replace(/\./g,'').replace(',','.');const n=Number(v);return Number.isFinite(n)?n:0}
@@ -247,6 +285,33 @@ function chargeFilteredClients(){const q=normSearch($('chargeClientSearch')?.val
 $('clientSearch')?.addEventListener('input',renderAll);
 $('chargeClientSearch')?.addEventListener('input',()=>{renderChargeClientOptions();calcCharge()});
 function renderChargeClientOptions(){const sel=$('chargeClient');if(!sel)return;const current=sel.value;const list=chargeFilteredClients();sel.innerHTML=list.length?list.map(c=>`<option value="${c._i}">${esc(c.name)} — ${esc(c.contract)} — ${esc(c.phone)}</option>`).join(''):'<option value="">Nenhum cliente encontrado</option>';if(current&&list.some(c=>String(c._i)===String(current)))sel.value=current;else if(list.length)sel.value=String(list[0]._i)}
+
+function persistAll(){
+  localStorage.setItem(K.clients,JSON.stringify(clients));
+  localStorage.setItem(K.campaigns,JSON.stringify(campaigns));
+  localStorage.setItem(K.charges,JSON.stringify(charges));
+  localStorage.setItem(K.settings,JSON.stringify(settings));
+  if($('saveState'))$('saveState').textContent='Salvo às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})
+}
+$('saveAllNow').onclick=()=>{persistAll();alert('Informações salvas neste navegador.')};
+$('exportBackup').onclick=()=>{
+  persistAll();
+  const backup={version:1,exportedAt:new Date().toISOString(),clients,campaigns,charges,settings};
+  const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='BUSSI_BACKUP_'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)
+};
+$('importBackup').onclick=()=>$('backupFile').click();
+$('backupFile').onchange=async e=>{
+  const file=e.target.files?.[0];if(!file)return;
+  try{
+    const data=JSON.parse(await file.text());
+    if(!data||!Array.isArray(data.clients)||!Array.isArray(data.campaigns)||!Array.isArray(data.charges)||typeof data.settings!=='object')throw new Error('Formato inválido');
+    clients=data.clients;campaigns=data.campaigns;charges=data.charges;settings=data.settings;
+    persistAll();renderAll();alert('Backup restaurado com sucesso.')
+  }catch(err){alert('Não foi possível restaurar este backup.')}
+  e.target.value=''
+};
+window.addEventListener('beforeunload',persistAll);
 function renderAll(){$('mClients').textContent=clients.length;$('mCampaigns').textContent=campaigns.length;$('mCharges').textContent=charges.length;$('mTracking').textContent=settings.trackingEndpoint?'Conectado':'Não conectado';const visibleClients=filteredClients();if($('clientSearchCount'))$('clientSearchCount').value=visibleClients.length+' cliente(s)';$('clientRows').innerHTML=visibleClients.length?visibleClients.map(c=>`<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.contract)}</td><td>${esc(c.phone)}</td><td>${money(c.original)}</td><td>${money(c.final)}</td><td><div class="toolbar"><button class="btn sm ghost" onclick="editClient(${c._i})">Editar</button><button class="btn sm danger" onclick="delClient(${c._i})">Excluir</button></div></td></tr>`).join(''):'<tr><td colspan="6" class="empty">Nenhum cliente encontrado.</td></tr>';$('campaignRows').innerHTML=campaigns.length?campaigns.map(c=>`<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.audience)}</td><td><span class="badge yellow">${esc(c.status)}</span></td><td>${esc(c.message).slice(0,90)}</td><td><button class="btn sm danger" onclick="delCampaign(${c.id})">Excluir</button></td></tr>`).join(''):'<tr><td colspan="5" class="empty">Nenhuma campanha criada.</td></tr>';$('chargeRows').innerHTML=charges.length?charges.map(c=>`<tr><td>${esc(c.invoice)}</td><td><b>${esc(c.customer)}</b></td><td><span style="text-decoration:line-through">${money(c.original)}</span></td><td>${Number(c.discount||0).toFixed(0)}% OFF</td><td><b>${money(c.amount)}</b></td><td><span class="badge yellow">${esc(c.status)}</span></td></tr>`).join(''):'<tr><td colspan="6" class="empty">Nenhuma cobrança gerada.</td></tr>';const cur=$('chargeClient').value;renderChargeClientOptions();if(cur&&clients[+cur])$('chargeClient').value=cur;const selected=clients[+$('chargeClient').value];if(selected){$('chargeOriginal').value=fmtInput(selected.original);$('chargeDiscount').value=Math.round((100-selected.final/selected.original*100)*100)/100;calcCharge()}['pixType','pixKey','pixName','pixCity','pixTxid','pixDesc','trackingEndpoint','metaPhoneId','metaWabaId','trackingEndpoint2','trackingEnv','paymentProvider','paymentWebhook'].forEach(id=>{const map={pixType:'pixType',pixKey:'pixKey',pixName:'pixName',pixCity:'pixCity',pixTxid:'pixTxid',pixDesc:'pixDesc',trackingEndpoint:'trackingEndpoint',metaPhoneId:'metaPhoneId',metaWabaId:'metaWabaId',trackingEndpoint2:'trackingEndpoint',trackingEnv:'trackingEnv',paymentProvider:'paymentProvider',paymentWebhook:'paymentWebhook'};if($(id)&&document.activeElement!==$(id))$(id).value=settings[map[id]]??''});if($('metaChip')){$('metaChip').textContent=(settings.metaPhoneId&&settings.metaWabaId)?'Configurado':'Não conectado';$('metaChip').className='statuschip'+((settings.metaPhoneId&&settings.metaWabaId)?' on':'')}if($('trackingChip')){$('trackingChip').textContent=settings.trackingEndpoint?'Configurado':'Não conectado';$('trackingChip').className='statuschip'+(settings.trackingEndpoint?' on':'')}if($('paymentChip')){$('paymentChip').textContent=settings.paymentProvider?(settings.paymentWebhook?'Configurado':'Provedor selecionado'):'Manual';$('paymentChip').className='statuschip'+(settings.paymentProvider&&settings.paymentWebhook?' on':'')}renderPixStatus()}
 renderAll();
 </script>
