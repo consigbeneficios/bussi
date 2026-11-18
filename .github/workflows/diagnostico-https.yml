@@ -31,6 +31,14 @@ jobs:
                   req = urllib.request.Request(endpoint, method='PUT', data=b'{"https_enforced":true}', headers=dict(headers, **{'Content-Type': 'application/json'}))
                   with urllib.request.urlopen(req, timeout=25) as result:
                       print('HTTPS enforcement atualizado:', result.status)
+              elif not cert:
+                  print('Certificado ausente; revalidando mesmo dominio personalizado para solicitar emissao')
+                  try:
+                      req = urllib.request.Request(endpoint, method='PUT', data=b'{"cname":"pay.consigbeneficio.com.br"}', headers=dict(headers, **{'Content-Type': 'application/json'}))
+                      with urllib.request.urlopen(req, timeout=25) as result:
+                          print('Revalidacao do dominio solicitada:', result.status)
+                  except urllib.error.HTTPError as e:
+                      print('Revalidacao nao autorizada pela API:', e.code, e.read().decode('utf-8', errors='replace')[:800])
               elif cert.get('state') != 'approved':
                   print('Certificado ainda nao aprovado; nao forcar HTTPS sem certificado')
           except urllib.error.HTTPError as e:
