@@ -54,6 +54,18 @@ jobs:
                 console.log('PAINEL VISIVEL=',await page.locator('#mainApp').isVisible());
                 if(!await page.locator('#mainApp').isVisible())throw new Error('Nao entrou no painel apos criar acesso temporario');
               }
+              await page.evaluate(()=>{
+                const old='https://pay.consigbeneficio.com.br/pagamento.html#p=dGVzdGU';
+                localStorage.setItem('bussi.charges.v1',JSON.stringify([{id:987650013,invoice:'fatura0013',customer:'Cliente Teste',contract:'TESTE-0013',phone:'',amount:465,original:930,discount:50,status:'Aguardando confirmação',url:old}]));
+              });
+              await page.reload({waitUntil:'domcontentloaded',timeout:30000});
+              await page.waitForTimeout(1000);
+              const migrated=await page.evaluate(()=>JSON.parse(localStorage.getItem('bussi.charges.v1')||'[]')[0]?.url);
+              console.log('LINK ANTIGO MIGRADO',migrated);
+              if(migrated!=='https://consigbeneficios.github.io/bussi/pagamento.html#p=dGVzdGU')throw new Error('Link da fatura antiga nao foi corrigido e salvo');
+              const copyCount=await page.locator('#chargeRows button:has-text("Copiar link")').count();
+              console.log('BOTAO COPIAR LINK',copyCount);
+              if(copyCount<1)throw new Error('Historico sem botao para copiar link');
               console.log('BROWSER ERRORS',JSON.stringify(errors.slice(0,12)));
               if(errors.some(e=>e.startsWith('JS:')))throw new Error('Javascript falhou no navegador');
             }finally{await browser.close()}
