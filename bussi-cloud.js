@@ -44,7 +44,7 @@ async function authAction(mode){
  if(!e||p.length<8){say('Informe um e-mail e uma senha com pelo menos 8 caracteres.');return}
  signIn.disabled=signUp.disabled=true;
  try{
-  const {data,error}=mode==='signup'?await db.auth.signUp({email:e,password:p}):await db.auth.signInWithPassword({email:e,password:p});
+  const {data,error}=mode==='signup'?await db.auth.signUp({email:e,password:p,options:{emailRedirectTo:new URL('index.html',location.href).href}}):await db.auth.signInWithPassword({email:e,password:p});
   if(error)throw error;
   password.value='';
   if(data.session){await render();}
