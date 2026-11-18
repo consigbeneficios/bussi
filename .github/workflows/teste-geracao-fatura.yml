@@ -40,6 +40,7 @@ jobs:
               }
               await page.locator('#mainApp').waitFor({state:'visible',timeout:15000});
               console.log('PORTAL OK HTTPS',page.url());
+              await page.locator('button[data-view="settings"]').click();
               await page.locator('#pixType').selectOption('email');
               await page.locator('#pixKey').fill('teste.nao.pagavel@exemplo.org');
               await page.locator('#pixName').fill('TESTE NAO PAGAVEL');
