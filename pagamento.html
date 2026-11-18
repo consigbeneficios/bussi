@@ -47,6 +47,8 @@ body{background:#eef0f3;-webkit-font-smoothing:antialiased}button{font:inherit;c
 }
 @media(max-width:390px){.top-shell{padding-left:25px;padding-right:25px}.pay-card{padding-left:24px;padding-right:24px}.amount{font-size:42px}.company-name{font-size:22px}.due{font-size:18px}.qr{width:220px;height:220px}}
 @media print{body{padding:0;background:#fff}.checkout{display:none!important}}
+/* Link encerrado: não exibir payload Pix ao usuário */
+.expiry-screen{max-width:610px;margin:50px auto;padding:38px 28px;background:#fff;border-radius:22px;text-align:center;box-shadow:0 12px 38px rgba(15,23,42,.08)}.expiry-screen img{display:block;width:130px;height:130px;object-fit:cover;border-radius:26px;margin:0 auto 20px}.expiry-screen h1{font-size:28px;line-height:1.2;letter-spacing:-.03em;margin:0 0 14px}.expiry-screen p{font-size:15px;line-height:1.6;color:#5b6776}.expiry-screen .help{font-size:13px;margin-top:25px}.expiry-screen .links{font-size:12px;line-height:1.8;margin-top:26px;color:#65717b}.expiry-screen .links a{margin:0 7px;text-decoration:underline}
 </style></head>
 <body><main id="app"></main><div id="qrBuffer" style="position:fixed;left:-99999px;top:-99999px"></div>
 <script>
@@ -58,7 +60,11 @@ function track(d,event){try{window.BussiEvents?.record(d,event)}catch{}}
 const PIX_ICON=`<svg viewBox="0 0 64 40" aria-hidden="true"><g fill="#49b8ab"><path d="M19.3 2.5a7 7 0 0 1 9.9 0l5.6 5.6-6.1 6.1-5.5-5.5a1.8 1.8 0 0 0-2.6 0l-9.2 9.2a1.8 1.8 0 0 0 0 2.6l9.2 9.2a1.8 1.8 0 0 0 2.6 0l5.5-5.5 6.1 6.1-5.6 5.6a7 7 0 0 1-9.9 0L3.9 20.5a1.8 1.8 0 0 1 0-2.6L19.3 2.5Z"/><path d="m35.3 8.2 5.6-5.6a7 7 0 0 1 9.9 0l9.3 9.3-6.1 6.1-9.2-9.2a1.8 1.8 0 0 0-2.6 0l-.8.8-6.1-6.1Z" opacity=".92"/><path d="m54 22 6.1 6.1-9.3 9.3a7 7 0 0 1-9.9 0l-5.6-5.6 6.1-6.1.8.8a1.8 1.8 0 0 0 2.6 0L54 22Z" opacity=".92"/></g></svg>`;
 const raw=location.hash.startsWith('#p=')?location.hash.slice(3):new URLSearchParams(location.hash.slice(1)).get('p')||'';
 const d=decodeData(raw),app=document.getElementById('app');
-if(!d||!d.pix){app.innerHTML='<div class="error"><h2>Link de cobrança inválido</h2><p>Solicite um novo link ao atendimento.</p></div>'}else{
+function saoPauloToday(){const p=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));return p.year+'-'+p.month+'-'+p.day}
+function manualStatus(d){try{const list=JSON.parse(localStorage.getItem('bussi.charges.v1')||'[]');if(!Array.isArray(list))return '';const id=d.chargeId;const c=id?list.find(x=>String(x.id)===String(id)):(list.filter(x=>String(x.invoice)===String(d.invoice)&&String(x.customer)===String(d.customer)).length===1?list.find(x=>String(x.invoice)===String(d.invoice)&&String(x.customer)===String(d.customer)):null);return c?.status||''}catch{return ''}}
+function blockReason(d){const st=manualStatus(d);if(st==='Pagamento confirmado')return 'paid';if(st==='Pagamento recusado')return 'refused';const day=/^\\d{4}-\\d{2}-\\d{2}$/.test(String(d.issueDate||''))?d.issueDate:d.due;return /^\\d{4}-\\d{2}-\\d{2}$/.test(String(day||''))&&saoPauloToday()>day?'expired':''}
+function blockedHtml(reason){const paid=reason==='paid',refused=reason==='refused';const heading=paid?'Pagamento confirmado':refused?'Cobrança encerrada':'Link de pagamento vencido';const body=paid?'O recebimento desta cobrança foi confirmado. O QR Code e o código Pix não estão mais disponíveis neste link.':refused?'Esta cobrança foi recusada manualmente. Solicite um novo link antes de tentar pagar novamente.':'O prazo de pagamento terminou. Esta cobrança venceu no dia da emissão. Solicite um novo link para efetuar o pagamento.';return '<section class="expiry-screen"><img src="logo-consig.svg" alt="CONSIG BENEFÍCIOS"><h1>'+heading+'</h1><p>'+body+'</p><p class="help">Atendimento: sac@consigbeneficio.com.br</p><div class="links"><a href="termos-de-uso.html">Termos de Uso</a><a href="politica-de-privacidade.html">Privacidade</a><a href="exclusao-de-dados.html">Exclusão de Dados</a></div></section>'}
+if(!d||!d.pix){app.innerHTML='<div class="error"><h2>Link de cobrança inválido</h2><p>Solicite um novo link ao atendimento.</p></div>'}else if(blockReason(d)){app.innerHTML=blockedHtml(blockReason(d));}else{
  track(d,'link_opened');
  const startedAt=Date.now();
  const original=Number(d.original??d.amount),finalVal=Number(d.amount||0);
@@ -84,20 +90,22 @@ if(!d||!d.pix){app.innerHTML='<div class="error"><h2>Link de cobrança inválido
  <p>Use o PIX: é prático e o pagamento é instantâneo. Gere o QR Code ou copie o código e realize o pagamento pelo aplicativo da sua instituição financeira.</p>
  <button class="pay-btn" id="payPix" type="button">Pagar ${money(finalVal)}</button>
  <div class="pix-reveal" id="pixReveal"><div class="qr-wrap"><div class="qr" id="qr"></div></div><div class="pix-label">PIX Copia e Cola</div>
- <div class="pix-code" id="pixCode">${esc(d.pix)}</div><div class="copy-row"><button class="copy-btn" id="copyPix" type="button">Copiar código PIX</button></div></div>
+ <div class="copy-row"><button class="copy-btn" id="copyPix" type="button">Copiar código PIX</button></div></div>
  </div></section>
  <footer class="footer">Cobrança emitida por <strong>${esc(d.company||'CONSIG BENEFÍCIO S/A')}</strong> · CNPJ ${esc(d.cnpj||'66.754.630/0001-60')}<br>${esc(d.email||'sac@consigbeneficio.com.br')}<br>
  <a href="termos-de-uso.html">Termos de Uso</a> · <a href="politica-de-privacidade.html">Política de Privacidade</a> · <a href="exclusao-de-dados.html">Exclusão de Dados</a></footer></section>`;
  const reveal=document.getElementById('pixReveal');
  let qrRendered=false;
  function ensureQR(){if(qrRendered)return;qrRendered=true;if(typeof QRCode==='undefined'){document.getElementById('qr').textContent='Não foi possível carregar o QR Code. Use o código Pix Copia e Cola.';return}new QRCode(document.getElementById('qr'),{text:d.pix,width:224,height:224,correctLevel:QRCode.CorrectLevel.M})}
- document.getElementById('payPix').onclick=()=>{reveal.classList.add('open');ensureQR();track(d,'pay_clicked');reveal.scrollIntoView({behavior:'smooth',block:'nearest'})};
+ document.getElementById('payPix').onclick=()=>{if(blockReason(d)){app.innerHTML=blockedHtml(blockReason(d));return}reveal.classList.add('open');ensureQR();track(d,'pay_clicked');reveal.scrollIntoView({behavior:'smooth',block:'nearest'})};
  const details=document.getElementById('detailsBlock'),toggle=document.getElementById('toggleDetails');
  toggle.onclick=()=>{const hidden=details.classList.toggle('hidden-detail');toggle.classList.toggle('collapsed',hidden);toggle.querySelector('span').textContent=hidden?'Mostrar mais':'Mostrar menos'};
- document.getElementById('copyPix').onclick=async()=>{let copied=false;try{await navigator.clipboard.writeText(d.pix);copied=true}catch{try{const t=document.createElement('textarea');t.value=d.pix;document.body.appendChild(t);t.select();copied=document.execCommand('copy');t.remove()}catch{}}if(copied){track(d,'pix_copied');const b=document.getElementById('copyPix');b.textContent='Código copiado!';setTimeout(()=>b.textContent='Copiar código PIX',1400)}else{prompt('Copie o código PIX:',d.pix)}};
+ document.getElementById('copyPix').onclick=async()=>{if(blockReason(d)){app.innerHTML=blockedHtml(blockReason(d));return}let copied=false;try{await navigator.clipboard.writeText(d.pix);copied=true}catch{try{const t=document.createElement('textarea');t.value=d.pix;document.body.appendChild(t);t.select();copied=document.execCommand('copy');t.remove()}catch{}}if(copied){track(d,'pix_copied');const b=document.getElementById('copyPix');b.textContent='Código copiado!';setTimeout(()=>b.textContent='Copiar código PIX',1400)}else{prompt('Copie o código PIX:',d.pix)}};
  function toStatus(){const u=new URL('status-pagamento.html',location.href);u.hash='p='+raw+'&s=checking';location.href=u.href}
  // O prazo de 40s inicia na abertura do link; copiar o Pix não equivale a pagamento.
- setTimeout(toStatus,40000);
+ const expiryWatcher=setInterval(()=>{const reason=blockReason(d);if(reason){clearInterval(expiryWatcher);app.innerHTML=blockedHtml(reason)}},1500);
+window.addEventListener('storage',e=>{if(e.key==='bussi.charges.v1'&&blockReason(d))app.innerHTML=blockedHtml(blockReason(d))});
+setTimeout(()=>{if(!blockReason(d))toStatus();else app.innerHTML=blockedHtml(blockReason(d))},40000);
  function invoiceMarkup(qrImage){
   const issue=String(d.issueDate||'').split('-').reverse().join('.');
   const descFull=(discountPct>0?'Black Friday '+discountPct.toLocaleString('pt-BR',{maximumFractionDigits:2})+'% OFF — ':'')+desc+' — Competência: Dezembro';
