@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Comprovante de Liquidação de Parcela — CONSIG BENEFÍCIOS</title>
+<style>
+:root{--ink:#12161c;--muted:#6a717b;--line:#e0e4e8;--green:#0d8768;--greenbg:#eaf8f3;--soft:#f6f7f8}
+*{box-sizing:border-box}body{margin:0;background:#edf0f2;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+.shell{max-width:760px;margin:28px auto;background:#fff;box-shadow:0 18px 60px rgba(0,0,0,.08);border-radius:20px;overflow:hidden}
+.top{padding:26px 30px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:20px}.logo{width:82px;height:82px;border-radius:16px;object-fit:cover}.topright{text-align:right}.topright b{display:block;font-size:13px}.topright span{font-size:11px;color:var(--muted)}
+.body{padding:30px}.confirmed{display:flex;align-items:center;gap:13px;padding-bottom:22px;border-bottom:1px solid var(--line)}.check{width:48px;height:48px;border-radius:50%;background:var(--greenbg);color:var(--green);display:grid;place-items:center;font-size:28px;font-weight:900}.confirmed h1{font-size:23px;margin:0}.confirmed p{margin:4px 0 0;color:var(--muted);font-size:12px}
+.amount{font-size:42px;font-weight:900;letter-spacing:-.04em;margin:25px 0 4px}.sub{color:var(--muted);font-size:12px;margin-bottom:22px}
+.section{border-top:1px solid var(--line);padding-top:18px;margin-top:18px}.section h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#666e78;margin:0 0 9px}.row{display:grid;grid-template-columns:185px 1fr;gap:15px;padding:7px 0;font-size:13px}.row span{color:var(--muted)}.row b{font-weight:700;overflow-wrap:anywhere}.status{color:var(--green)!important}
+.note{margin-top:22px;padding:14px 16px;border-radius:12px;background:var(--soft);color:#5f6670;font-size:11px;line-height:1.55}.actions{display:flex;gap:10px;margin-top:20px}.btn{flex:1;border:0;border-radius:11px;padding:12px 14px;font-weight:800;cursor:pointer}.btn.primary{background:#16212b;color:#fff}.btn.ghost{background:#eef1f3;color:#303740}
+.footer{padding:18px 25px;background:#f2f4f5;text-align:center;color:#6e757e;font-size:10px;line-height:1.6}.footer a{color:inherit;margin:0 5px}
+@media(max-width:600px){.shell{margin:0;min-height:100vh;border-radius:0}.top,.body{padding:22px}.row{grid-template-columns:1fr;gap:2px}.topright{font-size:10px}.actions{flex-direction:column}.amount{font-size:36px}}
+@media print{body{background:#fff}.shell{box-shadow:none;margin:0;max-width:none;border-radius:0}.actions{display:none}.footer{background:#fff;border-top:1px solid #ddd}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function money(n){return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
+function decode(){try{const p=new URLSearchParams(location.hash.slice(1)).get('r');if(!p)return null;let s=p.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';const bin=atob(s),bytes=Uint8Array.from(bin,c=>c.charCodeAt(0));return JSON.parse(new TextDecoder().decode(bytes))}catch{return null}}
+function dateTime(v){if(!v)return '—';return new Date(v).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'})}
+function maskDoc(v){const d=String(v||'').replace(/\D/g,'');if(d.length===11)return '***.'+d.slice(3,6)+'.'+d.slice(6,9)+'-**';if(d.length===14)return '**.'+d.slice(2,5)+'.'+d.slice(5,8)+'/'+d.slice(8,12)+'-**';return v||'Não informado'}
+const d=decode();
+if(!d){document.getElementById('app').innerHTML='<div class="shell"><div class="body"><h1>Comprovante inválido</h1><p>Não foi possível identificar este documento.</p></div></div>';throw new Error('invalid receipt')}
+const discountValue=Math.max(0,Number(d.original||0)-Number(d.amount||0));
+document.getElementById('app').innerHTML=`<main class="shell">
+<header class="top"><img class="logo" src="logo-consig.svg" alt="CONSIG BENEFÍCIOS"><div class="topright"><b>CONSIG BENEFÍCIO S/A</b><span>CNPJ 66.754.630/0001-60</span></div></header>
+<section class="body">
+  <div class="confirmed"><div class="check">✓</div><div><h1>Liquidação confirmada</h1><p>Comprovante de Liquidação de Parcela</p></div></div>
+  <div class="amount">${money(d.amount)}</div>
+  <div class="sub">Pagamento registrado via ${esc(d.paymentMethod||'Pix')}</div>
+
+  <div class="section"><h2>Dados da transação</h2>
+    <div class="row"><span>Status</span><b class="status">LIQUIDADO</b></div>
+    <div class="row"><span>ID / Transação</span><b>${esc(d.transactionId||'Não informado')}</b></div>
+    ${d.txid?'<div class="row"><span>Identificador (TxId)</span><b>'+esc(d.txid)+'</b></div>':''}
+    <div class="row"><span>Data e hora da liquidação</span><b>${dateTime(d.confirmedAt)}</b></div>
+    <div class="row"><span>Valor liquidado</span><b>${money(d.amount)}</b></div>
+    <div class="row"><span>Descrição</span><b>${esc(d.description||'Liquidação de parcela')}</b></div>
+  </div>
+
+  <div class="section"><h2>Informações do destinatário</h2>
+    <div class="row"><span>Nome</span><b>${esc(d.receiverName||'CONSIG BENEFÍCIO S/A')}</b></div>
+    <div class="row"><span>CPF/CNPJ</span><b>${esc(d.receiverDoc||'66.754.630/0001-60')}</b></div>
+    <div class="row"><span>PSP / instituição</span><b>${esc(d.receiverPsp||'Não informado')}</b></div>
+  </div>
+
+  <div class="section"><h2>Informações do pagador</h2>
+    <div class="row"><span>Nome</span><b>${esc(d.payerName||d.customer||'Não informado')}</b></div>
+    <div class="row"><span>CPF/CNPJ</span><b>${esc(maskDoc(d.payerDoc))}</b></div>
+    <div class="row"><span>PSP / instituição</span><b>${esc(d.payerPsp||'Não informado')}</b></div>
+  </div>
+
+  <div class="section"><h2>Dados da parcela</h2>
+    <div class="row"><span>Cliente</span><b>${esc(d.customer||'—')}</b></div>
+    <div class="row"><span>Contrato</span><b>${esc(d.contract||d.invoice||'—')}</b></div>
+    <div class="row"><span>Cobrança</span><b>${esc(d.invoice||'—')}</b></div>
+    <div class="row"><span>Parcela original</span><b>${money(d.original)}</b></div>
+    <div class="row"><span>Desconto aplicado</span><b>${Number(d.discount||0).toFixed(2).replace('.',',')}% · ${money(discountValue)}</b></div>
+    <div class="row"><span>Valor liquidado</span><b>${money(d.amount)}</b></div>
+    <div class="row"><span>Nº do comprovante</span><b>${esc(d.receiptNumber||'—')}</b></div>
+    <div class="row"><span>Confirmado por</span><b>${esc(d.confirmedBy||'consibeneficio')}</b></div>
+  </div>
+
+  ${d.notes?'<div class="section"><h2>Observações</h2><div class="row"><span>Registro</span><b>'+esc(d.notes)+'</b></div></div>':''}
+
+  <div class="note"><b>Documento emitido pela CONSIG BENEFÍCIO S/A.</b> Este comprovante registra a liquidação da parcela após conferência manual do crédito pela empresa. Não substitui o comprovante bancário ou o comprovante emitido pelo prestador de serviços de pagamento (PSP).</div>
+  <div class="actions"><button class="btn primary" onclick="window.print()">Imprimir / salvar PDF</button><button class="btn ghost" id="copyId">Copiar ID da transação</button></div>
+</section>
+<footer class="footer">CONSIG BENEFÍCIO S/A · CNPJ 66.754.630/0001-60<br>${esc(d.companyAddress||'Avenida Doutor Cardoso de Melo, nº 1.855, Vila Olímpia, São Paulo/SP, CEP 04548-005')} · ${esc(d.companyEmail||'sac@consigbeneficio.com.br')}<br><a href="termos-de-uso.html">Termos de Uso</a> · <a href="politica-de-privacidade.html">Política de Privacidade</a> · <a href="exclusao-de-dados.html">Exclusão de Dados</a></footer>
+</main>`;
+document.getElementById('copyId').onclick=async()=>{try{await navigator.clipboard.writeText(d.transactionId||'');document.getElementById('copyId').textContent='ID copiado'}catch{}};
+</script>
+</body>
+</html>
