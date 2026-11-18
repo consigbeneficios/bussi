@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const URL='https://qzelhgfwrppkhdmolhys.supabase.co';
+const SUPABASE_URL='https://qzelhgfwrppkhdmolhys.supabase.co';
 const KEY='sb_publishable_KCmjXZQbnFBkB977wPFLDg_4YiNvUw0';
 const CLOUD_URL=new URL('fatura.html',location.href).href;
 const status=document.getElementById('cloudStatus');
@@ -12,7 +12,7 @@ const email=document.getElementById('cloudEmail');
 const password=document.getElementById('cloudPassword');
 const list=document.getElementById('cloudInvoiceList');
 if(!status||!window.supabase?.createClient){if(status)status.textContent='Não foi possível carregar a conexão com o Supabase.';return;}
-const db=window.supabase.createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const db=window.supabase.createClient(SUPABASE_URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 let busy=false;
 function say(m){status.textContent=m;}
 function safeDate(d){return /^\d{4}-\d{2}-\d{2}$/.test(String(d||''))?d:null;}
