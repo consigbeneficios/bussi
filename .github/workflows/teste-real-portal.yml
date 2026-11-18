@@ -2,7 +2,7 @@ name: Teste real portal BUSSI
 on:
   push:
     branches: [main]
-    paths: ['.github/workflows/teste-real-portal.yml', 'index.html', 'pagamento.html']
+    paths: ['.github/workflows/teste-real-portal.yml', 'index.html', 'pagamento.html', 'bussi-cloud.js', 'fatura.html']
   workflow_dispatch:
 permissions:
   contents: read
@@ -13,7 +13,7 @@ jobs:
       - name: Testar resposta exata, HTML e recursos
         run: |
           set -e
-          for url in 'https://consigbeneficios.github.io/bussi/index.html?acesso=novo' 'https://consigbeneficios.github.io/bussi/?utm_source=chatgpt.com' 'https://consigbeneficios.github.io/bussi/' 'https://consigbeneficios.github.io/bussi/bussi-events.js' 'https://consigbeneficios.github.io/bussi/pagamento.html'; do
+          for url in 'https://consigbeneficios.github.io/bussi/index.html?acesso=novo' 'https://consigbeneficios.github.io/bussi/?utm_source=chatgpt.com' 'https://consigbeneficios.github.io/bussi/' 'https://consigbeneficios.github.io/bussi/bussi-events.js' 'https://consigbeneficios.github.io/bussi/pagamento.html' 'https://consigbeneficios.github.io/bussi/fatura.html' 'https://consigbeneficios.github.io/bussi/bussi-cloud.js'; do
             echo "URL $url"
             curl --fail --location --silent --show-error --max-time 30 --output /dev/null --write-out 'HTTP=%{http_code} DESTINO=%{url_effective} TLS=%{ssl_verify_result}\n' "$url"
           done
@@ -67,6 +67,10 @@ jobs:
               const copyCount=await page.locator('#chargeRows button:has-text("Copiar link")').count();
               console.log('BOTAO COPIAR LINK',copyCount);
               if(copyCount<1)throw new Error('Historico sem botao para copiar link');
+              const cloudOk=await page.evaluate(()=>typeof window.supabase?.createClient==='function');
+              const cloudText=await page.locator('#cloudStatus').textContent();
+              console.log('SUPABASE SDK',cloudOk,'CLOUD STATUS',cloudText);
+              if(!cloudOk||!cloudText||cloudText.includes('inicializando')||cloudText.includes('Não foi possível carregar'))throw new Error('Conexao Supabase nao iniciou');
               console.log('BROWSER ERRORS',JSON.stringify(errors.slice(0,12)));
               if(errors.some(e=>e.startsWith('JS:')))throw new Error('Javascript falhou no navegador');
             }finally{await browser.close()}
