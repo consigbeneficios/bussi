@@ -10,6 +10,9 @@ const signOut=document.getElementById('cloudSignOut');
 const syncButton=document.getElementById('cloudSync');
 const email=document.getElementById('cloudEmail');
 const password=document.getElementById('cloudPassword');
+const magicSend=document.getElementById('cloudMagicSend');
+const magicInput=document.getElementById('cloudMagicInput');
+const magicConfirm=document.getElementById('cloudMagicConfirm');
 const list=document.getElementById('cloudInvoiceList');
 if(!status||!window.supabase?.createClient){if(status)status.textContent='Não foi possível carregar a conexão com o Supabase.';return;}
 const db=window.supabase.createClient(SUPABASE_URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
@@ -32,6 +35,8 @@ async function getUser(){const {data,error}=await db.auth.getUser();return error
 async function render(){
  const u=await getUser();
  signIn.disabled=signUp.disabled=!!u;
+ if(magicSend)magicSend.disabled=!!u;
+ if(magicConfirm)magicConfirm.disabled=!!u;
  signOut.disabled=syncButton.disabled=!u;
  password.style.display=u?'none':'';
  email.value=u?.email||email.value||'sac@consigbeneficio.com.br';
@@ -52,6 +57,54 @@ async function authAction(mode){
  }catch(err){say('Falha na autenticação: '+(err.message||'verifique os dados'))}
  finally{signIn.disabled=signUp.disabled=false;}
 }
+async function requestEmailAccess(){
+ const addr=email.value.trim().toLowerCase();
+ if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr)){say('Informe um e-mail válido antes de solicitar acesso.');return}
+ magicSend.disabled=true;
+ try{
+  const {error}=await db.auth.signInWithOtp({
+   email:addr,
+   options:{
+    shouldCreateUser:true,
+    emailRedirectTo:'https://consigbeneficios.github.io/bussi/index.html'
+   }
+  });
+  if(error)throw error;
+  say('Solicitação enviada ao '+addr+'. No e-mail do Supabase, copie o link do botão e cole no campo abaixo, ou insira o código recebido. Não compartilhe esse link.');
+ }catch(err){say('Não foi possível enviar o acesso: '+(err.message||'verifique o e-mail e tente novamente'));}
+ finally{magicSend.disabled=false}
+}
+async function verifyEmailAccess(){
+ const raw=magicInput.value.trim();
+ const addr=email.value.trim().toLowerCase();
+ if(!raw){say('Cole o link do e-mail ou informe o código de verificação.');return}
+ magicConfirm.disabled=true;
+ try{
+  let result;
+  if(/^\d{6,8}$/.test(raw)){
+   result=await db.auth.verifyOtp({email:addr,token:raw,type:'email'});
+  } else {
+   let url;
+   try{url=new URL(raw)}catch{throw Error('Cole o endereço completo recebido no e-mail, não o texto do botão.')}
+   if(url.hostname!=='qzelhgfwrppkhdmolhys.supabase.co'||url.pathname!=='/auth/v1/verify')throw Error('Link não pertence ao servidor de autenticação do BUSSI.');
+   const hash=url.searchParams.get('token_hash')||url.searchParams.get('token');
+   const type=url.searchParams.get('type');
+   if(!hash||!['magiclink','email','signup'].includes(type))throw Error('Este link não é uma confirmação de acesso válida.');
+   result=await db.auth.verifyOtp({token_hash:hash,type:type==='magiclink'?'magiclink':'email'});
+  }
+  if(result.error)throw result.error;
+  magicInput.value='';
+  if(!result.data?.session)throw Error('O link foi verificado, mas não foi possível iniciar uma sessão.');
+  say('Acesso confirmado. A sincronização das faturas será iniciada.');
+  await render();
+ }catch(err){say('Não foi possível validar o acesso: '+(err.message||'o link pode ter expirado ou já sido usado'))}
+ finally{magicConfirm.disabled=false}
+}
+if(magicSend&&magicInput&&magicConfirm){
+ magicSend.addEventListener('click',requestEmailAccess);
+ magicConfirm.addEventListener('click',verifyEmailAccess);
+}
+
 signUp.addEventListener('click',()=>authAction('signup'));
 signIn.addEventListener('click',()=>authAction('login'));
 signOut.addEventListener('click',async()=>{await db.auth.signOut();await render()});
