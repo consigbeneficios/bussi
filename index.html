@@ -202,24 +202,6 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.app{min-height:
 <div class="field"><label>Nome completo</label><input id="cName"></div><div class="field"><label>Contrato</label><input id="cContract"></div><div class="field"><label>Telefone</label><input id="cPhone"></div><div class="field"><label>Parcela original</label><input id="cOriginal"></div><div class="field"><label>Parcela com desconto</label><input id="cFinal"></div>
 </div><div class="rowend"><button class="btn ghost" data-close="clientModal">Cancelar</button><button class="btn primary" id="saveClient">Salvar cliente</button></div></div></div>
 <div class="modal" id="campaignModal"><div class="dialog"><h3>Nova campanha</h3><div class="grid2"><div class="field"><label>Nome da campanha</label><input id="campName"></div><div class="field"><label>Público</label><select id="campAudience"><option>Todos os clientes</option><option>Clientes com cobrança</option><option>Segmento manual</option></select></div></div><div class="field" style="margin-top:14px"><label>Mensagem</label><textarea id="campMessage" placeholder="Ex.: Olá, {{nome}}. Sua condição especial está disponível..."></textarea></div><div class="rowend"><button class="btn ghost" data-close="campaignModal">Cancelar</button><button class="btn primary" id="saveCampaign">Salvar campanha</button></div></div></div>
-<div class="modal" id="settlementModal"><div class="dialog">
-  <h3>Confirmar pagamento</h3>
-  <div class="notice" style="margin-bottom:14px"><b>Confirmação manual.</b> Confirme somente depois de verificar no extrato que o valor foi efetivamente creditado.</div>
-  <div class="grid2">
-    <div class="field"><label>Cliente</label><input id="settleCustomer" readonly></div>
-    <div class="field"><label>Cobrança / contrato</label><input id="settleInvoice" readonly></div>
-    <div class="field"><label>Valor liquidado</label><input id="settleAmount" readonly></div>
-    <div class="field"><label>Data e hora da liquidação</label><input id="settleDateTime" type="datetime-local"></div>
-    <div class="field"><label>ID/Transação (EndToEndId ou referência do PSP) *</label><input id="settleTransactionId" placeholder="Ex.: E123... ou referência do banco"></div>
-    <div class="field"><label>TXID / identificador da cobrança</label><input id="settleTxid" placeholder="Opcional"></div>
-    <div class="field"><label>Nome do pagador</label><input id="settlePayerName"></div>
-    <div class="field"><label>CPF/CNPJ do pagador</label><input id="settlePayerDoc" placeholder="Opcional"></div>
-    <div class="field"><label>PSP / instituição do pagador</label><input id="settlePayerPsp" placeholder="Opcional"></div>
-    <div class="field"><label>PSP / instituição recebedora</label><input id="settleReceiverPsp" placeholder="Opcional"></div>
-  </div>
-  <div class="field" style="margin-top:12px"><label>Observações</label><textarea id="settleNotes" placeholder="Opcional"></textarea></div>
-  <div class="rowend"><button class="btn ghost" data-close="settlementModal">Cancelar</button><button class="btn primary" id="confirmSettlement">Confirmar e gerar comprovante</button></div>
-</div></div>
 
 <script>
 const K={clients:'bussi.clients.v1',campaigns:'bussi.campaigns.v1',charges:'bussi.charges.v1',settings:'bussi.settings.v1'};
@@ -405,20 +387,37 @@ function renderChargeClientOptions(){const sel=$('chargeClient');if(!sel)return;
 let settleChargeId=null;
 function nowLocalInput(){const d=new Date(),p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes())}
 function openSettlement(id){
-  const c=charges.find(x=>x.id===id);if(!c)return;
-  settleChargeId=id;
-  $('settleCustomer').value=c.customer||'';
-  $('settleInvoice').value=c.contract||c.invoice||'';
-  $('settleAmount').value=money(c.amount);
-  $('settleDateTime').value=nowLocalInput();
-  $('settleTransactionId').value=c.transactionId||'';
-  $('settleTxid').value=c.txid||'';
-  $('settlePayerName').value=c.payerName||c.customer||'';
-  $('settlePayerDoc').value=c.payerDoc||'';
-  $('settlePayerPsp').value=c.payerPsp||'';
-  $('settleReceiverPsp').value=c.receiverPsp||(settings.paymentProvider?String(settings.paymentProvider).toUpperCase():'');
-  $('settleNotes').value=c.settlementNotes||'';
-  openModal('settlementModal')
+ const c=charges.find(x=>x.id===id);
+ if(!c||c.status==='Pagamento confirmado')return;
+ if(!confirm('Você conferiu no extrato que o pagamento de '+money(c.amount)+' foi realmente recebido? Confirmar a liquidação e gerar o comprovante?'))return;
+ const snapshot=c.url?(()=>{try{const h=new URL(c.url).hash;const p=new URLSearchParams(h.slice(1)).get('p');if(!p)return null;let b=p.replace(/-/g,'+').replace(/_/g,'/');while(b.length%4)b+='=';const bin=atob(b);return JSON.parse(new TextDecoder().decode(Uint8Array.from(bin,x=>x.charCodeAt(0))))}catch{return null}})():null;
+ c.contract=c.contract||snapshot?.contract||c.invoice;
+ c.phone=c.phone||snapshot?.phone||'';
+ c.description=c.description||snapshot?.description||'P/Consignado';
+ c.status='Pagamento confirmado';
+ c.confirmedAt=new Date().toISOString();
+ c.confirmedBy='consibeneficio';
+ c.paymentMethod='Pix';
+ c.payerName=c.customer;
+ c.receiptNumber=c.receiptNumber||receiptNumber(c);
+ c.transactionId=c.transactionId||'';
+ c.txid=c.txid||'';
+ c.receiptUrl=receiptUrlFor(c);
+ save(K.charges,charges);renderAll();
+ const w=window.open(c.receiptUrl,'_blank');
+ if(!w)alert('Pagamento registrado. Clique em Comprovante para abrir o documento.')
+}
+function refuseCharge(id){
+ const c=charges.find(x=>x.id===id);if(!c||c.status==='Pagamento confirmado')return;
+ if(!confirm('Registrar a cobrança '+c.invoice+' como PAGAMENTO RECUSADO pela CONSIG? Esta ação não significa que o banco recusou a transação.'))return;
+ c.status='Pagamento recusado';c.refusedAt=new Date().toISOString();c.refusedBy='consibeneficio';
+ delete c.receiptUrl;delete c.receiptNumber;
+ save(K.charges,charges);renderAll()
+}
+function reopenCharge(id){
+ const c=charges.find(x=>x.id===id);if(!c||c.status!=='Pagamento recusado')return;
+ if(!confirm('Reabrir esta cobrança para aguardar nova conferência manual?'))return;
+ c.status='Aguardando confirmação';delete c.refusedAt;delete c.refusedBy;save(K.charges,charges);renderAll()
 }
 function receiptNumber(c){const d=new Date(),p=n=>String(n).padStart(2,'0');return 'CLP-'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+String(c.id).slice(-6)}
 function makeReceiptPayload(c){
@@ -437,6 +436,7 @@ function makeReceiptPayload(c){
     confirmedAt:c.confirmedAt,
     confirmedBy:c.confirmedBy||'consibeneficio',
     transactionId:c.transactionId||'',
+    confirmationSource:'manual',
     txid:c.txid||'',
     payerName:c.payerName||c.customer||'',
     payerDoc:c.payerDoc||'',
@@ -456,27 +456,6 @@ function receiptUrlFor(c){
 }
 function openReceipt(id){const c=charges.find(x=>x.id===id);if(!c||c.status!=='Pagamento confirmado')return;window.open(c.receiptUrl||receiptUrlFor(c),'_blank')}
 async function copyReceipt(id){const c=charges.find(x=>x.id===id);if(!c||c.status!=='Pagamento confirmado')return;const u=c.receiptUrl||receiptUrlFor(c);try{await navigator.clipboard.writeText(u);alert('Link do comprovante copiado.')}catch{prompt('Copie o link do comprovante:',u)}}
-$('confirmSettlement').onclick=()=>{
-  const c=charges.find(x=>x.id===settleChargeId);if(!c)return;
-  const transactionId=$('settleTransactionId').value.trim();
-  if(!transactionId){alert('Informe o ID/Transação (EndToEndId ou referência do PSP).');return}
-  const dt=$('settleDateTime').value;if(!dt){alert('Informe a data e hora da liquidação.');return}
-  c.status='Pagamento confirmado';
-  c.confirmedAt=new Date(dt).toISOString();
-  c.confirmedBy='consibeneficio';
-  c.paymentMethod='Pix';
-  c.transactionId=transactionId;
-  c.txid=$('settleTxid').value.trim();
-  c.payerName=$('settlePayerName').value.trim()||c.customer;
-  c.payerDoc=$('settlePayerDoc').value.trim();
-  c.payerPsp=$('settlePayerPsp').value.trim();
-  c.receiverPsp=$('settleReceiverPsp').value.trim();
-  c.settlementNotes=$('settleNotes').value.trim();
-  c.receiptNumber=c.receiptNumber||receiptNumber(c);
-  c.receiptUrl=receiptUrlFor(c);
-  save(K.charges,charges);closeModal('settlementModal');renderAll();
-  window.open(c.receiptUrl,'_blank')
-};
 function persistAll(){
   localStorage.setItem(K.clients,JSON.stringify(clients));
   localStorage.setItem(K.campaigns,JSON.stringify(campaigns));
@@ -503,7 +482,7 @@ $('backupFile').onchange=async e=>{
   e.target.value=''
 };
 window.addEventListener('beforeunload',persistAll);
-function renderAll(){$('mClients').textContent=clients.length;$('mCampaigns').textContent=campaigns.length;$('mCharges').textContent=charges.length;$('mTracking').textContent=settings.trackingEndpoint?'Conectado':'Não conectado';const visibleClients=filteredClients();if($('clientSearchCount'))$('clientSearchCount').value=visibleClients.length+' cliente(s)';$('clientRows').innerHTML=visibleClients.length?visibleClients.map(c=>`<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.contract)}</td><td>${esc(c.phone)}</td><td>${money(c.original)}</td><td>${money(c.final)}</td><td><div class="toolbar"><button class="btn sm ghost" onclick="editClient(${c._i})">Editar</button><button class="btn sm danger" onclick="delClient(${c._i})">Excluir</button></div></td></tr>`).join(''):'<tr><td colspan="6" class="empty">Nenhum cliente encontrado.</td></tr>';$('campaignRows').innerHTML=campaigns.length?campaigns.map(c=>`<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.audience)}</td><td><span class="badge yellow">${esc(c.status)}</span></td><td>${esc(c.message).slice(0,90)}</td><td><button class="btn sm danger" onclick="delCampaign(${c.id})">Excluir</button></td></tr>`).join(''):'<tr><td colspan="5" class="empty">Nenhuma campanha criada.</td></tr>';$('chargeRows').innerHTML=charges.length?charges.map(c=>`<tr><td>${esc(c.invoice)}</td><td><b>${esc(c.customer)}</b></td><td><span style="text-decoration:line-through">${money(c.original)}</span></td><td>${Number(c.discount||0).toFixed(0)}% OFF</td><td><b>${money(c.amount)}</b></td><td><span class="badge ${c.status==='Pagamento confirmado'?'green':'yellow'}">${esc(c.status)}</span></td><td><div class="toolbar">${c.status==='Pagamento confirmado'?'<button class="btn sm primary" onclick="openReceipt('+c.id+')">Comprovante</button><button class="btn sm ghost" onclick="copyReceipt('+c.id+')">Copiar link</button>':'<button class="btn sm primary" onclick="openSettlement('+c.id+')">Confirmar pagamento</button>'}<button class="btn sm ghost" onclick="window.open(\''+esc(c.url||'')+'\',\'_blank\')">Abrir cobrança</button></div></td></tr>`).join(''):'<tr><td colspan="7" class="empty">Nenhuma cobrança gerada.</td></tr>';const cur=$('chargeClient').value;renderChargeClientOptions();if(cur&&clients[+cur])$('chargeClient').value=cur;const selected=clients[+$('chargeClient').value];if(selected){$('chargeOriginal').value=fmtInput(selected.original);$('chargeDiscount').value=Math.round((100-selected.final/selected.original*100)*100)/100;calcCharge()}['pixType','pixKey','pixName','pixCity','pixTxid','pixDesc','trackingEndpoint','metaPhoneId','metaWabaId','trackingEndpoint2','trackingEnv','paymentProvider','paymentWebhook','paymentStatusEndpoint','authEmail','authResetEndpoint'].forEach(id=>{const map={pixType:'pixType',pixKey:'pixKey',pixName:'pixName',pixCity:'pixCity',pixTxid:'pixTxid',pixDesc:'pixDesc',trackingEndpoint:'trackingEndpoint',metaPhoneId:'metaPhoneId',metaWabaId:'metaWabaId',trackingEndpoint2:'trackingEndpoint',trackingEnv:'trackingEnv',paymentProvider:'paymentProvider',paymentWebhook:'paymentWebhook',paymentStatusEndpoint:'paymentStatusEndpoint',authEmail:'authEmail',authResetEndpoint:'authResetEndpoint'};if($(id)&&document.activeElement!==$(id))$(id).value=settings[map[id]]??''});if($('metaChip')){$('metaChip').textContent=(settings.metaPhoneId&&settings.metaWabaId)?'Configurado':'Não conectado';$('metaChip').className='statuschip'+((settings.metaPhoneId&&settings.metaWabaId)?' on':'')}if($('trackingChip')){$('trackingChip').textContent=settings.trackingEndpoint?'Configurado':'Não conectado';$('trackingChip').className='statuschip'+(settings.trackingEndpoint?' on':'')}if($('paymentChip')){$('paymentChip').textContent=settings.paymentProvider?(settings.paymentWebhook?'Configurado':'Provedor selecionado'):'Manual';$('paymentChip').className='statuschip'+(settings.paymentProvider&&settings.paymentWebhook?' on':'')}if($('authChip')){$('authChip').textContent=settings.authResetEndpoint?'Recuperação conectada':'Local';$('authChip').className='statuschip'+(settings.authResetEndpoint?' on':'')}renderPixStatus()}
+function renderAll(){$('mClients').textContent=clients.length;$('mCampaigns').textContent=campaigns.length;$('mCharges').textContent=charges.length;$('mTracking').textContent=settings.trackingEndpoint?'Conectado':'Não conectado';const visibleClients=filteredClients();if($('clientSearchCount'))$('clientSearchCount').value=visibleClients.length+' cliente(s)';$('clientRows').innerHTML=visibleClients.length?visibleClients.map(c=>`<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.contract)}</td><td>${esc(c.phone)}</td><td>${money(c.original)}</td><td>${money(c.final)}</td><td><div class="toolbar"><button class="btn sm ghost" onclick="editClient(${c._i})">Editar</button><button class="btn sm danger" onclick="delClient(${c._i})">Excluir</button></div></td></tr>`).join(''):'<tr><td colspan="6" class="empty">Nenhum cliente encontrado.</td></tr>';$('campaignRows').innerHTML=campaigns.length?campaigns.map(c=>`<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.audience)}</td><td><span class="badge yellow">${esc(c.status)}</span></td><td>${esc(c.message).slice(0,90)}</td><td><button class="btn sm danger" onclick="delCampaign(${c.id})">Excluir</button></td></tr>`).join(''):'<tr><td colspan="5" class="empty">Nenhuma campanha criada.</td></tr>';$('chargeRows').innerHTML=charges.length?charges.map(c=>`<tr><td>${esc(c.invoice)}</td><td><b>${esc(c.customer)}</b></td><td><span style="text-decoration:line-through">${money(c.original)}</span></td><td>${Number(c.discount||0).toFixed(0)}% OFF</td><td><b>${money(c.amount)}</b></td><td><span class="badge ${c.status==='Pagamento confirmado'?'green':'yellow'}">${esc(c.status)}</span></td><td><div class="toolbar">${c.status==='Pagamento confirmado'?'<button class="btn sm primary" onclick="openReceipt('+c.id+')">Comprovante</button><button class="btn sm ghost" onclick="copyReceipt('+c.id+')">Copiar link</button>':c.status==='Pagamento recusado'?'<button class="btn sm ghost" onclick="reopenCharge('+c.id+')">Reabrir</button>':'<button class="btn sm primary" onclick="openSettlement('+c.id+')">Confirmar pagamento</button><button class="btn sm danger" onclick="refuseCharge('+c.id+')">Recusar</button>'}<button class="btn sm ghost" onclick="window.open(\''+esc(c.url||'')+'\',\'_blank\')">Abrir cobrança</button></div></td></tr>`).join(''):'<tr><td colspan="7" class="empty">Nenhuma cobrança gerada.</td></tr>';const cur=$('chargeClient').value;renderChargeClientOptions();if(cur&&clients[+cur])$('chargeClient').value=cur;const selected=clients[+$('chargeClient').value];if(selected){$('chargeOriginal').value=fmtInput(selected.original);$('chargeDiscount').value=Math.round((100-selected.final/selected.original*100)*100)/100;calcCharge()}['pixType','pixKey','pixName','pixCity','pixTxid','pixDesc','trackingEndpoint','metaPhoneId','metaWabaId','trackingEndpoint2','trackingEnv','paymentProvider','paymentWebhook','paymentStatusEndpoint','authEmail','authResetEndpoint'].forEach(id=>{const map={pixType:'pixType',pixKey:'pixKey',pixName:'pixName',pixCity:'pixCity',pixTxid:'pixTxid',pixDesc:'pixDesc',trackingEndpoint:'trackingEndpoint',metaPhoneId:'metaPhoneId',metaWabaId:'metaWabaId',trackingEndpoint2:'trackingEndpoint',trackingEnv:'trackingEnv',paymentProvider:'paymentProvider',paymentWebhook:'paymentWebhook',paymentStatusEndpoint:'paymentStatusEndpoint',authEmail:'authEmail',authResetEndpoint:'authResetEndpoint'};if($(id)&&document.activeElement!==$(id))$(id).value=settings[map[id]]??''});if($('metaChip')){$('metaChip').textContent=(settings.metaPhoneId&&settings.metaWabaId)?'Configurado':'Não conectado';$('metaChip').className='statuschip'+((settings.metaPhoneId&&settings.metaWabaId)?' on':'')}if($('trackingChip')){$('trackingChip').textContent=settings.trackingEndpoint?'Configurado':'Não conectado';$('trackingChip').className='statuschip'+(settings.trackingEndpoint?' on':'')}if($('paymentChip')){$('paymentChip').textContent=settings.paymentProvider?(settings.paymentWebhook?'Configurado':'Provedor selecionado'):'Manual';$('paymentChip').className='statuschip'+(settings.paymentProvider&&settings.paymentWebhook?' on':'')}if($('authChip')){$('authChip').textContent=settings.authResetEndpoint?'Recuperação conectada':'Local';$('authChip').className='statuschip'+(settings.authResetEndpoint?' on':'')}renderPixStatus()}
 renderAll();
 </script>
 </body>
