@@ -92,7 +92,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.app{min-height:
 
     <section class="view" id="crm">
       <div class="section">
-        <div class="sectionhead"><div><h2>CRM / Clientes</h2><p>Base operacional usada para campanhas e cobranças.</p></div><div class="toolbar"><input type="file" id="importFile" accept=".xlsx,.xls,.csv" hidden><button class="btn ghost" id="importBtn">Importar planilha</button><button class="btn primary" id="newClient">Novo cliente</button></div></div>
+        <div class="sectionhead"><div><h2>CRM / Clientes</h2><p>Base operacional usada para campanhas e cobranças.</p></div><div class="toolbar"><input type="file" id="importFile" accept=".xlsx,.xls,.csv" hidden><button class="btn ghost" id="downloadTemplate">Baixar modelo Excel</button><button class="btn ghost" id="importBtn">Importar planilha</button><button class="btn primary" id="newClient">Novo cliente</button></div></div>
         <div class="grid2" style="margin-bottom:14px">
           <div class="field"><label>Pesquisar cliente</label><input id="clientSearch" placeholder="Nome, contrato ou telefone"></div>
           <div class="field"><label>Resultados</label><input id="clientSearchCount" readonly value="0 cliente(s)"></div>
@@ -285,6 +285,20 @@ $('newClient').onclick=()=>{editClientIndex=-1;$('clientModalTitle').textContent
 $('saveClient').onclick=()=>{const c={name:$('cName').value.trim(),contract:$('cContract').value.trim(),phone:$('cPhone').value.trim(),original:parseMoney($('cOriginal').value),final:parseMoney($('cFinal').value)};if(!c.name)return alert('Informe o nome do cliente.');if(editClientIndex>=0)clients[editClientIndex]=c;else clients.push(c);save(K.clients,clients);closeModal('clientModal');renderAll()};
 function editClient(i){editClientIndex=i;const c=clients[i];$('clientModalTitle').textContent='Editar cliente';$('cName').value=c.name;$('cContract').value=c.contract;$('cPhone').value=c.phone;$('cOriginal').value=fmtInput(c.original);$('cFinal').value=fmtInput(c.final);openModal('clientModal')}
 function delClient(i){if(confirm('Excluir este cliente do CRM?')){clients.splice(i,1);save(K.clients,clients);renderAll()}}
+$('downloadTemplate').onclick=()=>{
+  if(typeof XLSX==='undefined'){alert('Não foi possível carregar o módulo de planilhas. Tente novamente com conexão à internet.');return}
+  const rows=[{
+    'Nome completo':'Nome do cliente',
+    'Contrato':'12345678',
+    'Telefone':'(11) 99999-9999',
+    'Valor original':1000.00,
+    'Valor com 50% de desconto':500.00
+  }];
+  const ws=XLSX.utils.json_to_sheet(rows,{header:['Nome completo','Contrato','Telefone','Valor original','Valor com 50% de desconto']});
+  ws['!cols']=[{wch:30},{wch:16},{wch:20},{wch:18},{wch:28}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Clientes');
+  XLSX.writeFile(wb,'TEMPLATE_IMPORTACAO_BUSSI.xlsx')
+};
 $('importBtn').onclick=()=>$('importFile').click();
 $('importFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const buf=await f.arrayBuffer();const wb=XLSX.read(buf,{type:'array'}),ws=wb.Sheets[wb.SheetNames[0]],rows=XLSX.utils.sheet_to_json(ws,{defval:''});const added=rows.map(r=>({name:r['Nome completo']||r.Nome||r.nome||'',contract:String(r['Contrato']||r.contrato||''),phone:String(r['Telefone']||r.telefone||''),original:parseMoney(r['Valor original']||r.original||0),final:parseMoney(r['Valor com 50% de desconto']||r['Valor com desconto']||r.final||0)})).filter(x=>x.name);clients=[...clients,...added];save(K.clients,clients);renderAll();alert(added.length+' cliente(s) importado(s).')}catch(err){alert('Não foi possível importar a planilha.')}e.target.value=''};
 $('newCampaign').onclick=()=>{['campName','campMessage'].forEach(x=>$(x).value='');openModal('campaignModal')};
@@ -300,7 +314,8 @@ function b64url(obj){const s=JSON.stringify(obj),bytes=new TextEncoder().encode(
 function calcCharge(){const c=clients[+$('chargeClient').value];if(c&&!$('chargeOriginal').matches(':focus'))$('chargeOriginal').value=fmtInput(c.original);const o=parseMoney($('chargeOriginal').value),d=Math.min(100,Math.max(0,Number($('chargeDiscount').value||0))),f=o*(1-d/100);$('chargeFinal').value=fmtInput(f);return {c,o,d,f}}
 $('chargeClient').onchange=()=>{const c=clients[+$('chargeClient').value];if(c){$('chargeOriginal').value=fmtInput(c.original);const pct=c.original>0?(100-(c.final/c.original*100)):50;$('chargeDiscount').value=(Math.round(pct*100)/100);calcCharge()}};
 $('chargeOriginal').oninput=calcCharge;$('chargeDiscount').oninput=calcCharge;
-function makeSnapshot(){const {c,o,d,f}=calcCharge();if(!c)throw Error('Selecione um cliente.');const pix=buildPix(f);if(!pix)throw Error('Configure uma chave Pix válida antes de gerar a cobrança.');const inv=c.contract||('BUSSI-'+Date.now());return {v:4,invoice:inv,customer:c.name,phone:c.phone,amount:f,original:o,discount:d,final:f,quantity:1,description:$('chargeDesc').value||'P/Consignado',due:$('chargeDue').value,issueDate:new Date().toISOString().slice(0,10),pix,company:'CONSIG BENEFÍCIO S/A',companyAddress:'Avenida Doutor Cardoso de Melo, nº 1.855, Vila Olímpia, São Paulo/SP, CEP 04548-005',email:'sac@consigbeneficio.com.br',cnpj:'66.754.630/0001-60',trackingEndpoint:settings.trackingEndpoint||''}}
+function syncPixFromUI(){settings={...settings,pixType:$('pixType').value,pixKey:$('pixKey').value.trim(),pixName:$('pixName').value.trim(),pixCity:$('pixCity').value.trim(),pixTxid:$('pixTxid').value.trim()||'***',pixDesc:$('pixDesc').value.trim()};localStorage.setItem(K.settings,JSON.stringify(settings))}
+function makeSnapshot(){syncPixFromUI();const {c,o,d,f}=calcCharge();if(!c)throw Error('Selecione um cliente.');const pix=buildPix(f);if(!pix)throw Error('Configure uma chave Pix válida antes de gerar a cobrança.');const inv=c.contract||('BUSSI-'+Date.now());return {v:4,invoice:inv,customer:c.name,phone:c.phone,amount:f,original:o,discount:d,final:f,quantity:1,description:$('chargeDesc').value||'P/Consignado',due:$('chargeDue').value,issueDate:new Date().toISOString().slice(0,10),pix,company:'CONSIG BENEFÍCIO S/A',companyAddress:'Avenida Doutor Cardoso de Melo, nº 1.855, Vila Olímpia, São Paulo/SP, CEP 04548-005',email:'sac@consigbeneficio.com.br',cnpj:'66.754.630/0001-60',trackingEndpoint:settings.trackingEndpoint||''}}
 $('generateCharge').onclick=()=>{let popup=null;try{popup=window.open('','_blank');const snap=makeSnapshot(),url=new URL('pagamento.html',location.href);url.hash='p='+b64url(snap);lastLink=url.href;$('generatedLink').value=lastLink;$('generatedBox').style.display='block';charges.unshift({id:Date.now(),invoice:snap.invoice,customer:snap.customer,original:snap.original,discount:snap.discount,amount:snap.amount,status:'Aguardando confirmação',url:lastLink});save(K.charges,charges);renderAll();if(popup){popup.location.href=lastLink;popup.focus()}else{alert('Cobrança gerada. Permita pop-ups para abrir o link automaticamente. O link ficou disponível para copiar abaixo.')}}catch(e){if(popup&&!popup.closed)popup.close();alert(e.message)}};
 $('copyGenerated').onclick=async()=>{if(lastLink){await navigator.clipboard.writeText(lastLink);$('copyGenerated').textContent='Copiado';setTimeout(()=>$('copyGenerated').textContent='Copiar',1200)}};$('openGenerated').onclick=()=>lastLink&&window.open(lastLink,'_blank');
 $('printInvoice').onclick=()=>{try{const d=makeSnapshot();const w=window.open('','_blank');if(!w)return alert('Permita pop-ups para visualizar a fatura.');w.document.write(invoiceHtml(d));w.document.close();setTimeout(()=>w.print(),250)}catch(e){alert(e.message)}};
@@ -308,7 +323,11 @@ function invoiceHtml(d){const issue=new Date(d.issueDate+'T12:00:00').toLocaleDa
 function saveSettingsFromUI(){settings={...settings,pixType:$('pixType').value,pixKey:$('pixKey').value.trim(),pixName:$('pixName').value.trim(),pixCity:$('pixCity').value.trim(),pixTxid:$('pixTxid').value.trim()||'***',pixDesc:$('pixDesc').value.trim(),trackingEndpoint:$('trackingEndpoint').value.trim()};save(K.settings,settings);renderPixStatus();renderAll()}
 $('saveIntegrations').onclick=()=>{settings={...settings,metaPhoneId:$('metaPhoneId').value.trim(),metaWabaId:$('metaWabaId').value.trim(),trackingEndpoint:$('trackingEndpoint2').value.trim(),trackingEnv:$('trackingEnv').value.trim(),paymentProvider:$('paymentProvider').value,paymentWebhook:$('paymentWebhook').value.trim(),authEmail:$('authEmail').value.trim()||'sac@consigbeneficio.com.br',authResetEndpoint:$('authResetEndpoint').value.trim()};save(K.settings,settings);renderAll();alert('Configurações de integração salvas neste navegador.')}
 
-$('saveSettings').onclick=saveSettingsFromUI;['pixType','pixKey'].forEach(id=>$(id).addEventListener('input',()=>{settings.pixType=$('pixType').value;settings.pixKey=$('pixKey').value;renderPixStatus()}));
+$('saveSettings').onclick=saveSettingsFromUI;
+['pixType','pixKey','pixName','pixCity','pixTxid','pixDesc'].forEach(id=>{
+  $(id).addEventListener('change',saveSettingsFromUI)
+});
+['pixType','pixKey'].forEach(id=>$(id).addEventListener('input',()=>{settings.pixType=$('pixType').value;settings.pixKey=$('pixKey').value;renderPixStatus()}));
 function renderPixStatus(){const n=normalizeKey($('pixKey').value,$('pixType').value);$('pixStatus').className='notice'+(n.ok?' good':'');$('pixStatus').innerHTML=n.ok?'<b>'+n.type+' reconhecido.</b> A chave está em formato compatível com a geração do BR Code.':'Informe uma chave Pix válida ou selecione manualmente o tipo.'}
 function normSearch(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()}
 function filteredClients(){const q=normSearch($('clientSearch')?.value);if(!q)return clients.map((c,i)=>({...c,_i:i}));return clients.map((c,i)=>({...c,_i:i})).filter(c=>normSearch(c.name+' '+c.contract+' '+c.phone).includes(q))}
