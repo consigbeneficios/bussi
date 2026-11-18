@@ -52,7 +52,7 @@ function renderRefused(){
  document.getElementById('body').innerHTML='<div class="icon checking">!</div><h1>Pagamento não confirmado</h1><p class="lead">A equipe da CONSIG registrou a recusa desta cobrança após conferência manual. Isso não significa recusa pelo banco. Entre em contato com o atendimento antes de realizar outro Pix.</p><div class="note">Atendimento: sac@consigbeneficio.com.br</div>'
 }
 function saoPauloToday(){const p=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));return p.year+'-'+p.month+'-'+p.day}
-function expiredByDate(){const day=/^\\d{4}-\\d{2}-\\d{2}$/.test(String(d.issueDate||''))?d.issueDate:d.due;return /^\\d{4}-\\d{2}-\\d{2}$/.test(String(day||''))&&saoPauloToday()>day}
+function expiredByDate(){const day=/^\d{4}-\d{2}-\d{2}$/.test(String(d.issueDate||''))?d.issueDate:d.due;return /^\d{4}-\d{2}-\d{2}$/.test(String(day||''))&&saoPauloToday()>day}
 function renderExpired(){
  document.getElementById('body').innerHTML='<div class="icon checking">!</div><h1>Link de pagamento vencido</h1><p class="lead">A cobrança venceu no dia da emissão. O QR Code Pix não está mais disponível neste link. Solicite uma nova cobrança ao atendimento.</p><div class="note">sac@consigbeneficio.com.br</div>'
 }
