@@ -7,7 +7,7 @@
 <style>
 :root{--ink:#11151a;--muted:#6d737c;--line:#e4e7eb;--green:#16866f;--greenbg:#eaf8f3;--amber:#835b12;--amberbg:#fff7e8}
 *{box-sizing:border-box}body{margin:0;min-height:100vh;background:#eef0f3;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;display:grid;place-items:center;padding:20px}
-.wrap{width:min(620px,100%);background:#fff;border-radius:22px;box-shadow:0 18px 55px rgba(0,0,0,.08);overflow:hidden}.head{padding:22px 28px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:18px}.headlogo{width:106px;height:106px;border-radius:20px;object-fit:cover;box-shadow:0 5px 15px rgba(20,27,42,.08)}.brand{font-size:13px;font-weight:850;text-align:right}.brand small{display:block;color:var(--muted);font-weight:500;margin-top:4px}.body{padding:42px 35px;text-align:center}.icon{width:72px;height:72px;border-radius:50%;display:grid;place-items:center;margin:0 auto 18px;font-size:32px;font-weight:900}.icon.checking{background:#eff4f7;color:#5a7f91}.icon.confirmed{background:var(--greenbg);color:var(--green)}h1{font-size:29px;line-height:1.14;letter-spacing:-.03em;margin:0 0 12px;font-weight:850}.lead{color:#64707c;font-size:15px;line-height:1.6;margin:0 auto 24px;max-width:460px}.summary{border:1px solid var(--line);border-radius:14px;text-align:left;margin:22px 0;padding:15px 17px}.row{display:flex;justify-content:space-between;gap:20px;padding:7px 0;font-size:13px}.row span{color:var(--muted)}.row b{text-align:right}.btn{display:block;width:100%;border:0;border-radius:12px;padding:13px;font-weight:800;text-decoration:none;text-align:center;margin-top:10px;background:#18212c;color:#fff}.btn.green{background:var(--green)}.note{font-size:11px;color:var(--muted);line-height:1.5;margin-top:16px}.foot{padding:18px 22px;background:#f6f7f8;text-align:center;color:#707780;font-size:11px;line-height:1.6}.foot a{color:inherit;margin:0 5px}.spin{width:24px;height:24px;border:3px solid #cedce3;border-top-color:#3d8496;border-radius:50%;animation:spin .9s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}@media(max-width:520px){.body{padding:34px 22px}.head{padding:20px;align-items:center}.headlogo{width:84px;height:84px;border-radius:18px}.brand{font-size:12px}h1{font-size:24px}.row{gap:12px}.row b{overflow-wrap:anywhere}}
+.wrap{width:min(620px,100%);background:#fff;border-radius:22px;box-shadow:0 18px 55px rgba(0,0,0,.08);overflow:hidden}.head{padding:28px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;text-align:center}.headlogo{width:158px;height:158px;border-radius:26px;object-fit:cover;box-shadow:0 5px 15px rgba(20,27,42,.08)}.brand{font-size:14px;font-weight:850;text-align:center}.brand small{display:block;color:var(--muted);font-weight:500;margin-top:4px}.body{padding:42px 35px;text-align:center}.icon{width:72px;height:72px;border-radius:50%;display:grid;place-items:center;margin:0 auto 18px;font-size:32px;font-weight:900}.icon.checking{background:#eff4f7;color:#5a7f91}.icon.confirmed{background:var(--greenbg);color:var(--green)}h1{font-size:29px;line-height:1.14;letter-spacing:-.03em;margin:0 0 12px;font-weight:850}.lead{color:#64707c;font-size:15px;line-height:1.6;margin:0 auto 24px;max-width:460px}.summary{border:1px solid var(--line);border-radius:14px;text-align:left;margin:22px 0;padding:15px 17px}.row{display:flex;justify-content:space-between;gap:20px;padding:7px 0;font-size:13px}.row span{color:var(--muted)}.row b{text-align:right}.btn{display:block;width:100%;border:0;border-radius:12px;padding:13px;font-weight:800;text-decoration:none;text-align:center;margin-top:10px;background:#18212c;color:#fff}.btn.green{background:var(--green)}.note{font-size:11px;color:var(--muted);line-height:1.5;margin-top:16px}.foot{padding:18px 22px;background:#f6f7f8;text-align:center;color:#707780;font-size:11px;line-height:1.6}.foot a{color:inherit;margin:0 5px}.spin{width:24px;height:24px;border:3px solid #cedce3;border-top-color:#3d8496;border-radius:50%;animation:spin .9s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}@media(max-width:520px){.body{padding:34px 22px}.head{padding:20px;align-items:center}.headlogo{width:136px;height:136px;border-radius:22px}.brand{font-size:13px}h1{font-size:24px}.row{gap:12px}.row b{overflow-wrap:anywhere}}
 </style>
 <script src="bussi-events.js"></script>
 </head>
@@ -38,7 +38,7 @@ if(!d){document.getElementById('body').innerHTML='<h1>Link inválido</h1><p clas
 try{window.BussiEvents?.record(d,'status_opened')}catch{}
 const originalHash=location.hash.slice(1).replace(/&s=[^&]*/g,'');
 function paymentUrl(){const u=new URL('pagamento.html',location.href);u.hash=originalHash;return u.href}
-function summary(){return '<div class="summary"><div class="row"><span>Cliente</span><b>'+esc(d.customer||'—')+'</b></div><div class="row"><span>Cobrança</span><b>'+esc(d.invoice||'—')+'</b></div><div class="row"><span>Valor</span><b>'+money(d.amount)+'</b></div></div>'}
+
 function localDecision(){
  try{
   const list=JSON.parse(localStorage.getItem('bussi.charges.v1')||'[]');
@@ -46,19 +46,25 @@ function localDecision(){
  }catch{return null}
 }
 function renderChecking(){
- document.getElementById('body').innerHTML='<div class="icon checking"><div class="spin"></div></div><h1>Estamos verificando seu pagamento</h1><p class="lead">Sua solicitação de pagamento está em análise. Você receberá o comprovante assim que a liquidação for registrada.</p>'+summary()+'<a class="btn" href="'+paymentUrl()+'">Voltar ao pagamento</a><div class="note">Em caso de dúvidas, entre em contato pelo e-mail sac@consigbeneficio.com.br.</div>'
+ document.getElementById('body').innerHTML='<div class="icon checking"><div class="spin"></div></div><h1>Estamos verificando seu pagamento</h1><p class="lead">Sua solicitação de pagamento está em análise. Você receberá o comprovante assim que a liquidação for registrada.</p><a class="btn" href="'+paymentUrl()+'">Voltar ao pagamento</a><div class="note">Em caso de dúvidas, entre em contato pelo e-mail sac@consigbeneficio.com.br.</div>'
 }
 function renderRefused(){
- document.getElementById('body').innerHTML='<div class="icon checking">!</div><h1>Pagamento não confirmado</h1><p class="lead">A equipe da CONSIG registrou a recusa desta cobrança após conferência manual. Isso não significa recusa pelo banco. Entre em contato com o atendimento antes de realizar outro Pix.</p>'+summary()+'<div class="note">Atendimento: sac@consigbeneficio.com.br</div>'
+ document.getElementById('body').innerHTML='<div class="icon checking">!</div><h1>Pagamento não confirmado</h1><p class="lead">A equipe da CONSIG registrou a recusa desta cobrança após conferência manual. Isso não significa recusa pelo banco. Entre em contato com o atendimento antes de realizar outro Pix.</p><div class="note">Atendimento: sac@consigbeneficio.com.br</div>'
+}
+function saoPauloToday(){const p=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));return p.year+'-'+p.month+'-'+p.day}
+function expiredByDate(){const day=/^\\d{4}-\\d{2}-\\d{2}$/.test(String(d.issueDate||''))?d.issueDate:d.due;return /^\\d{4}-\\d{2}-\\d{2}$/.test(String(day||''))&&saoPauloToday()>day}
+function renderExpired(){
+ document.getElementById('body').innerHTML='<div class="icon checking">!</div><h1>Link de pagamento vencido</h1><p class="lead">A cobrança venceu no dia da emissão. O QR Code Pix não está mais disponível neste link. Solicite uma nova cobrança ao atendimento.</p><div class="note">sac@consigbeneficio.com.br</div>'
 }
 renderChecking();
 let lastStatus='';
 function poll(){
  const c=localDecision();
- if(c?.status==='Pagamento confirmado'&&c.receiptUrl){location.href=c.receiptUrl;return}
- if(c?.status==='Pagamento recusado'){if(lastStatus!=='Pagamento recusado')renderRefused();lastStatus='Pagamento recusado'}
- else if(lastStatus==='Pagamento recusado'){renderChecking();lastStatus=''}
- setTimeout(poll,5000)
+ if(c?.status==='Pagamento confirmado'){if(c.receiptUrl){location.href=c.receiptUrl;return}if(lastStatus!=='Pagamento confirmado'){document.getElementById('body').innerHTML='<div class="icon confirmed">✓</div><h1>Pagamento confirmado</h1><p class="lead">O recebimento foi registrado pela CONSIG. O link Pix está encerrado.</p>';lastStatus='Pagamento confirmado'}}
+ else if(c?.status==='Pagamento recusado'){if(lastStatus!=='Pagamento recusado')renderRefused();lastStatus='Pagamento recusado'}
+ else if(expiredByDate()){if(lastStatus!=='Expirado')renderExpired();lastStatus='Expirado'}
+ else if(lastStatus){renderChecking();lastStatus=''}
+ setTimeout(poll,3000)
 }
 poll();
 </script>
