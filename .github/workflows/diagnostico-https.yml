@@ -1,0 +1,47 @@
+name: Diagnostico de HTTPS - BUSSI
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/diagnostico-https.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar e habilitar HTTPS quando certificado estiver aprovado
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import os, json, urllib.request, urllib.error
+          endpoint = "https://api.github.com/repos/" + os.environ["GITHUB_REPOSITORY"] + "/pages"
+          headers = {"Accept": "application/vnd.github+json", "Authorization": "Bearer " + os.environ["GH_TOKEN"], "X-GitHub-Api-Version": "2022-11-28"}
+          try:
+              with urllib.request.urlopen(urllib.request.Request(endpoint, headers=headers), timeout=25) as response:
+                  p = json.load(response)
+              cert = p.get("https_certificate") or {}
+              print("GitHub Pages:", json.dumps({"url": p.get("html_url"), "cname": p.get("cname"), "https_enforced": p.get("https_enforced"), "https_certificate": cert}, ensure_ascii=False))
+              if cert.get("state") == "approved" and not p.get("https_enforced"):
+                  req = urllib.request.Request(endpoint, method="PUT", data=b'{"https_enforced":true}', headers=dict(headers, **{"Content-Type": "application/json"}))
+                  with urllib.request.urlopen(req, timeout=25) as result:
+                      print("HTTPS enforcement atualizado:", result.status)
+              elif cert.get("state") != "approved":
+                  print("Certificado ainda nao aprovado; nao forcar HTTPS sem certificado")
+          except urllib.error.HTTPError as e:
+              print("API do GitHub recusou consulta ou alteracao:", e.code, e.read().decode("utf-8", errors="replace")[:900])
+          except Exception as e:
+              print("Falha de diagnostico:", type(e).__name__, str(e)[:500])
+          PY
+      - name: Testar URLs publicas e certificados
+        run: |
+          for url in             "https://consigbeneficios.github.io/bussi/"             "https://pay.consigbeneficio.com.br/"             "https://pay.consigbeneficio.com.br/pagamento.html"; do
+            echo "TESTE $url"
+            curl --location --silent --show-error --output /dev/null --max-time 25               --write-out 'HTTP=%{http_code} URL_FINAL=%{url_effective} TLS=%{ssl_verify_result}
+'               "$url" || echo "ERRO: falha de conexao ou certificado"
+          done
