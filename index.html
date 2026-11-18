@@ -162,6 +162,12 @@ button:disabled{opacity:.5;cursor:not-allowed}
 }
 
 .pending-domain{padding:12px 13px;border-radius:10px;border:1px solid #dce5ec;background:#f8fafb;color:#4d5c69;font-size:12px;line-height:1.5}.pending-domain strong{display:block;margin:4px 0;overflow-wrap:anywhere;color:#253648;font-size:13px}.pending-domain span{display:block;color:#697787}#generatedLink{font-size:13px}
+/* Horário da última interação, exibido no fuso de São Paulo */
+.event-timestamp{display:block;font-size:11px;line-height:1.45;margin-top:4px;color:#59697a;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:550}
+#dashboardChargeRows .eventyes{white-space:nowrap}
+#dashboardChargeRows td:nth-child(n+3):nth-child(-n+6){min-width:132px}
+#dashboardEventRows td:first-child{white-space:nowrap;font-variant-numeric:tabular-nums}
+
 </style>
 </head>
 <body>
@@ -716,7 +722,7 @@ function persistAll(){
 $('saveAllNow').onclick=()=>{persistAll();alert('Informações salvas neste navegador.')};
 $('exportBackup').onclick=()=>{
   persistAll();
-  const backup={version:3,exportedAt:new Date().toISOString(),clients,campaigns,charges,settings,events:dashboardEvents(),daily:window.BussiEvents?.daily()||{},chargeDraft:load('bussi.charge.draft.v1',{})};
+  const backup={version:4,exportedAt:new Date().toISOString(),clients,campaigns,charges,settings,events:dashboardEvents(),daily:window.BussiEvents?.daily()||{},activity:window.BussiEvents?.activity()||{},invoiceNext:nextInvoiceNumber(),chargeDraft:load('bussi.charge.draft.v1',{})};
   const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='BUSSI_BACKUP_'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)
 };
@@ -730,6 +736,11 @@ $('backupFile').onchange=async e=>{
     if(Array.isArray(data.events))localStorage.setItem('bussi.events.v1',JSON.stringify(data.events.slice(-5000)));
     if(data.daily&&typeof data.daily==='object'&&!Array.isArray(data.daily))localStorage.setItem('bussi.events.daily.v1',JSON.stringify(data.daily));
     else if(Array.isArray(data.events))window.BussiEvents?.rebuildDaily(data.events);
+    if(data.activity&&typeof data.activity==='object'&&!Array.isArray(data.activity))localStorage.setItem('bussi.events.activity.v1',JSON.stringify(data.activity));
+    else if(Array.isArray(data.events))window.BussiEvents?.rebuildActivity(data.events);
+    if(Number.isSafeInteger(Number(data.invoiceNext))&&Number(data.invoiceNext)>=11){
+     localStorage.setItem(INVOICE_SEQUENCE_KEY,String(Math.max(nextInvoiceNumber(),Number(data.invoiceNext))))
+    }
     if(data.chargeDraft&&typeof data.chargeDraft==='object')localStorage.setItem('bussi.charge.draft.v1',JSON.stringify(data.chargeDraft));
     persistAll();renderAll();restoreChargeDraft();alert('Backup restaurado com sucesso.')
   }catch(err){alert('Não foi possível restaurar este backup.')}
@@ -772,7 +783,21 @@ function belongsToCharge(e,c){
  if(e.chargeId)return String(e.chargeId)===String(c.id);
  return String(e.invoice||'')===String(c.invoice||'')&&charges.filter(x=>String(x.invoice)===String(c.invoice)).length===1
 }
-function eventSeen(events,c,type){return events.some(e=>e.type===type&&belongsToCharge(e,c))}
+function eventMoment(events,c,type){
+ const activity=window.BussiEvents?.activity()||{};
+ const idKey='id:'+String(c.id);
+ const invoiceUnique=charges.filter(x=>String(x.invoice)===String(c.invoice)).length===1;
+ const byId=activity[idKey]?.times?.[type];
+ const byInvoice=invoiceUnique?activity['invoice:'+String(c.invoice)]?.times?.[type]:null;
+ const fallback=events.filter(e=>e.type===type&&belongsToCharge(e,c)).map(e=>e.at).sort().at(-1);
+ return [byId,byInvoice,fallback].filter(Boolean).sort().at(-1)||''
+}
+function eventSeen(events,c,type){return Boolean(eventMoment(events,c,type))}
+function eventTime(iso){
+ const d=new Date(iso);
+ if(!iso||!Number.isFinite(d.getTime()))return '';
+ return new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(d)
+}
 function operationalDay(v){
  if(!v)return '';
  if(typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v))return v;
@@ -846,7 +871,7 @@ function renderDashboard(){
   $(id).textContent=charges.filter(c=>eventSeen(events,c,type)).length
  }
  $('dashboardChargeRows').innerHTML=charges.length?charges.map(c=>{
-  const check=t=>eventSeen(events,c,t)?'<span class="eventyes">✓ Registrado</span>':'<span class="eventno">—</span>';
+  const check=t=>{const iso=eventMoment(events,c,t);return iso?'<span class="eventyes">✓ Registrado</span><span class="event-timestamp">'+esc(eventTime(iso))+'</span>':'<span class="eventno">—</span>'};
   const st=c.status==='Pagamento confirmado'?'green':'yellow';
   return `<tr><td><b>${esc(c.customer||'—')}</b><br><text style="color:#78818a">${esc(c.contract||c.invoice||'—')}</text></td><td><b>${money(c.amount)}</b></td><td>${check('link_opened')}</td><td>${check('pay_clicked')}</td><td>${check('pix_copied')}</td><td>${check('invoice_downloaded')}</td><td><span class="badge ${st}">${esc(c.status||'Aguardando')}</span></td></tr>`
  }).join(''):'<tr><td colspan="7" class="empty">Nenhuma fatura gerada ainda.</td></tr>';
@@ -854,13 +879,13 @@ function renderDashboard(){
  $('dashboardEventRows').innerHTML=events.length?events.slice(-35).reverse().map(e=>{
   const c=charges.find(c=>belongsToCharge(e,c));
   const dt=new Date(e.at);
-  return `<tr><td>${Number.isFinite(dt.getTime())?dt.toLocaleString('pt-BR'):'—'}</td><td>${esc(c?.invoice||e.invoice||'—')}</td><td><b>${esc(labels[e.type]||e.type)}</b></td></tr>`
+  return `<tr><td>${Number.isFinite(dt.getTime())?esc(eventTime(e.at)):'—'}</td><td>${esc(c?.invoice||e.invoice||'—')}</td><td><b>${esc(labels[e.type]||e.type)}</b></td></tr>`
  }).join(''):'<tr><td colspan="3" class="empty">Nenhuma interação registrada neste navegador.</td></tr>'
 }
 $('exportDashboard').onclick=()=>{
  const events=dashboardEvents();
- const rows=[['Cliente','Contrato','Fatura','Valor original','Valor final','Status','Data confirmação','Link aberto','Pix exibido','Pix copiado','Fatura baixada']];
- charges.forEach(c=>rows.push([c.customer||'',c.contract||c.invoice||'',c.invoice||'',Number(c.original)||0,Number(c.amount)||0,c.status||'',c.confirmedAt||'',eventSeen(events,c,'link_opened')?'Sim':'Não',eventSeen(events,c,'pay_clicked')?'Sim':'Não',eventSeen(events,c,'pix_copied')?'Sim':'Não',eventSeen(events,c,'invoice_downloaded')?'Sim':'Não']));
+ const rows=[['Cliente','Contrato','Fatura','Valor original','Valor final','Status','Data confirmação (São Paulo)','Link aberto em (São Paulo)','Pix exibido em (São Paulo)','Pix copiado em (São Paulo)','Fatura baixada em (São Paulo)']];
+ charges.forEach(c=>rows.push([c.customer||'',c.contract||c.invoice||'',c.invoice||'',Number(c.original)||0,Number(c.amount)||0,c.status||'',c.confirmedAt?eventTime(c.confirmedAt):'',...['link_opened','pay_clicked','pix_copied','invoice_downloaded'].map(t=>eventTime(eventMoment(events,c,t)))]));
  const csv='\uFEFF'+rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');
  const a=document.createElement('a'),url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
  a.href=url;a.download='BUSSI_DASHBOARD_'+new Date().toISOString().slice(0,10)+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1500)
