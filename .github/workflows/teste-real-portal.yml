@@ -84,7 +84,7 @@ jobs:
               if(!cloudOk||!cloudText||cloudText.includes('inicializando')||cloudText.includes('Não foi possível carregar'))throw new Error('Conexao Supabase nao iniciou');
               await page.locator('.nav button[data-view="integrations"]').click();
               let mailRequestCount=0;
-              await page.route('https://qzelhgfwrppkhdmolhys.supabase.co/auth/v1/otp',async route=>{
+              await page.route('**/auth/v1/otp**',async route=>{
                 const posted=route.request().postDataJSON();
                 if(posted?.email!=='sac@consigbeneficio.com.br')throw new Error('Endereco de ativacao nao corresponde ao administrador');
                 mailRequestCount++;
@@ -96,7 +96,7 @@ jobs:
               const magicStatus=await page.locator('#cloudStatus').textContent();
               if(!magicStatus.includes('Solicitação enviada'))throw new Error('O BUSSI nao confirmou solicitacao de acesso por e-mail');
               console.log('ACESSO POR EMAIL TESTADO SEM ENVIO REAL',mailRequestCount);
-              await page.unroute('https://qzelhgfwrppkhdmolhys.supabase.co/auth/v1/otp');
+              await page.unroute('**/auth/v1/otp**');
               const tab=await browser.newPage();
               const token='00000000-0000-4000-8000-000000000001';
               const endpoint='https://qzelhgfwrppkhdmolhys.supabase.co/functions/v1/bussi-invoice';
