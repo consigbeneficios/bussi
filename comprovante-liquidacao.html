@@ -37,8 +37,8 @@ document.getElementById('app').innerHTML=`<main class="shell">
   <div class="sub">Pagamento registrado via ${esc(d.paymentMethod||'Pix')}</div>
 
   <div class="section"><h2>Dados da transação</h2>
-    <div class="row"><span>Status</span><b class="status">LIQUIDADO</b></div>
-    <div class="row"><span>ID / Transação</span><b>${esc(d.transactionId||'Não informado')}</b></div>
+    <div class="row"><span>Status</span><b class="status">LIQUIDADO — CONFIRMAÇÃO MANUAL</b></div>
+    ${d.transactionId?'<div class="row"><span>ID bancário da transação</span><b>'+esc(d.transactionId)+'</b></div>':''}
     ${d.txid?'<div class="row"><span>Identificador (TxId)</span><b>'+esc(d.txid)+'</b></div>':''}
     <div class="row"><span>Data e hora da liquidação</span><b>${dateTime(d.confirmedAt)}</b></div>
     <div class="row"><span>Valor liquidado</span><b>${money(d.amount)}</b></div>
@@ -48,13 +48,13 @@ document.getElementById('app').innerHTML=`<main class="shell">
   <div class="section"><h2>Informações do destinatário</h2>
     <div class="row"><span>Nome</span><b>${esc(d.receiverName||'CONSIG BENEFÍCIO S/A')}</b></div>
     <div class="row"><span>CPF/CNPJ</span><b>${esc(d.receiverDoc||'66.754.630/0001-60')}</b></div>
-    <div class="row"><span>PSP / instituição</span><b>${esc(d.receiverPsp||'Não informado')}</b></div>
+    ${d.receiverPsp?'<div class="row"><span>Instituição recebedora</span><b>'+esc(d.receiverPsp)+'</b></div>':''}
   </div>
 
   <div class="section"><h2>Informações do pagador</h2>
     <div class="row"><span>Nome</span><b>${esc(d.payerName||d.customer||'Não informado')}</b></div>
-    <div class="row"><span>CPF/CNPJ</span><b>${esc(maskDoc(d.payerDoc))}</b></div>
-    <div class="row"><span>PSP / instituição</span><b>${esc(d.payerPsp||'Não informado')}</b></div>
+    ${d.payerDoc?'<div class="row"><span>CPF/CNPJ</span><b>'+esc(maskDoc(d.payerDoc))+'</b></div>':''}
+    ${d.payerPsp?'<div class="row"><span>Instituição pagadora</span><b>'+esc(d.payerPsp)+'</b></div>':''}
   </div>
 
   <div class="section"><h2>Dados da parcela</h2>
@@ -65,17 +65,17 @@ document.getElementById('app').innerHTML=`<main class="shell">
     <div class="row"><span>Desconto aplicado</span><b>${Number(d.discount||0).toFixed(2).replace('.',',')}% · ${money(discountValue)}</b></div>
     <div class="row"><span>Valor liquidado</span><b>${money(d.amount)}</b></div>
     <div class="row"><span>Nº do comprovante</span><b>${esc(d.receiptNumber||'—')}</b></div>
-    <div class="row"><span>Confirmado por</span><b>${esc(d.confirmedBy||'consibeneficio')}</b></div>
+    <div class="row"><span>Confirmação registrada por</span><b>${esc(d.confirmedBy||'consibeneficio')}</b></div>
   </div>
 
   ${d.notes?'<div class="section"><h2>Observações</h2><div class="row"><span>Registro</span><b>'+esc(d.notes)+'</b></div></div>':''}
 
-  <div class="note"><b>Documento emitido pela CONSIG BENEFÍCIO S/A.</b> Este comprovante registra a liquidação da parcela após conferência manual do crédito pela empresa. Não substitui o comprovante bancário ou o comprovante emitido pelo prestador de serviços de pagamento (PSP).</div>
-  <div class="actions"><button class="btn primary" onclick="window.print()">Imprimir / salvar PDF</button><button class="btn ghost" id="copyId">Copiar ID da transação</button></div>
+  <div class="note"><b>Registro interno de liquidação da CONSIG BENEFÍCIO S/A.</b> Emitido automaticamente após a confirmação manual do recebimento pela equipe. Não é comprovante bancário nem validação independente da transação pelo banco/PSP. Dados bancários ausentes não são presumidos.</div>
+  <div class="actions"><button class="btn primary" onclick="window.print()">Imprimir / salvar PDF</button><button class="btn ghost" id="copyId">Copiar nº do comprovante</button></div>
 </section>
 <footer class="footer">CONSIG BENEFÍCIO S/A · CNPJ 66.754.630/0001-60<br>${esc(d.companyAddress||'Avenida Doutor Cardoso de Melo, nº 1.855, Vila Olímpia, São Paulo/SP, CEP 04548-005')} · ${esc(d.companyEmail||'sac@consigbeneficio.com.br')}<br><a href="termos-de-uso.html">Termos de Uso</a> · <a href="politica-de-privacidade.html">Política de Privacidade</a> · <a href="exclusao-de-dados.html">Exclusão de Dados</a></footer>
 </main>`;
-document.getElementById('copyId').onclick=async()=>{try{await navigator.clipboard.writeText(d.transactionId||'');document.getElementById('copyId').textContent='ID copiado'}catch{}};
+document.getElementById('copyId').onclick=async()=>{try{await navigator.clipboard.writeText(d.receiptNumber||'');document.getElementById('copyId').textContent='Número copiado'}catch{}};
 </script>
 </body>
 </html>
