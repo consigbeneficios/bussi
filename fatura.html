@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fatura BUSSI</title><style>
+body{margin:0;background:#f4f7f8;font:16px system-ui,Arial,sans-serif;color:#1d2a32;display:grid;place-items:center;min-height:100vh}
+main{background:white;border:1px solid #dce6e8;border-radius:16px;padding:30px;max-width:520px;margin:18px;text-align:center}
+a{color:#087e67}p{line-height:1.6}small{color:#63717b}</style></head>
+<body><main><h1>BUSSI — Fatura</h1><p id="message">Consultando sua cobrança em conexão segura...</p><small>Não realize pagamentos se o endereço ou os dados da cobrança forem diferentes dos esperados.</small></main>
+<script>
+(async()=>{
+ const el=document.getElementById('message');
+ const token=new URLSearchParams(location.search).get('token')||'';
+ if(!/^[0-9a-f]{8}-[0-9a-f-]{27,36}$/i.test(token)){el.textContent='Link incompleto ou inválido. Solicite outro ao atendimento.';return}
+ try{
+  const response=await fetch('https://qzelhgfwrppkhdmolhys.supabase.co/functions/v1/bussi-invoice?token='+encodeURIComponent(token),{cache:'no-store',signal:AbortSignal.timeout(12000)});
+  if(!response.ok){el.textContent=response.status===410?'Esta cobrança está encerrada ou vencida. Solicite uma nova fatura.':response.status===404?'Cobrança não localizada. Confira o link.':'Não foi possível consultar sua fatura. Tente novamente.';return}
+  const data=await response.json();
+  if(!data||!data.pix||!data.invoice)throw Error('Cobrança incompleta');
+  const encoded=btoa(Array.from(new TextEncoder().encode(JSON.stringify(data)),b=>String.fromCharCode(b)).join('')).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  location.replace(new URL('pagamento.html#p='+encoded,location.href).href)
+ }catch{el.textContent='Não foi possível consultar sua fatura. Verifique sua conexão e tente novamente.'}
+})();
+</script></body></html>
