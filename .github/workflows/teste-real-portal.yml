@@ -56,7 +56,8 @@ jobs:
               }
               await page.evaluate(()=>{
                 const old='https://pay.consigbeneficio.com.br/pagamento.html#p=dGVzdGU';
-                localStorage.setItem('bussi.charges.v1',JSON.stringify([{id:987650013,invoice:'fatura0013',customer:'Cliente Teste',contract:'TESTE-0013',phone:'',amount:465,original:930,discount:50,status:'Aguardando confirmação',url:old}]));
+                charges=[{id:987650013,invoice:'fatura0013',customer:'Cliente Teste',contract:'TESTE-0013',phone:'',amount:465,original:930,discount:50,status:'Aguardando confirmação',url:old}];
+                persistAll();
               });
               await page.reload({waitUntil:'domcontentloaded',timeout:30000});
               await page.waitForTimeout(1000);
