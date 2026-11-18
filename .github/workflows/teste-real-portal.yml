@@ -111,6 +111,38 @@ jobs:
               if(!await tab.locator('#message').textContent().then(v=>v.includes('encerrada')||v.includes('venceu')))throw new Error('Fatura encerrada ainda permite Pix');
               console.log('FATURA SEGURA',pageResponse.status(),'TOKEN SEM PAYLOAD',true,'BLOQUEIO DE COBRANCA',true);
               await tab.close();
+              const legacyLink=await page.evaluate(()=>{
+                const snap={v:4,chargeId:987650014,invoice:'fatura0020',contract:'TESTE-0020',
+                  customer:'Cliente de Teste 20',phone:'',amount:200,original:400,discount:50,
+                  description:'Teste de importação',issueDate:'2026-11-18',due:'2026-11-18',pix:'000201260014br.gov.bcb.pix'};
+                return 'https://pay.consigbeneficio.com.br/pagamento.html#p='+b64url(snap);
+              });
+              await page.locator('#cloudLegacyLink').fill(legacyLink);
+              await page.locator('#cloudImportLink').click();
+              await page.waitForTimeout(800);
+              const recovered=await page.evaluate(()=>JSON.parse(localStorage.getItem('bussi.charges.v1')||'[]').find(c=>c.invoice==='fatura0020'));
+              if(!recovered||recovered.customer!=='Cliente de Teste 20'||!recovered.url.startsWith('https://consigbeneficios.github.io/'))throw new Error('Importação de link legado falhou');
+              console.log('FATURA IMPORTADA',recovered.invoice,recovered.customer);
+              await page.evaluate(()=>{
+                window.BussiCloud={
+                  isAuthenticated:async()=>true,
+                  sync:async()=>{
+                    charges[0].cloudUrl='https://consigbeneficios.github.io/bussi/fatura.html?token=00000000-0000-4000-8000-000000000003';
+                    save(K.charges,charges);
+                    return {ok:true};
+                  },
+                  updateStatus:async()=>{}
+                };
+                const key=document.getElementById('pixKey');
+                key.value='teste@example.com';
+                document.getElementById('pixType').value='email';
+                key.dispatchEvent(new Event('input',{bubbles:true}));
+              });
+              await page.locator('#generateCharge').click();
+              await page.waitForTimeout(900);
+              const shared=await page.locator('#generatedLink').inputValue();
+              if(!shared.startsWith('https://consigbeneficios.github.io/bussi/fatura.html?token='))throw new Error('Gerador nao selecionou o link seguro da nuvem');
+              console.log('GERADOR USA TOKEN DA NUVEM',true);
               console.log('BROWSER ERRORS',JSON.stringify(errors.slice(0,12)));
               if(errors.some(e=>e.startsWith('JS:')))throw new Error('Javascript falhou no navegador');
             }finally{await browser.close()}
