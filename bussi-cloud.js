@@ -14,6 +14,7 @@ const list=document.getElementById('cloudInvoiceList');
 if(!status||!window.supabase?.createClient){if(status)status.textContent='Não foi possível carregar a conexão com o Supabase.';return;}
 const db=window.supabase.createClient(SUPABASE_URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 let busy=false;
+const CLOUD_OWNER_KEY='bussi.cloud.owner.v1';
 function say(m){status.textContent=m;}
 function safeDate(d){return /^\d{4}-\d{2}-\d{2}$/.test(String(d||''))?d:null;}
 function parseLink(link){
@@ -35,7 +36,7 @@ async function render(){
  password.style.display=u?'none':'';
  email.value=u?.email||email.value||'sac@consigbeneficio.com.br';
  email.disabled=!!u;
- if(u){say('Conectado à nuvem: '+u.email+'. Clique em Sincronizar para salvar as faturas.');await refreshList();}
+ if(u){say('Conectado à nuvem: '+u.email+'. Sincronização de faturas ativada.');await refreshList();if(charges.some(x=>x.url&&!x.cloudUrl))void sync();}
  else{say('Conecte uma conta Supabase para armazenar faturas em segurança. Os dados locais permanecem no navegador.');list.textContent='';}
 }
 async function authAction(mode){
@@ -89,6 +90,8 @@ async function sync(){
  try{
   const user=await getUser();
   if(!user)throw Error('Entre na conta Supabase em Integrações antes de sincronizar');
+  const linkedOwner=localStorage.getItem(CLOUD_OWNER_KEY);
+  if(linkedOwner&&linkedOwner!==user.id)throw Error('Este navegador contém faturas de outra conta Supabase. Não é seguro sincronizá-las em uma conta diferente.');
   const {data:registered,error:readError}=await db.from('bussi_invoices')
    .select('invoice_number,access_token,status,source_charge_id')
    .order('created_at',{ascending:false}).limit(1000);
@@ -157,6 +160,7 @@ async function sync(){
    localStorage.setItem(K.charges,JSON.stringify(charges));
   }
   save(K.charges,charges);
+  localStorage.setItem(CLOUD_OWNER_KEY,user.id);
   if(highest>=11)localStorage.setItem(INVOICE_SEQUENCE_KEY,String(Math.max(nextInvoiceNumber(),highest+1)));
   if(charges[0]?.cloudUrl&&lastLink){
    lastLink=charges[0].cloudUrl;
@@ -176,6 +180,8 @@ async function sync(){
 async function updateStatus(charge){
  if(!charge?.id)return;
  const user=await getUser();if(!user)return;
+ const linkedOwner=localStorage.getItem(CLOUD_OWNER_KEY);
+ if(linkedOwner&&linkedOwner!==user.id){say('O histórico está associado a outra conta Supabase.');return;}
  try{
   const {error}=await db.from('bussi_invoices').update({status:statusOf(charge)})
    .eq('source_charge_id',String(charge.id)).neq('status','confirmed');
