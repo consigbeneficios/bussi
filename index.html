@@ -329,8 +329,21 @@ button:disabled{opacity:.5;cursor:not-allowed}
         <div class="section" style="margin-top:18px">
           <div class="sectionhead"><div><h2>Armazenamento de faturas na nuvem</h2><p>Supabase · banco protegido por conta. Faturas novas podem ser sincronizadas automaticamente depois do login.</p></div></div>
           <div class="grid2">
-            <div class="field"><label>E-mail da conta Supabase</label><input id="cloudEmail" type="email" autocomplete="email" value="sac@consigbeneficio.com.br"></div>
-            <div class="field"><label>Senha da conta Supabase</label><input id="cloudPassword" type="password" autocomplete="current-password" placeholder="Pelo menos 8 caracteres"></div>
+            <div class="field"><label for="cloudEmail">E-mail de acesso</label><input id="cloudEmail" type="email" autocomplete="email" value="sac@consigbeneficio.com.br"></div>
+            <div class="field"><label for="cloudPassword">Senha (opcional)</label><input id="cloudPassword" type="password" autocomplete="current-password" placeholder="Somente se já criou uma senha"></div>
+          </div>
+          <div class="toolbar" style="margin-top:14px">
+            <button class="btn primary" type="button" id="cloudMagicSend">Receber acesso por e-mail</button>
+          </div>
+          <div class="field" style="margin-top:12px">
+            <label for="cloudMagicInput">Link de acesso recebido no e-mail ou código de 6 dígitos</label>
+            <textarea id="cloudMagicInput" rows="2" placeholder="Cole aqui o link do Supabase (sem enviá-lo pelo chat) ou digite o código"></textarea>
+            <div class="toolbar" style="margin-top:8px">
+              <button class="btn dark" type="button" id="cloudMagicConfirm">Confirmar acesso</button>
+            </div>
+            <p class="muted" style="font-size:12px;margin:6px 0">
+              Se chegar um link de confirmação, copie o endereço do botão no e-mail e cole acima, sem abri-lo primeiro. Se chegar um código, digite-o. O código ou link nunca deve ser compartilhado com terceiros.
+            </p>
           </div>
           <div class="toolbar" style="margin-top:14px">
             <button class="btn primary" type="button" id="cloudSignIn">Entrar na nuvem</button>
