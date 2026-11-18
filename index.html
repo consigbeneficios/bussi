@@ -24,22 +24,20 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.app{min-height:
 <div class="authgate" id="authGate">
   <div class="authcard">
     <div class="authbrand"><div class="brandmark">B</div><div><b>BUSSI</b><div class="tag">Acesso administrativo</div></div></div>
-    <div id="setupAuth">
-      <h2>Configurar acesso</h2>
-      <p>Usuário fixo: <b>consibeneficio</b>. Crie sua senha para proteger o acesso neste dispositivo.</p>
-      <div class="field"><label>Usuário</label><input value="consibeneficio" readonly></div>
-      <div class="field" style="margin-top:10px"><label>Nova senha</label><input id="setupPass" type="password" autocomplete="new-password" placeholder="Mínimo de 6 caracteres"></div>
-      <div class="field" style="margin-top:10px"><label>Confirmar senha</label><input id="setupPass2" type="password" autocomplete="new-password"></div>
-      <button class="btn primary" id="createAccess" style="width:100%;margin-top:16px">Criar senha e entrar</button>
-      <div class="autherror" id="setupError"></div>
+    <div id="loginAuth">
+      <h2>Entrar no BUSSI</h2>
+      <p>Acesso restrito ao administrador da CONSIG BENEFÍCIOS.</p>
+      <div class="field"><label>Usuário</label><input id="loginUser" value="consibeneficio" autocomplete="username"></div>
+      <div class="field" style="margin-top:10px"><label>Senha</label><input id="loginPass" type="password" autocomplete="current-password"></div>
+      <button class="btn primary" id="loginBtn" style="width:100%;margin-top:16px">Entrar</button>
+      <div class="autherror" id="loginError"></div>
     </div>
-    <div id="loginAuth" style="display:none">
+    <div style="display:none">
       <h2>Entrar no BUSSI</h2>
       <p>Use seu acesso administrativo.</p>
       <div class="field"><label>Usuário</label><input id="loginUser" value="consibeneficio" autocomplete="username"></div>
       <div class="field" style="margin-top:10px"><label>Senha</label><input id="loginPass" type="password" autocomplete="current-password"></div>
       <button class="btn primary" id="loginBtn" style="width:100%;margin-top:16px">Entrar</button>
-      <button class="btn ghost" id="resetLocalAccess" style="width:100%;margin-top:8px">Redefinir acesso neste dispositivo</button>
       <div class="autherror" id="loginError"></div>
     </div>
   </div>
@@ -173,36 +171,39 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.app{min-height:
 <div class="modal" id="campaignModal"><div class="dialog"><h3>Nova campanha</h3><div class="grid2"><div class="field"><label>Nome da campanha</label><input id="campName"></div><div class="field"><label>Público</label><select id="campAudience"><option>Todos os clientes</option><option>Clientes com cobrança</option><option>Segmento manual</option></select></div></div><div class="field" style="margin-top:14px"><label>Mensagem</label><textarea id="campMessage" placeholder="Ex.: Olá, {{nome}}. Sua condição especial está disponível..."></textarea></div><div class="rowend"><button class="btn ghost" data-close="campaignModal">Cancelar</button><button class="btn primary" id="saveCampaign">Salvar campanha</button></div></div></div>
 
 <script>
-const K={clients:'bussi.clients.v1',campaigns:'bussi.campaigns.v1',charges:'bussi.charges.v1',settings:'bussi.settings.v1',auth:'bussi.auth.v1'};
-const defaultClients=[
-{name:'Jose Roberto Carneiro',contract:'31930615',phone:'(63) 99248-6633',original:2025.90,final:1012.95},
-{name:'Sergio Ricardo Marchesini',contract:'38025840',phone:'(63) 98447-4141',original:1995.14,final:997.57},
-{name:'Luciana Ferreira Marques',contract:'35528411',phone:'(63) 8431-9814',original:1481.32,final:740.66},
-{name:'Rubens da Costa',contract:'38025840',phone:'(63) 8452-7027',original:1272.02,final:636.01},
-{name:'Alisson Oliveira Cirineu',contract:'35528411',phone:'(21) 98112-4240',original:1231.00,final:615.50},
-{name:'Clecyws Antonio de',contract:'30312100',phone:'(63) 9921-2911',original:1159.10,final:579.55},
-{name:'Eveline Leao Avila',contract:'31930615',phone:'(63) 9965-8585',original:1143.94,final:571.97},
-{name:'Rubeni Jose Dos',contract:'47053327',phone:'(63) 8449-4238',original:1123.78,final:561.89},
-{name:'Regina Ferreira Rodrigues',contract:'30312100',phone:'(63) 8503-9672',original:1036.26,final:518.13},
-{name:'Lourivaldo da Silva',contract:'38025840',phone:'(63) 9285-5679',original:991.00,final:495.50},
-{name:'Jose Elmison Ferreira',contract:'31930615',phone:'(63) 9209-3465',original:934.36,final:467.18},
-{name:'Elyne Regiane Dos',contract:'38025840',phone:'(63) 8446-8818',original:833.64,final:416.82},
-{name:'Marcio Manoel Ferreira',contract:'35528411',phone:'(63) 9215-8919',original:794.44,final:397.22},
-{name:'Eliane Caetano Mendonça',contract:'46140337',phone:'(63) 9202-3818',original:768.01,final:384.01},
-{name:'Roberto Rodrigues Machado',contract:'31930615',phone:'(63) 8424-2105',original:722.00,final:361.00}
-];
-let clients=load(K.clients,null)||defaultClients,campaigns=load(K.campaigns,[]),charges=load(K.charges,[]),settings=load(K.settings,{pixType:'auto',pixKey:'',pixName:'CONSIG BENEFICIO SA',pixCity:'SAO PAULO',pixTxid:'***',pixDesc:'FATURA CONSIG',trackingEndpoint:'',metaPhoneId:'',metaWabaId:'',trackingEnv:'',paymentProvider:'',paymentWebhook:''}),editClientIndex=-1,lastLink='';
+const K={clients:'bussi.clients.v1',campaigns:'bussi.campaigns.v1',charges:'bussi.charges.v1',settings:'bussi.settings.v1'};
+const defaultClients=[];
+let clients=load(K.clients,[])||[],campaigns=load(K.campaigns,[]),charges=load(K.charges,[]),settings=load(K.settings,{pixType:'auto',pixKey:'',pixName:'CONSIG BENEFICIO SA',pixCity:'SAO PAULO',pixTxid:'***',pixDesc:'FATURA CONSIG',trackingEndpoint:'',metaPhoneId:'',metaWabaId:'',trackingEnv:'',paymentProvider:'',paymentWebhook:''}),editClientIndex=-1,lastLink='';
 function $(id){return document.getElementById(id)}function load(k,f){try{const v=localStorage.getItem(k);return v?JSON.parse(v):f}catch{return f}}function save(k,v){localStorage.setItem(k,JSON.stringify(v));if($('saveState'))$('saveState').textContent='Salvo às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
-async function sha256(t){const b=new TextEncoder().encode(t);const h=await crypto.subtle.digest('SHA-256',b);return [...new Uint8Array(h)].map(x=>x.toString(16).padStart(2,'0')).join('')}
-function authState(){return load(K.auth,null)}
-function showAuth(){const a=authState();$('authGate').style.display='grid';$('mainApp').style.display='none';$('setupAuth').style.display=a?'none':'block';$('loginAuth').style.display=a?'block':'none'}
+const AUTH_USER='consibeneficio';
+const AUTH_SALT='ed2bbcc1bd1bb8ba5054b2049c8e59f3';
+const AUTH_ITERATIONS=210000;
+const AUTH_HASH='1b083e15234b4a0ab6e998881fcffc887bd1ccb27e7f4c386b759f472d704ea4';
+async function passwordHash(password){
+  const enc=new TextEncoder();
+  const key=await crypto.subtle.importKey('raw',enc.encode(password),'PBKDF2',false,['deriveBits']);
+  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:enc.encode(AUTH_SALT),iterations:AUTH_ITERATIONS,hash:'SHA-256'},key,256);
+  return [...new Uint8Array(bits)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+function showAuth(){$('authGate').style.display='grid';$('mainApp').style.display='none';$('loginPass').value='';$('loginError').classList.remove('show')}
 function enterApp(){sessionStorage.setItem('bussi.session','1');$('authGate').style.display='none';$('mainApp').style.display='grid'}
-$('createAccess').onclick=async()=>{const p=$('setupPass').value,p2=$('setupPass2').value,e=$('setupError');e.classList.remove('show');if(p.length<6){e.textContent='A senha deve ter pelo menos 6 caracteres.';e.classList.add('show');return}if(p!==p2){e.textContent='As senhas não conferem.';e.classList.add('show');return}const salt=crypto.getRandomValues(new Uint32Array(4)).join('-');const hash=await sha256('consibeneficio|'+salt+'|'+p);localStorage.setItem(K.auth,JSON.stringify({user:'consibeneficio',salt,hash}));enterApp()}
-$('loginBtn').onclick=async()=>{const a=authState(),u=$('loginUser').value.trim(),p=$('loginPass').value,e=$('loginError');e.classList.remove('show');if(!a||u!=='consibeneficio'){e.textContent='Usuário ou senha inválidos.';e.classList.add('show');return}const hash=await sha256('consibeneficio|'+a.salt+'|'+p);if(hash!==a.hash){e.textContent='Usuário ou senha inválidos.';e.classList.add('show');return}enterApp()}
-$('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')$('loginBtn').click()})
-$('resetLocalAccess').onclick=()=>{if(confirm('Redefinir a senha configurada neste dispositivo?')){localStorage.removeItem(K.auth);sessionStorage.removeItem('bussi.session');showAuth()}}
-$('logoutBtn').onclick=()=>{sessionStorage.removeItem('bussi.session');showAuth()}
-if(sessionStorage.getItem('bussi.session')==='1'&&authState())enterApp();else showAuth()
+$('loginBtn').onclick=async()=>{
+  const u=$('loginUser').value.trim(),p=$('loginPass').value,e=$('loginError');
+  e.classList.remove('show');
+  const attempts=Number(sessionStorage.getItem('bussi.login.attempts')||0);
+  const lockUntil=Number(sessionStorage.getItem('bussi.login.lockUntil')||0);
+  if(Date.now()<lockUntil){e.textContent='Muitas tentativas. Tente novamente em alguns instantes.';e.classList.add('show');return}
+  const hash=await passwordHash(p);
+  if(u!==AUTH_USER||hash!==AUTH_HASH){
+    const next=attempts+1;sessionStorage.setItem('bussi.login.attempts',String(next));
+    if(next>=5){sessionStorage.setItem('bussi.login.lockUntil',String(Date.now()+30000));sessionStorage.setItem('bussi.login.attempts','0')}
+    e.textContent='Usuário ou senha inválidos.';e.classList.add('show');return
+  }
+  sessionStorage.removeItem('bussi.login.attempts');sessionStorage.removeItem('bussi.login.lockUntil');enterApp()
+};
+$('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')$('loginBtn').click()});
+$('logoutBtn').onclick=()=>{sessionStorage.removeItem('bussi.session');showAuth()};
+if(sessionStorage.getItem('bussi.session')==='1')enterApp();else showAuth()
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function money(n){return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
 function parseMoney(v){if(typeof v==='number')return v;v=String(v||'').trim().replace(/R\$\s?/g,'').replace(/\./g,'').replace(',','.');const n=Number(v);return Number.isFinite(n)?n:0}
