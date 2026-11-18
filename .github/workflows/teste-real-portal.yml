@@ -97,6 +97,27 @@ jobs:
               if(!magicStatus.includes('Solicitação enviada'))throw new Error('O BUSSI nao confirmou solicitacao de acesso por e-mail');
               console.log('ACESSO POR EMAIL TESTADO SEM ENVIO REAL',mailRequestCount);
               await page.unroute('**/auth/v1/otp**');
+
+              let verifyType='';
+              await page.route('**/auth/v1/verify**',async route=>{
+                const request=route.request();
+                const body=request.postDataJSON();
+                verifyType=body?.type||'';
+                await route.fulfill({status:403,headers:{'content-type':'application/json','access-control-allow-origin':'*'},body:JSON.stringify({code:'otp_expired',message:'Token de teste inválido'})});
+              });
+              await page.locator('#cloudMagicInput').fill('https://qzelhgfwrppkhdmolhys.supabase.co/auth/v1/verify?token=TESTHASH123&type=signup');
+              await page.locator('#cloudMagicConfirm').click();
+              await page.waitForTimeout(400);
+              if(verifyType!=='signup')throw new Error('O painel modificou indevidamente o tipo do token de cadastro');
+              console.log('VALIDACAO DO TIPO SIGNUP CORRIGIDA',verifyType);
+              await page.unroute('**/auth/v1/verify**');
+              await page.locator('#cloudMagicInput').fill('http://localhost:3000/#access_token=teste.invalido.token&refresh_token=123456');
+              await page.locator('#cloudMagicConfirm').click();
+              await page.waitForTimeout(450);
+              const localhostStatus=await page.locator('#cloudStatus').textContent();
+              if(localhostStatus.includes('Link não pertence')||localhostStatus.includes('O link não pertence'))throw new Error('Recuperacao do redirecionamento localhost nao reconhecida');
+              console.log('REDIRECIONAMENTO LOCALHOST RECONHECIDO',true);
+
               const tab=await browser.newPage();
               const token='00000000-0000-4000-8000-000000000001';
               const endpoint='https://qzelhgfwrppkhdmolhys.supabase.co/functions/v1/bussi-invoice';
