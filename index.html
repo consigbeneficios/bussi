@@ -288,7 +288,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
           <div class="field"><label>Preço original do benefício</label><input id="chargeOriginal" inputmode="decimal" placeholder="0,00"></div>
           <div class="field"><label>Desconto (%)</label><input id="chargeDiscount" type="number" min="0" max="100" step="0.01" value="50"></div>
           <div class="field"><label>Valor a ser pago</label><input id="chargeFinal" readonly></div>
-          <div class="field"><label>Benefício efetivamente contratado</label><input id="chargeDesc" value="" required placeholder="Nome e descrição do produto ou serviço entregue" aria-label="Nome e descrição do benefício contratado"></div>
+          <div class="field"><label>Benefício efetivamente contratado</label><input id="chargeDesc" value="Cartão de Benefícios CONSIG — Condição comercial exclusiva — Black Friday" required placeholder="Nome e descrição do produto ou serviço entregue" aria-label="Nome e descrição do benefício contratado"></div>
           <div class="field"><label>Vencimento (automático — hoje)</label><input id="chargeDue" type="date" readonly title="O link vence no dia em que é emitido"></div>
         </div>
         <div class="notice" style="margin-top:12px"><b>Validade da cobrança:</b> emitida e vencendo no mesmo dia. O link deixa de exibir o Pix a partir de 00h do dia seguinte, horário de São Paulo, ou quando o pagamento for confirmado.</div><div class="toolbar" style="margin-top:16px"><button class="btn primary" id="generateCharge" disabled title="Desativado no ambiente de teste">Gerar cobrança e link</button><button class="btn ghost" id="printInvoice" disabled title="Desativado no ambiente de teste">Visualizar fatura</button></div>
