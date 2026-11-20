@@ -2,7 +2,7 @@
 const portal = "https://consigbeneficios.github.io";
 const origins = new Set([portal, "https://consigbeneficio.com.br", "https://pay.consigbeneficio.com.br"]);
 const idFormat = /^[a-zA-Z0-9_-]{1,150}$/;
-const statuses = new Map([["pendente", "Pendente"], ["pago", "Pago"], ["reembolsado", "Reembolsado"], ["expirado", "Expirado"]]);
+const statuses = new Map([["pendente", "Pendente"], ["pago", "Pago"], ["reembolsado", "Reembolsado"], ["expirado", "Expirado"], ["cancelado","Cancelado"]]);
 
 export async function handle(request: Request) {
   const origin = request.headers.get("Origin");

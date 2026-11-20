@@ -1,0 +1,99 @@
+const base = Deno.env.get("SUPABASE_URL")!;
+const secret = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const allowed = new Set(["https://pay.consigbeneficio.com.br","https://consig-beneficios-faturas.zanysundae4.chatgpt.site"]);
+const endpoint = "https://api.nitropagamento.app";
+const idPattern = /^[a-zA-Z0-9_-]{1,150}$/;
+const states: Record<string,string> = {pendente:"pendente", pago:"pago", cancelado:"cancelado", expirado:"cancelado", reembolsado:"reembolsado"};
+async function db(op:string,key:string,values:Record<string,unknown>={}) {
+  const resp = await fetch(base+"/rest/v1/rpc/bussi_fatura_servidor", {method:"POST",headers:{apikey:secret,Authorization:"Bearer "+secret,"Content-Type":"application/json"},body:JSON.stringify({p_op:op,p_chave:key,p_dados:values}),redirect:"error",signal:AbortSignal.timeout(8000)});
+  if(!resp.ok) throw Error("banco");
+  return await resp.json();
+}
+function gatewayHeaders() {
+  const pub=Deno.env.get("NITRO_PUBLIC_KEY"), priv=Deno.env.get("NITRO_SECRET_KEY");
+  if(!pub||!priv) throw Error("config");
+  return {Authorization:"Basic "+btoa(pub+":"+priv),"Content-Type":"application/json"};
+}
+function centavos(value:unknown) {
+  const str=String(value);
+  if(!/^\d{1,10}(\.\d{1,2})?$/.test(str)) return -1;
+  const [inteiro,fracao=""]=str.split(".");
+  return Number(inteiro)*100+Number(fracao.padEnd(2,"0"));
+}
+function payer(value:Record<string,unknown>) {
+  if(!value || typeof value!=="object") return null;
+  const str=(key:string)=>typeof value[key]==="string" ? String(value[key]).trim() : "";
+  const name=str("name"), email=str("email"), document=str("document").replace(/[.\-/ ]/g,""), phone=str("phone").replace(/[()+ -]/g,"");
+  if(name.length<3 || name.length>120 || email.length>254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !/^(\d{11}|\d{14})$/.test(document) || !/^\d{10,13}$/.test(phone)) return null;
+  return {name,email,document,phone};
+}
+function publico(f:any) {
+  const expired=Date.parse(f.vence_em)<=Date.now();
+  const situacao=expired && ["aberta","pendente"].includes(f.situacao) ? "expirada" : f.situacao;
+  return {numero:f.numero,descricao:f.descricao,original:f.original_centavos,valor:f.valor_centavos,vence:f.vence_em,situacao,
+    confirmado:f.pago_verificado_em,verificado:f.verificado_em,
+    pix:situacao==="pendente"?f.pix:null,qr:situacao==="pendente"?f.qr:null};
+}
+async function confirmar(f:any, id:string) {
+  const resp=await fetch(endpoint+"/transactions/"+encodeURIComponent(id),{headers:gatewayHeaders(),redirect:"error",signal:AbortSignal.timeout(30000)});
+  if(!resp.ok) throw Error("consulta");
+  const result=await resp.json(), d=result.data;
+  if(result.success!==true || d?.id!==id || d.payment_method!=="pix" || (d.currency!=null&&d.currency!=="BRL") || centavos(d.amount)!==f.valor_centavos || d.metadata?.order_id!==f.id || !Object.hasOwn(states,d.status)) throw Error("divergencia");
+  if(!f.nitro_id && f.situacao==="processando") {
+    if(states[d.status]==="pendente" && typeof d.pix_code!=="string") return f;
+    await db("vincular",f.token_hash,{id,pix:typeof d.pix_code==="string"?d.pix_code:null,qr:null});
+  }
+  return await db("verificar",f.token_hash,{id,ordem:f.id,centavos:f.valor_centavos,situacao:states[d.status]}) || f;
+}
+export async function handle(req:Request) {
+  const origin=req.headers.get("Origin");
+  const h=new Headers({"Content-Type":"application/json","Cache-Control":"no-store","Vary":"Origin"});
+  const out=(status:number,data:object)=>new Response(JSON.stringify(data),{status,headers:h});
+  if(origin && !allowed.has(origin)) return out(403,{erro:"Origem inválida."});
+  if(origin)h.set("Access-Control-Allow-Origin",origin);
+  h.set("Access-Control-Allow-Headers","content-type, apikey");h.set("Access-Control-Allow-Methods","POST, OPTIONS");
+  if(req.method==="OPTIONS")return new Response(null,{status:204,headers:h});
+  if(req.method!=="POST")return out(405,{erro:"Use o link individual."});
+  try {
+    if(Number(req.headers.get("content-length"))>16384)return out(413,{erro:"Dados muito longos."});
+    const raw=await req.text();if(raw.length>16384)return out(413,{erro:"Dados muito longos."});
+    let body;try{body=JSON.parse(raw)}catch{return out(400,{erro:"Dados inválidos."});}
+    const cb=new URL(req.url).searchParams.get("retorno");
+    if(cb!==null){
+      if(!/^[a-f0-9-]{36}$/.test(cb)||!idPattern.test(body?.data?.transaction_id??""))return out(400,{erro:"Notificação inválida."});
+      const f=await db("notificacao",cb);
+      if(!f || (f.nitro_id && f.nitro_id!==body.data.transaction_id))return out(200,{recebido:true});
+      await confirmar(f,body.data.transaction_id);
+      return out(200,{recebido:true});
+    }
+    if(typeof body?.token!=="string"||!/^[0-9a-f]{64}$/.test(body.token))return out(404,{erro:"Fatura indisponível."});
+    const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(body.token));
+    const hash=Array.from(new Uint8Array(digest),x=>x.toString(16).padStart(2,"0")).join("");
+    let f=await db("ler",hash);
+    if(!f || String(f.numero)!==String(body.numero))return out(404,{erro:"Fatura indisponível."});
+    if(body.acao==="aceitar"){
+      const customer=payer(body.pagador);
+      if(body.aceito!==true||!customer)return out(400,{erro:"Confira os dados e confirme o aceite."});
+      gatewayHeaders();
+      const current=await db("aceitar",hash,customer);
+      if(!current)return out(200,publico(await db("ler",hash)));
+      const src="https://pay.consigbeneficio.com.br/fatura"+String(f.numero).padStart(4,"0");
+      const response=await fetch(endpoint,{method:"POST",headers:gatewayHeaders(),redirect:"error",signal:AbortSignal.timeout(30000),
+        body:JSON.stringify({amount:f.valor_centavos/100,payment_method:"pix",description:f.descricao,customer,
+          metadata:{order_id:f.id},source_url:src,source_label:"Cartão de Benefícios CONSIG",postbackUrl:base+"/functions/v1/fatura-bussi?retorno="+f.id})});
+      const data=await response.json().catch(()=>null);
+      if(!response.ok){
+        if([400,422].includes(response.status)&&data?.success===false)await db("recusada",hash);
+        return out(502,{erro:"A Nitro não confirmou a criação do Pix. Atualize a situação antes de tentar novamente."});
+      }
+      const d=data?.data;
+      if(data?.success!==true||typeof d?.id!=="string"||!idPattern.test(d.id)||d.payment_method!=="pix"||d.status!=="pendente"||centavos(d.amount)!==f.valor_centavos||d.metadata?.order_id!==f.id||typeof d.pix_code!=="string"||!d.pix_code.startsWith("000201")||d.pix_code.length>2048)throw Error("resposta");
+      const qr=typeof d.pix_qr_code==="string" && /^[A-Za-z0-9+/=]{1,80000}$/.test(d.pix_qr_code)?d.pix_qr_code:null;
+      f=await db("vincular",hash,{id:d.id,pix:d.pix_code,qr}) || await db("ler",hash);
+    }else if(body.acao==="consultar"){
+      if(f.nitro_id && (!f.verificado_em||Date.parse(f.verificado_em)<Date.now()-30000))f=await confirmar(f,f.nitro_id);
+    }else return out(400,{erro:"Operação inválida."});
+    return out(200,publico(f));
+  }catch{return out(503,{erro:"Serviço temporariamente indisponível. Consulte novamente em instantes."});}
+}
+if(import.meta.main) Deno.serve(handle);
