@@ -282,7 +282,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
     <section class="view" id="charges">
       <div class="section">
         <div class="sectionhead"><div><h2>Nova cobrança</h2><p>Gera fatura, Pix e link individual para o cliente.</p></div></div>
-        <div class="notice" role="alert" style="margin-top:12px">Emissão de novas cobranças temporariamente suspensa: os links legados contêm dados pessoais codificados. Não compartilhe links antigos nem insira dados reais até a revisão de segurança.</div>
+        <div class="notice" role="alert" style="margin-top:12px">Emissão de novas cobranças temporariamente suspensa: os links legados contêm dados pessoais codificados. Não compartilhe links antigos nem insira dados reais até a revisão de segurança. A sincronização com o banco anterior também está suspensa; nenhum dado foi migrado.</div>
         <div class="grid3">
           <div class="field"><label>Pesquisar cliente</label><input id="chargeClientSearch" placeholder="Digite nome, contrato ou telefone"></div>
           <div class="field"><label>Cliente</label><select id="chargeClient"></select></div>
@@ -995,6 +995,6 @@ $('chargeDue').readOnly=true;
 window.addEventListener('focus',()=>{if($('chargeDue'))$('chargeDue').value=saoPauloToday();});
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.94.1/dist/umd/supabase.min.js"></script>
-<script src="bussi-cloud.js"></script>
+<!-- Integração legada desativada: projeto Supabase anterior não está disponível para revisão. -->
 </body>
 </html>
