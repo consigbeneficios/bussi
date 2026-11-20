@@ -281,13 +281,16 @@ button:disabled{opacity:.5;cursor:not-allowed}
 
     <section class="view" id="charges">
       <div class="section">
-        <div class="sectionhead"><div><h2>Cadastro de benefício — ambiente de teste</h2><p>Pré-configuração administrativa. Emissão de cobranças e comprovantes desativada nesta versão.</p></div></div>
+        <div class="sectionhead"><div><h2>Cadastro de benefício — ambiente de revisão (sem pagamentos)</h2><p>Pré-configuração administrativa. Emissão de cobranças e comprovantes desativada nesta versão.</p></div></div>
         <div class="grid3">
           <div class="field"><label>Pesquisar cliente</label><input id="chargeClientSearch" placeholder="Digite nome, contrato ou telefone"></div>
           <div class="field"><label>Cliente</label><select id="chargeClient"></select></div>
           <div class="field"><label>Preço original do benefício</label><input id="chargeOriginal" inputmode="decimal" placeholder="0,00"></div>
           <div class="field"><label>Desconto (%)</label><input id="chargeDiscount" type="number" min="0" max="100" step="0.01" value="50"></div>
           <div class="field"><label>Valor a ser pago</label><input id="chargeFinal" readonly></div>
+          <div class="field"><label>Referência interna — exemplo fictício</label><input id="demoBenefitRef" value="00E42011" readonly></div>
+          <div class="field"><label>Número da parcela — exemplo fictício</label><input id="demoInstallment" value="06/12" readonly></div>
+          <div class="field"><label>Competência — exemplo fictício</label><input id="demoCompetence" value="12/2026" readonly></div>
           <div class="field"><label>Benefício efetivamente contratado</label><input id="chargeDesc" value="Cartão de Benefícios CONSIG — Condição comercial exclusiva — Black Friday" required placeholder="Nome e descrição do produto ou serviço entregue" aria-label="Nome e descrição do benefício contratado"></div>
           <div class="field"><label>Vencimento (automático — hoje)</label><input id="chargeDue" type="date" readonly title="O link vence no dia em que é emitido"></div>
         </div>
