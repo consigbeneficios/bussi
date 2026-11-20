@@ -282,6 +282,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
     <section class="view" id="charges">
       <div class="section">
         <div class="sectionhead"><div><h2>Nova cobrança</h2><p>Gera fatura, Pix e link individual para o cliente.</p></div></div>
+        <div class="notice" role="alert" style="margin-top:12px">Emissão de novas cobranças temporariamente suspensa: os links legados contêm dados pessoais codificados. Não compartilhe links antigos nem insira dados reais até a revisão de segurança.</div>
         <div class="grid3">
           <div class="field"><label>Pesquisar cliente</label><input id="chargeClientSearch" placeholder="Digite nome, contrato ou telefone"></div>
           <div class="field"><label>Cliente</label><select id="chargeClient"></select></div>
@@ -291,7 +292,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
           <div class="field"><label>Descrição da fatura</label><input id="chargeDesc" value="Black Friday 50% OFF — P/Consignado — Competência: Dezembro" aria-label="Descrição completa da cobrança"></div>
           <div class="field"><label>Vencimento (automático — hoje)</label><input id="chargeDue" type="date" readonly title="O link vence no dia em que é emitido"></div>
         </div>
-        <div class="notice" style="margin-top:12px"><b>Validade da cobrança:</b> emitida e vencendo no mesmo dia. O link deixa de exibir o Pix a partir de 00h do dia seguinte, horário de São Paulo, ou quando o pagamento for confirmado.</div><div class="toolbar" style="margin-top:16px"><button class="btn primary" id="generateCharge">Gerar cobrança e link</button><button class="btn ghost" id="printInvoice">Visualizar fatura</button></div>
+        <div class="notice" style="margin-top:12px"><b>Validade da cobrança:</b> emitida e vencendo no mesmo dia. O link deixa de exibir o Pix a partir de 00h do dia seguinte, horário de São Paulo, ou quando o pagamento for confirmado.</div><div class="toolbar" style="margin-top:16px"><button class="btn primary" id="generateCharge" disabled title="Emissão suspensa para revisão de segurança">Gerar cobrança e link</button><button class="btn ghost" id="printInvoice" disabled title="Emissão suspensa para revisão de segurança">Visualizar fatura</button></div>
         <div id="generatedBox" class="notice" style="display:none;margin-top:16px"><b>Fatura gerada: <span id="generatedInvoiceNumber"></span></b><div style="margin-top:9px;font-size:12px">Link funcional para enviar ao cliente:</div><div class="linkbox" style="margin-top:8px"><input id="generatedLink" readonly><button class="btn dark" id="copyGenerated">Copiar</button><button class="btn primary" id="openGenerated">Abrir</button></div><p data-bussi-cloud-help class="muted" style="margin-top:8px;font-size:12px">Para links persistentes, conecte o armazenamento na nuvem em Integrações.</p></div>
       </div>
       <div class="section"><div class="sectionhead"><div><h2>Histórico de cobranças</h2><p>Somente faturas efetivamente geradas no BUSSI, com opção de exclusão individual.</p></div></div><div class="tablewrap"><table class="table"><thead><tr><th>Fatura</th><th>Cliente</th><th>Original</th><th>Desconto</th><th>Valor a ser pago</th><th>Status</th><th>Ações</th></tr></thead><tbody id="chargeRows"></tbody></table></div></div>
@@ -654,6 +655,7 @@ function reserveInvoiceNumber(){
  return invoiceName(n)
 }
 function makeSnapshot(invoiceId){
+ throw new Error("Emissão de novas cobranças suspensa para revisão de segurança.");
  syncPixFromUI();const {c,o,d,f}=calcCharge();
  if(!c)throw Error('Selecione um cliente válido.');
  if(!(o>0))throw Error('Informe um valor original maior que zero.');
