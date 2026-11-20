@@ -379,9 +379,9 @@ button:disabled{opacity:.5;cursor:not-allowed}
 </div><div class="rowend"><button class="btn ghost" data-close="clientModal">Cancelar</button><button class="btn primary" id="saveClient">Salvar cliente</button></div></div></div>
 <div class="modal" id="campaignModal"><div class="dialog"><h3>Nova campanha</h3><div class="grid2"><div class="field"><label>Nome da campanha</label><input id="campName"></div><div class="field"><label>Público</label><select id="campAudience"><option>Todos os clientes</option><option>Clientes com cobrança</option><option>Segmento manual</option></select></div></div><div class="field" style="margin-top:14px"><label>Mensagem</label><textarea id="campMessage" placeholder="Ex.: Olá, {{nome}}. Sua condição especial está disponível..."></textarea></div><div class="rowend"><button class="btn ghost" data-close="campaignModal">Cancelar</button><button class="btn primary" id="saveCampaign">Salvar campanha</button></div></div></div>
 
-<script src="bussi-events.js"></script>
+<!-- Revisão: telemetria de produção desativada. -->
 <script>
-const K={clients:'bussi.clients.v1',campaigns:'bussi.campaigns.v1',charges:'bussi.charges.v1',settings:'bussi.settings.v1'};
+const K={clients:'bussi.revisao.clients.v1',campaigns:'bussi.revisao.campaigns.v1',charges:'bussi.revisao.charges.v1',settings:'bussi.revisao.settings.v1'};
 const defaultClients=[
 {name:'Cliente Teste 01',contract:'TESTE-0001',phone:'(00) 90000-0001',original:1200.00,final:600.00},
 {name:'Cliente Teste 02',contract:'TESTE-0002',phone:'(00) 90000-0002',original:985.40,final:492.70},
@@ -405,7 +405,7 @@ const defaultClients=[
 {name:'Cliente Teste 20',contract:'TESTE-0020',phone:'(00) 90000-0020',original:875.00,final:437.50}
 ];
 let clients=load(K.clients,[])||[],campaigns=load(K.campaigns,[]),charges=load(K.charges,[]),settings=load(K.settings,{pixType:'auto',pixKey:'',pixName:'CONSIG BENEFICIO SA',pixCity:'SAO PAULO',pixTxid:'***',pixDesc:'FATURA CONSIG',trackingEndpoint:'',metaPhoneId:'',metaWabaId:'',trackingEnv:'',paymentProvider:'',paymentWebhook:'',paymentStatusEndpoint:'',authResetEndpoint:'',authEmail:'sac@consigbeneficio.com.br'}),editClientIndex=-1,lastLink='';
-const TEST_SEED_KEY='bussi.test.clients.seed.v1';
+const TEST_SEED_KEY='bussi.revisao.test.clients.seed.v1';
 if(!localStorage.getItem(TEST_SEED_KEY)){
   const existingContracts=new Set(clients.map(c=>String(c.contract||'')));
   const seed=defaultClients.filter(c=>!existingContracts.has(String(c.contract||'')));
@@ -415,7 +415,7 @@ if(!localStorage.getItem(TEST_SEED_KEY)){
 }
 function $(id){return document.getElementById(id)}function load(k,f){try{const v=localStorage.getItem(k);return v?JSON.parse(v):f}catch{return f}}function save(k,v){localStorage.setItem(k,JSON.stringify(v));if($('saveState'))$('saveState').textContent='Salvo às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
 const AUTH_USER='consibeneficio';
-const AUTH_KEY='bussi.auth.local.v2';
+const AUTH_KEY='bussi.revisao.auth.local.v2';
 async function passwordHash(password,salt){
   const enc=new TextEncoder();
   const key=await crypto.subtle.importKey('raw',enc.encode(password),'PBKDF2',false,['deriveBits']);
@@ -434,7 +434,7 @@ function showAuth(){
   if($('loginError'))$('loginError').classList.remove('show');
   if($('setupError'))$('setupError').classList.remove('show')
 }
-function enterApp(){sessionStorage.setItem('bussi.session','1');$('authGate').style.display='none';$('mainApp').style.display='grid'}
+function enterApp(){sessionStorage.setItem('bussi.revisao.session','1');$('authGate').style.display='none';$('mainApp').style.display='grid'}
 $('createAccess').onclick=async()=>{
   const p=$('setupPass').value,p2=$('setupPass2').value,e=$('setupError');
   e.classList.remove('show');
@@ -448,17 +448,17 @@ $('createAccess').onclick=async()=>{
 $('loginBtn').onclick=async()=>{
   const a=authState(),u=$('loginUser').value.trim(),p=$('loginPass').value,e=$('loginError');
   e.classList.remove('show');
-  const attempts=Number(sessionStorage.getItem('bussi.login.attempts')||0);
-  const lockUntil=Number(sessionStorage.getItem('bussi.login.lockUntil')||0);
+  const attempts=Number(sessionStorage.getItem('bussi.revisao.login.attempts')||0);
+  const lockUntil=Number(sessionStorage.getItem('bussi.revisao.login.lockUntil')||0);
   if(Date.now()<lockUntil){e.textContent='Muitas tentativas. Tente novamente em alguns instantes.';e.classList.add('show');return}
   if(!a||u!==AUTH_USER){e.textContent='Usuário ou senha inválidos.';e.classList.add('show');return}
   const hash=await passwordHash(p,a.salt);
   if(hash!==a.hash){
-    const next=attempts+1;sessionStorage.setItem('bussi.login.attempts',String(next));
-    if(next>=5){sessionStorage.setItem('bussi.login.lockUntil',String(Date.now()+30000));sessionStorage.setItem('bussi.login.attempts','0')}
+    const next=attempts+1;sessionStorage.setItem('bussi.revisao.login.attempts',String(next));
+    if(next>=5){sessionStorage.setItem('bussi.revisao.login.lockUntil',String(Date.now()+30000));sessionStorage.setItem('bussi.revisao.login.attempts','0')}
     e.textContent='Usuário ou senha inválidos.';e.classList.add('show');return
   }
-  sessionStorage.removeItem('bussi.login.attempts');sessionStorage.removeItem('bussi.login.lockUntil');enterApp()
+  sessionStorage.removeItem('bussi.revisao.login.attempts');sessionStorage.removeItem('bussi.revisao.login.lockUntil');enterApp()
 };
 $('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')$('loginBtn').click()});
 $('forgotBtn').onclick=()=>{$('loginAuth').style.display='none';$('resetAuth').style.display='block';$('resetEmail').value=settings.authEmail||'sac@consigbeneficio.com.br';$('resetError').classList.remove('show')};
@@ -480,8 +480,8 @@ $('sendResetBtn').onclick=async()=>{
     e.style.color='#a43b3b';e.textContent='Não foi possível enviar o e-mail. Verifique a integração de autenticação.';e.classList.add('show')
   }finally{$('sendResetBtn').disabled=false;$('sendResetBtn').textContent='Enviar link de redefinição'}
 };
-$('logoutBtn').onclick=()=>{sessionStorage.removeItem('bussi.session');showAuth()};
-if(sessionStorage.getItem('bussi.session')==='1'&&authState())enterApp();else showAuth()
+$('logoutBtn').onclick=()=>{sessionStorage.removeItem('bussi.revisao.session');showAuth()};
+if(sessionStorage.getItem('bussi.revisao.session')==='1'&&authState())enterApp();else showAuth()
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function money(n){return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
 function parseMoney(v){
@@ -571,7 +571,7 @@ $('chargeClient').onchange=()=>{const c=selectedChargeClient();if(c){$('chargeOr
 $('chargeOriginal').oninput=calcCharge;$('chargeDiscount').oninput=calcCharge;
 function syncPixFromUI(){settings={...settings,pixType:$('pixType').value,pixKey:$('pixKey').value.trim(),pixName:$('pixName').value.trim(),pixCity:$('pixCity').value.trim(),pixTxid:$('pixTxid').value.trim()||'***',pixDesc:$('pixDesc').value.trim()};localStorage.setItem(K.settings,JSON.stringify(settings))}
 function saoPauloToday(){const parts=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).filter(p=>p.type!=='literal').map(p=>[p.type,p.value]));return parts.year+'-'+parts.month+'-'+parts.day}
-const INVOICE_SEQUENCE_KEY='bussi.invoice.next.v1';
+const INVOICE_SEQUENCE_KEY='bussi.revisao.invoice.next.v1';
 const PAYMENT_HOST='https://consigbeneficios.github.io/bussi/';
 function publicPaymentUrl(value){
  try{
@@ -789,7 +789,7 @@ function persistAll(){
 $('saveAllNow').onclick=()=>{persistAll();alert('Informações salvas neste navegador.')};
 $('exportBackup').onclick=()=>{
   persistAll();
-  const backup={version:4,exportedAt:new Date().toISOString(),clients,campaigns,charges,settings,events:dashboardEvents(),daily:window.BussiEvents?.daily()||{},activity:window.BussiEvents?.activity()||{},invoiceNext:nextInvoiceNumber(),chargeDraft:load('bussi.charge.draft.v1',{})};
+  const backup={version:4,exportedAt:new Date().toISOString(),clients,campaigns,charges,settings,events:dashboardEvents(),daily:window.BussiEvents?.daily()||{},activity:window.BussiEvents?.activity()||{},invoiceNext:nextInvoiceNumber(),chargeDraft:load('bussi.revisao.charge.draft.v1',{})};
   const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='BUSSI_BACKUP_'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)
 };
@@ -800,21 +800,21 @@ $('backupFile').onchange=async e=>{
     const data=JSON.parse(await file.text());
     if(!data||!Array.isArray(data.clients)||!Array.isArray(data.campaigns)||!Array.isArray(data.charges)||typeof data.settings!=='object')throw new Error('Formato inválido');
     clients=data.clients;campaigns=data.campaigns;charges=data.charges;settings=data.settings;
-    if(Array.isArray(data.events))localStorage.setItem('bussi.events.v1',JSON.stringify(data.events.slice(-5000)));
-    if(data.daily&&typeof data.daily==='object'&&!Array.isArray(data.daily))localStorage.setItem('bussi.events.daily.v1',JSON.stringify(data.daily));
+    if(Array.isArray(data.events))localStorage.setItem('bussi.revisao.events.v1',JSON.stringify(data.events.slice(-5000)));
+    if(data.daily&&typeof data.daily==='object'&&!Array.isArray(data.daily))localStorage.setItem('bussi.revisao.events.daily.v1',JSON.stringify(data.daily));
     else if(Array.isArray(data.events))window.BussiEvents?.rebuildDaily(data.events);
-    if(data.activity&&typeof data.activity==='object'&&!Array.isArray(data.activity))localStorage.setItem('bussi.events.activity.v1',JSON.stringify(data.activity));
+    if(data.activity&&typeof data.activity==='object'&&!Array.isArray(data.activity))localStorage.setItem('bussi.revisao.events.activity.v1',JSON.stringify(data.activity));
     else if(Array.isArray(data.events))window.BussiEvents?.rebuildActivity(data.events);
     if(Number.isSafeInteger(Number(data.invoiceNext))&&Number(data.invoiceNext)>=11){
      localStorage.setItem(INVOICE_SEQUENCE_KEY,String(Math.max(nextInvoiceNumber(),Number(data.invoiceNext))))
     }
-    if(data.chargeDraft&&typeof data.chargeDraft==='object')localStorage.setItem('bussi.charge.draft.v1',JSON.stringify(data.chargeDraft));
+    if(data.chargeDraft&&typeof data.chargeDraft==='object')localStorage.setItem('bussi.revisao.charge.draft.v1',JSON.stringify(data.chargeDraft));
     persistAll();renderAll();restoreChargeDraft();alert('Backup restaurado com sucesso.')
   }catch(err){alert('Não foi possível restaurar este backup.')}
   e.target.value=''
 };
 
-const DRAFT_KEY='bussi.charge.draft.v1';
+const DRAFT_KEY='bussi.revisao.charge.draft.v1';
 function saveChargeDraft(){
  const ids=['chargeClient','chargeClientSearch','chargeOriginal','chargeDiscount','chargeDesc','chargeDue'];
  const record={};ids.forEach(id=>{if($(id))record[id]=$(id).value});
