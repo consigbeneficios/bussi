@@ -330,39 +330,8 @@ button:disabled{opacity:.5;cursor:not-allowed}
           </div>
         </div>
         <div class="section" style="margin-top:18px">
-          <div class="sectionhead"><div><h2>Armazenamento de faturas na nuvem</h2><p>Supabase · banco protegido por conta. Faturas novas podem ser sincronizadas automaticamente depois do login.</p></div></div>
-          <div class="grid2">
-            <div class="field"><label for="cloudEmail">E-mail de acesso</label><input id="cloudEmail" type="email" autocomplete="email" value="sac@consigbeneficio.com.br"></div>
-            <div class="field"><label for="cloudPassword">Senha (opcional)</label><input id="cloudPassword" type="password" autocomplete="current-password" placeholder="Somente se já criou uma senha"></div>
-          </div>
-          <div class="toolbar" style="margin-top:14px">
-            <button class="btn primary" type="button" id="cloudMagicSend">Receber acesso por e-mail</button>
-          </div>
-          <div class="field" style="margin-top:12px">
-            <label for="cloudMagicInput">Link do Supabase, código do e-mail ou endereço do navegador (localhost)</label>
-            <textarea id="cloudMagicInput" rows="2" placeholder="Cole o link de ativação ou, se foi redirecionado ao localhost, cole a URL completa exibida no navegador"></textarea>
-            <div class="toolbar" style="margin-top:8px">
-              <button class="btn dark" type="button" id="cloudMagicConfirm">Confirmar acesso</button>
-            </div>
-            <p class="muted" style="font-size:12px;margin:6px 0">
-              Se o e-mail abriu uma página com erro em <b>localhost:3000</b>, copie o endereço completo da barra do navegador e cole aqui, sem compartilhar no chat. Se o link já expirou ou não contém um código de sessão, clique em <b>Receber acesso por e-mail</b> e cole o novo link antes de abri-lo.
-            </p>
-          </div>
-          <div class="toolbar" style="margin-top:14px">
-            <button class="btn primary" type="button" id="cloudSignIn">Entrar na nuvem</button>
-            <button class="btn ghost" type="button" id="cloudSignUp">Criar conta</button>
-            <button class="btn ghost" type="button" id="cloudSignOut" disabled>Sair da nuvem</button>
-            <button class="btn dark" type="button" id="cloudSync" disabled>Sincronizar faturas</button>
-          </div>
-          <div class="notice" style="margin-top:12px" id="cloudStatus" role="status">Conexão com banco de dados inicializando...</div>
-          <div class="field" style="margin-top:18px">
-            <label for="cloudLegacyLink">Recuperar fatura por link antigo</label>
-            <textarea id="cloudLegacyLink" rows="3" placeholder="Cole aqui o link completo de pagamento com #p=..."></textarea>
-            <div class="toolbar"><button class="btn ghost" type="button" id="cloudImportLink">Importar fatura</button></div>
-            <p class="muted" style="font-size:12px;margin:4px 0">Importa os dados do link para o histórico local. Se estiver conectado à nuvem, também salva no Supabase. Não é necessário abrir o domínio antigo.</p>
-          </div>
-          <div id="cloudInvoiceList" style="margin-top:12px"></div>
-          <div class="notice" style="margin-top:12px">Os links da nuvem incluem um identificador secreto. Não compartilhe senhas de acesso nem publique dados dos clientes no GitHub. O endereço pay.consigbeneficio.com.br permanece indisponível até regularizar seu certificado SSL.</div>
+          <div class="sectionhead"><div><h2>Armazenamento de faturas na nuvem</h2><p>Ambiente de revisão — somente dados fictícios.</p></div></div>
+          <div class="notice" role="status" id="cloudStatus">Sincronização com o Supabase antigo desativada nesta versão. Nenhum dado real deve ser inserido. A conexão com o novo projeto ainda está pendente.</div>
         </div>
         <div class="toolbar" style="margin-top:16px"><button class="btn primary" id="saveIntegrations">Salvar integrações</button></div>
       </div>
@@ -997,7 +966,7 @@ $('chargeDue').value=saoPauloToday();
 $('chargeDue').readOnly=true;
 window.addEventListener('focus',()=>{if($('chargeDue'))$('chargeDue').value=saoPauloToday();});
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.94.1/dist/umd/supabase.min.js"></script>
-<script src="bussi-cloud.js"></script>
+
+
 </body>
 </html>
