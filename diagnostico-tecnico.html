@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>BUSSI | Diagnóstico técnico</title><style>
+*{box-sizing:border-box}body{margin:0;background:#f4f6f9;color:#172433;font:16px/1.5 system-ui,sans-serif}main{max-width:720px;margin:7vh auto;padding:24px}section{background:#fff;border:1px solid #d9e0e8;border-radius:12px;padding:24px;margin:16px 0}h1{font-size:27px;margin:0 0 10px}h2{font-size:18px}dl{margin:0}dt{font-weight:600}dd{margin:0 0 16px;color:#394b58}small{color:#566573}a{color:#1257a1}</style></head>
+<body><main><h1>BUSSI — Diagnóstico técnico</h1><p>Página de verificação do ambiente web. Não é uma fatura, não recebe pagamentos e não coleta dados de clientes.</p>
+<section><h2>Teste neste navegador</h2><dl><dt>Página acessível</dt><dd>OK — documento carregado</dd><dt>Conexão HTTPS</dt><dd id="tls">Não verificada</dd><dt>Armazenamento local de teste</dt><dd id="storage">Não verificado</dd><dt>API de criptografia do navegador</dt><dd id="crypto">Não verificada</dd></dl></section>
+<section><h2>Limites da verificação</h2><p>Os testes desta página não comprovam a integração com Supabase ou Nitro, a emissão de faturas, o funcionamento do domínio de pagamentos ou a publicação dos links sequenciais. Nenhuma cobrança é emitida.</p></section>
+<p><a href="./">Voltar ao portal existente</a></p><small>Diagnóstico técnico independente, sem alterar o portal principal.</small></main>
+<script>
+document.getElementById("tls").textContent=location.protocol==="https:"&&window.isSecureContext?"OK — contexto seguro":"Atenção — contexto não seguro";
+document.getElementById("crypto").textContent=window.crypto&&window.crypto.subtle?"OK — disponível":"Indisponível";
+const key="bussi.diagnostico."+Math.random().toString(36).slice(2);
+try{localStorage.setItem(key,"teste");const ok=localStorage.getItem(key)==="teste";localStorage.removeItem(key);document.getElementById("storage").textContent=ok?"OK — teste temporário removido":"Falha";}catch{document.getElementById("storage").textContent="Indisponível";}
+</script></body></html>
