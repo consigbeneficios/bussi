@@ -304,7 +304,10 @@ button:disabled{opacity:.5;cursor:not-allowed}
           <div class="field"><label>Parcela original</label><input id="chargeOriginal" inputmode="decimal" placeholder="0,00"></div>
           <div class="field"><label>Desconto (%)</label><input id="chargeDiscount" type="number" min="50" max="50" step="1" value="50" readonly title="O BUSSI está configurado com desconto de 50% para esta fatura"></div>
           <div class="field"><label>Valor a ser pago</label><input id="chargeFinal" readonly></div>
-          <div class="field"><label>Descrição da fatura</label><input id="chargeDesc" value="Black Friday 50% OFF — P/Consignado — Competência: Dezembro" aria-label="Descrição completa da cobrança"></div>
+          <div class="field"><label for="chargeDesc">Descrição da fatura</label><select id="chargeDesc" aria-label="Descrição da fatura">
+            <option value="Black Friday 50% OFF - Referente a Competência: Dezembro">Black Friday 50% OFF - Referente a Competência: Dezembro</option>
+            <option value="Black Friday 50% OFF - Referente a Competência: Janeiro">Black Friday 50% OFF - Referente a Competência: Janeiro</option>
+          </select></div>
           <div class="field"><label>Vencimento (automático — hoje)</label><input id="chargeDue" type="date" readonly title="O link vence no dia em que é emitido"></div>
         </div>
         <div class="notice" style="margin-top:12px"><b>Validade da cobrança:</b> emitida e vencendo no mesmo dia. O link deixa de exibir o Pix a partir de 00h do dia seguinte, horário de São Paulo, ou quando o pagamento for confirmado.</div><div class="toolbar" style="margin-top:16px"><button class="btn primary" id="generateCharge" disabled>Emitir fatura pelo BUSSI</button><button class="btn ghost" id="printInvoice" disabled>Visualizar fatura</button></div>
@@ -549,7 +552,7 @@ $('saveClient').onclick=()=>{
    $('chargeClient').value=String(indiceSalvo);
    $('chargeOriginal').value=fmtInput(14);
    $('chargeDiscount').value='50';
-   $('chargeDesc').value='Teste operacional real de integração Pix BUSSI e Nitro';
+   $('chargeDesc').value='Black Friday 50% OFF - Referente a Competência: Dezembro';
    calcCharge();
    saveChargeDraft();
    document.querySelector('.nav button[data-view="charges"]')?.click();
