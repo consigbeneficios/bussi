@@ -27,7 +27,7 @@ jobs:
           assert.match(html,/Competência: Dezembro/);
           assert.match(html,/Competência: Janeiro/);
           assert.match(js,/bussi_emitir_link_cliente/);
-          assert.match(js,/bussi_comprovante/);
+          assert.match(js,/comprovante-liquidacao\\.html/);
           assert.match(js,/cloudReady/);
           assert.match(r,/comprovante-bussi/);
           assert.match(r,/nitro_ledger/);
