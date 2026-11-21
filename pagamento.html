@@ -1,193 +1,27 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#ffffff"><title>Fatura — CONSIG BENEFÍCIOS</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="bussi-events.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>CONSIG BENEFÍCIOS — Link de pagamento encerrado</title>
 <style>
-:root{--ink:#111827;--muted:#6b7280;--line:#d9dde3;--paper:#fff;--pix:#37b6a6;--black:#111318;--shadow:0 14px 40px rgba(15,23,42,.09)}
-*{box-sizing:border-box}html{background:#eef0f3}html,body{margin:0;min-height:100%;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;color:var(--ink)}
-body{background:#eef0f3;-webkit-font-smoothing:antialiased}button{font:inherit;cursor:pointer}
-.checkout{width:100%;min-height:100vh;background:#fff}.top-shell{max-width:480px;margin:0 auto;padding:52px 38px 42px;background:#fff}
-.download{display:flex;align-items:center;justify-content:center;gap:10px;width:max-content;margin:0 auto 62px;border:0;background:transparent;color:#111;font-size:16px;font-weight:800;text-decoration:underline;text-underline-offset:4px;padding:0}
-.download svg{width:21px;height:21px;stroke-width:2}
-.hero{text-align:center}.company-logo{width:122px;height:122px;border-radius:50%;object-fit:cover;display:block;margin:0 auto 24px;box-shadow:0 4px 14px rgba(15,23,42,.09)}
-.company-name{font-size:24px;line-height:1.15;font-weight:800;text-transform:uppercase;margin:0 0 4px;letter-spacing:-.02em;color:#13151a}
-.amount{font-size:47px;line-height:1.02;font-weight:900;letter-spacing:-.035em;margin:0 0 4px;font-variant-numeric:tabular-nums;color:#0f1116}
-.due{font-size:20px;line-height:1.2;margin:0 auto 22px;max-width:380px;font-weight:400;color:#374151}
-.charge{font-size:23px;font-weight:800;margin:0 0 12px}.saving-badge{display:inline-flex;align-items:center;justify-content:center;padding:7px 12px;border-radius:999px;background:#ecfdf5;color:#047857;font-size:13px;font-weight:800;margin-bottom:24px}
-.rule{height:2px;background:#111;width:100%;margin:0 0 31px}
-.details{text-align:left}.item-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;margin-bottom:32px}
-.item-title{font-size:17px;font-weight:800;margin:0 0 4px;color:#111827}.qty{font-size:14px;color:#6b7280;line-height:1.4}.item-price{font-size:16px;font-weight:800;white-space:nowrap;margin-top:45px;color:#111827}
-.summary-row{display:grid;grid-template-columns:1fr auto;gap:18px;font-size:17px;line-height:1.4;padding:5px 0}.summary-row span:last-child{font-variant-numeric:tabular-nums}
-.summary-row.original span:last-child{text-decoration:line-through;text-decoration-thickness:1.4px}
-.summary-row.discount{color:#4b5563}.summary-row.discount span:last-child{color:#0f766e;font-weight:800}
-.summary-row.total{font-weight:900;border-top:1px solid #e5e7eb;margin-top:8px;padding-top:12px;font-size:18px}
-.details-toggle{display:flex;align-items:center;gap:10px;margin:40px auto 0;border:0;background:transparent;font-size:15px;font-weight:700;text-decoration:underline;text-underline-offset:4px;color:#202126}
-.details-toggle svg{width:15px;height:15px;transition:transform .2s ease}.details-toggle.collapsed svg{transform:rotate(180deg)}
-.collapsible{overflow:hidden;max-height:600px;transition:max-height .28s ease,opacity .2s ease;opacity:1}.collapsible.hidden-detail{max-height:0;opacity:0}
-.pay-band{background:#eef0f3;padding:46px 18px 40px}.pay-card{max-width:480px;margin:0 auto;background:#fff;border-radius:18px;padding:44px 38px 38px;box-shadow:0 8px 28px rgba(15,23,42,.06);border:1px solid #e8eaee}
-.pix-brand{display:flex;align-items:center;gap:8px;color:#8a8e94;margin-bottom:22px}.pix-brand svg{width:42px;height:28px}.pix-word{font-size:27px;font-weight:300;color:#8d9196;letter-spacing:-.04em}
-.pay-card h2{font-size:18px;margin:0 0 9px;font-weight:800}.pay-card p{font-size:16px;line-height:1.35;margin:0 0 28px;color:#17191d}
-.pay-btn{width:100%;height:52px;border:0;border-radius:11px;background:#0e1015;color:#fff;font-size:16px;font-weight:700;transition:transform .05s ease,opacity .15s ease}.pay-btn:active{transform:translateY(1px)}.pay-btn:hover{opacity:.94}
-.pix-reveal{display:none;margin-top:24px;padding-top:24px;border-top:1px solid #e2e3e5}.pix-reveal.open{display:block}
-.qr-wrap{display:flex;justify-content:center;margin:0 auto 20px}.qr{width:250px;height:250px;background:#fff;display:grid;place-items:center}.qr canvas,.qr img{max-width:100%;height:auto}
-.pix-label{font-size:13px;font-weight:800;margin:0 0 7px}.pix-code{border:1px solid #d9dadd;border-radius:9px;background:#fafafa;padding:12px;font:11px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;word-break:break-all;max-height:104px;overflow:auto;color:#373a40}
-.copy-row{display:grid;grid-template-columns:1fr;gap:9px;margin-top:10px}.copy-btn{border:1px solid #cfd2d6;background:#fff;border-radius:9px;height:44px;font-weight:800;color:#17191d}
-.footer{background:#eef0f3;text-align:center;padding:4px 24px 34px;color:#6d7178;font-size:12px;line-height:1.45}.footer strong{color:#4a4e54}.footer a{color:inherit;margin:0 7px}
-.error{max-width:500px;margin:80px auto;background:#fff;padding:40px;border-radius:16px;text-align:center}
-@media(min-width:860px){
- body{padding:46px 24px;background:#eef0f3}
- .checkout{max-width:1060px;min-height:0;margin:0 auto;border-radius:18px;overflow:hidden;box-shadow:var(--shadow);display:grid;grid-template-columns:minmax(0,1.08fr) minmax(390px,.92fr);background:#fff}
- .top-shell{max-width:none;margin:0;padding:46px 68px 54px;display:flex;flex-direction:column;justify-content:flex-start}
- .download{margin:0 0 45px;align-self:flex-start}.company-logo{width:134px;height:134px;margin-bottom:27px}.company-name{font-size:26px}.amount{font-size:52px}.due{font-size:19px}.charge{font-size:24px}.rule{margin-bottom:34px}
- .pay-band{padding:42px;background:#f0f1f3;display:flex;align-items:center}.pay-card{width:100%;max-width:440px;padding:42px 36px;margin:auto;box-shadow:0 8px 24px rgba(0,0,0,.05)}
- .footer{grid-column:1/-1;padding:20px 30px 24px;background:#e9ebee;border-top:1px solid #dde0e3}
-}
-@media(max-width:390px){.top-shell{padding-left:25px;padding-right:25px}.pay-card{padding-left:24px;padding-right:24px}.amount{font-size:42px}.company-name{font-size:22px}.due{font-size:18px}.qr{width:220px;height:220px}}
-@media print{body{padding:0;background:#fff}.checkout{display:none!important}}
-/* Link encerrado: não exibir payload Pix ao usuário */
-.expiry-screen{max-width:610px;margin:50px auto;padding:38px 28px;background:#fff;border-radius:22px;text-align:center;box-shadow:0 12px 38px rgba(15,23,42,.08)}.expiry-screen img{display:block;width:130px;height:130px;object-fit:cover;border-radius:26px;margin:0 auto 20px}.expiry-screen h1{font-size:28px;line-height:1.2;letter-spacing:-.03em;margin:0 0 14px}.expiry-screen p{font-size:15px;line-height:1.6;color:#5b6776}.expiry-screen .help{font-size:13px;margin-top:25px}.expiry-screen .links{font-size:12px;line-height:1.8;margin-top:26px;color:#65717b}.expiry-screen .links a{margin:0 7px;text-decoration:underline}
-
-/* CONSIG — refinamento responsivo sem alterar o modelo aprovado */
-html{text-size-adjust:100%;-webkit-text-size-adjust:100%}
-body{line-height:1.5;font-weight:400}
-button{font-family:inherit;transition:background-color .15s ease,box-shadow .15s ease,opacity .15s ease}
-button:focus-visible,a:focus-visible{outline:2px solid #168d78;outline-offset:4px}
-.download{font-weight:800;line-height:1.35;text-underline-offset:4px}
-.company-logo{width:128px;height:128px}
-.company-name{font-weight:850;letter-spacing:-.03em;overflow-wrap:anywhere}
-.amount{font-weight:900;font-variant-numeric:tabular-nums}
-.due{font-size:19px;line-height:1.45}
-.charge{font-size:22px;line-height:1.25}
-.item-head{gap:14px}
-.item-title{line-height:1.3}
-.qty{line-height:1.5;overflow-wrap:anywhere}
-.item-price{align-self:end;margin-top:0;font-variant-numeric:tabular-nums}
-.summary-row{font-variant-numeric:tabular-nums;align-items:baseline}
-.summary-row.total{letter-spacing:-.012em}
-.details-toggle{min-height:44px}
-.pay-card{border-color:#e1e8ed;box-shadow:0 8px 30px rgba(18,41,53,.06)}
-.pay-card h2{font-size:19px;line-height:1.3;font-weight:850;letter-spacing:-.02em}
-.pay-card p{font-size:15.5px;line-height:1.55}
-.pay-btn{min-height:52px;font-weight:800}
-.copy-btn{min-height:45px}
-.qr{max-width:100%;min-width:0;aspect-ratio:1}
-.qr canvas,.qr img{display:block;max-width:100%}
-.footer{line-height:1.75}
-.expiry-screen{max-width:600px}
-@media(min-width:860px){
- .company-logo{width:144px;height:144px}
- .top-shell{padding-left:56px;padding-right:56px}
- .pay-band{padding:36px}
-}
-@media(max-width:859px){
- .top-shell{max-width:510px}
- .pay-band{padding:28px 16px 36px}
-}
-@media(max-width:420px){
- .top-shell{padding:36px 20px 32px}
- .download{margin-bottom:42px;font-size:15px}
- .company-logo{width:124px;height:124px;margin-bottom:21px}
- .company-name{font-size:22px}
- .amount{font-size:43px}
- .due{font-size:17px}
- .charge{font-size:20px}
- .summary-row{font-size:15px}
- .summary-row.total{font-size:16px}
- .item-head{gap:8px}
- .item-title{font-size:15.5px}
- .item-price{font-size:15px}
- .pay-card{padding:28px 22px}
- .pay-card p{font-size:14.5px}
- .qr{width:220px;height:220px}
- .footer{font-size:11px}
-}
-@media(prefers-reduced-motion:reduce){
- *,*:before,*:after{animation-duration:.01ms!important;transition:none!important}
-}
-
-</style></head>
-<body><main id="app"></main><div id="qrBuffer" style="position:fixed;left:-99999px;top:-99999px"></div>
-<script>
-function decodeData(s){try{s=s.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';const bin=atob(s);return JSON.parse(new TextDecoder().decode(Uint8Array.from(bin,c=>c.charCodeAt(0))))}catch{return null}}
-function money(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
-function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-function naturalDate(iso){if(!iso)return '';const p=String(iso).split('-').map(Number);if(p.length!==3||!p[0])return '';return new Intl.DateTimeFormat('pt-BR',{day:'numeric',month:'long',year:'numeric'}).format(new Date(p[0],p[1]-1,p[2]))}
-function track(d,event){try{window.BussiEvents?.record(d,event)}catch{}}
-const PIX_ICON=`<svg viewBox="0 0 64 40" aria-hidden="true"><g fill="#49b8ab"><path d="M19.3 2.5a7 7 0 0 1 9.9 0l5.6 5.6-6.1 6.1-5.5-5.5a1.8 1.8 0 0 0-2.6 0l-9.2 9.2a1.8 1.8 0 0 0 0 2.6l9.2 9.2a1.8 1.8 0 0 0 2.6 0l5.5-5.5 6.1 6.1-5.6 5.6a7 7 0 0 1-9.9 0L3.9 20.5a1.8 1.8 0 0 1 0-2.6L19.3 2.5Z"/><path d="m35.3 8.2 5.6-5.6a7 7 0 0 1 9.9 0l9.3 9.3-6.1 6.1-9.2-9.2a1.8 1.8 0 0 0-2.6 0l-.8.8-6.1-6.1Z" opacity=".92"/><path d="m54 22 6.1 6.1-9.3 9.3a7 7 0 0 1-9.9 0l-5.6-5.6 6.1-6.1.8.8a1.8 1.8 0 0 0 2.6 0L54 22Z" opacity=".92"/></g></svg>`;
-const raw=location.hash.startsWith('#p=')?location.hash.slice(3):new URLSearchParams(location.hash.slice(1)).get('p')||'';
-const d=decodeData(raw),app=document.getElementById('app');
-function saoPauloToday(){const p=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));return p.year+'-'+p.month+'-'+p.day}
-function manualStatus(d){try{const list=JSON.parse(localStorage.getItem('bussi.charges.v1')||'[]');if(!Array.isArray(list))return '';const id=d.chargeId;const c=id?list.find(x=>String(x.id)===String(id)):(list.filter(x=>String(x.invoice)===String(d.invoice)&&String(x.customer)===String(d.customer)).length===1?list.find(x=>String(x.invoice)===String(d.invoice)&&String(x.customer)===String(d.customer)):null);return c?.status||''}catch{return ''}}
-function blockReason(d){const st=manualStatus(d);if(st==='Pagamento confirmado')return 'paid';if(st==='Pagamento recusado')return 'refused';const day=/^\d{4}-\d{2}-\d{2}$/.test(String(d.issueDate||''))?d.issueDate:d.due;return /^\d{4}-\d{2}-\d{2}$/.test(String(day||''))&&saoPauloToday()>day?'expired':''}
-function blockedHtml(reason){const paid=reason==='paid',refused=reason==='refused';const heading=paid?'Pagamento confirmado':refused?'Cobrança encerrada':'Link de pagamento vencido';const body=paid?'O recebimento desta cobrança foi confirmado. O QR Code e o código Pix não estão mais disponíveis neste link.':refused?'Esta cobrança foi recusada manualmente. Solicite um novo link antes de tentar pagar novamente.':'O prazo de pagamento terminou. Esta cobrança venceu no dia da emissão. Solicite um novo link para efetuar o pagamento.';return '<section class="expiry-screen"><img src="logo-consig.svg" alt="CONSIG BENEFÍCIOS"><h1>'+heading+'</h1><p>'+body+'</p><p class="help">Atendimento: sac@consigbeneficio.com.br</p><div class="links"><a href="termos-de-uso.html">Termos de Uso</a><a href="politica-de-privacidade.html">Privacidade</a><a href="exclusao-de-dados.html">Exclusão de Dados</a></div></section>'}
-if(!d||!d.pix){app.innerHTML='<div class="error"><h2>Link de cobrança inválido</h2><p>Solicite um novo link ao atendimento.</p></div>'}else if(blockReason(d)){app.innerHTML=blockedHtml(blockReason(d));}else{
- track(d,'link_opened');
- const startedAt=Date.now();
- const original=Number(d.original??d.amount),finalVal=Number(d.amount||0);
- const discountPct=Number.isFinite(Number(d.discount))?Number(d.discount):original>0?Math.round((1-finalVal/original)*100):0;
- const dueText=d.due?'Vencimento em '+naturalDate(d.due):'Pagamento disponível via PIX';
- const desc=String(d.description||'Black Friday 50% OFF — P/Consignado — Competência: Dezembro').trim();
- app.innerHTML=`<section class="checkout">
- <section class="top-shell">
- <button class="download" id="downloadCharge" type="button" aria-label="Baixar fatura"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v12m0 0 5-5m-5 5-5-5M5 20h14"/></svg><span>Baixar fatura</span></button>
- <div class="hero"><img class="company-logo" src="logo-consig.svg" alt="CONSIG BENEFÍCIOS"><h1 class="company-name">${esc(d.company||'CONSIG BENEFÍCIO S/A')}</h1>
- <div class="amount">${money(finalVal)}</div><p class="due">${esc(dueText)}</p><div class="charge">Cobrança n.º ${esc(d.invoice||'—')}</div>
- <div class="saving-badge">Black Friday ${discountPct.toLocaleString('pt-BR',{maximumFractionDigits:2})}% OFF aplicado</div></div>
- <div class="rule"></div>
- <div class="collapsible" id="detailsBlock"><div class="details">
- <div class="item-head"><div><div class="item-title">Consig Benefícios</div><div class="qty">Quantidade: ${Number(d.quantity||1)}</div><div class="qty" style="margin-top:5px">${esc(desc)}</div></div><div class="item-price">${money(finalVal)}</div></div>
- <div class="summary-row original"><span>Parcela original</span><span>${money(original)}</span></div>
- <div class="summary-row discount"><span>Desconto ${discountPct.toLocaleString('pt-BR',{maximumFractionDigits:2})}% OFF</span><span>− ${money(Math.max(0,original-finalVal))}</span></div>
- <div class="summary-row"><span>Parcela com desconto</span><span>${money(finalVal)}</span></div>
- <div class="summary-row total"><span>Valor a ser pago</span><span>${money(finalVal)}</span></div>
- </div></div><button class="details-toggle" id="toggleDetails" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 14 5-5 5 5"/></svg><span>Mostrar menos</span></button>
- </section>
- <section class="pay-band"><div class="pay-card"><div class="pix-brand">${PIX_ICON}<span class="pix-word">pix</span></div><h2>Pagar com PIX</h2>
- <p>Use o PIX: é prático e o pagamento é instantâneo. Gere o QR Code ou copie o código e realize o pagamento pelo aplicativo da sua instituição financeira.</p>
- <button class="pay-btn" id="payPix" type="button">Pagar ${money(finalVal)}</button>
- <div class="pix-reveal" id="pixReveal"><div class="qr-wrap"><div class="qr" id="qr"></div></div><div class="pix-label">PIX Copia e Cola</div>
- <div class="copy-row"><button class="copy-btn" id="copyPix" type="button">Copiar código PIX</button></div></div>
- </div></section>
- <footer class="footer">Cobrança emitida por <strong>${esc(d.company||'CONSIG BENEFÍCIO S/A')}</strong> · CNPJ ${esc(d.cnpj||'66.754.630/0001-60')}<br>${esc(d.email||'sac@consigbeneficio.com.br')}<br>
- <a href="termos-de-uso.html">Termos de Uso</a> · <a href="politica-de-privacidade.html">Política de Privacidade</a> · <a href="exclusao-de-dados.html">Exclusão de Dados</a></footer></section>`;
- const reveal=document.getElementById('pixReveal');
- let qrRendered=false;
- function ensureQR(){if(qrRendered)return;qrRendered=true;if(typeof QRCode==='undefined'){document.getElementById('qr').textContent='Não foi possível carregar o QR Code. Use o código Pix Copia e Cola.';return}new QRCode(document.getElementById('qr'),{text:d.pix,width:224,height:224,correctLevel:QRCode.CorrectLevel.M})}
- document.getElementById('payPix').onclick=()=>{if(blockReason(d)){app.innerHTML=blockedHtml(blockReason(d));return}reveal.classList.add('open');ensureQR();track(d,'pay_clicked');reveal.scrollIntoView({behavior:'smooth',block:'nearest'})};
- const details=document.getElementById('detailsBlock'),toggle=document.getElementById('toggleDetails');
- toggle.onclick=()=>{const hidden=details.classList.toggle('hidden-detail');toggle.classList.toggle('collapsed',hidden);toggle.querySelector('span').textContent=hidden?'Mostrar mais':'Mostrar menos'};
- document.getElementById('copyPix').onclick=async()=>{if(blockReason(d)){app.innerHTML=blockedHtml(blockReason(d));return}let copied=false;try{await navigator.clipboard.writeText(d.pix);copied=true}catch{try{const t=document.createElement('textarea');t.value=d.pix;document.body.appendChild(t);t.select();copied=document.execCommand('copy');t.remove()}catch{}}if(copied){track(d,'pix_copied');const b=document.getElementById('copyPix');b.textContent='Código copiado!';setTimeout(()=>b.textContent='Copiar código PIX',1400)}else{const b=document.getElementById('copyPix');if(b){b.textContent='Não foi possível copiar. Tente novamente.';setTimeout(()=>{if(b.isConnected)b.textContent='Copiar código PIX'},2500)}}};
- function toStatus(){const u=new URL('status-pagamento.html',location.href);u.hash='p='+raw+'&s=checking';location.href=u.href}
- // O prazo de 40s inicia na abertura do link; copiar o Pix não equivale a pagamento.
- const expiryWatcher=setInterval(()=>{const reason=blockReason(d);if(reason){clearInterval(expiryWatcher);app.innerHTML=blockedHtml(reason)}},1500);
-window.addEventListener('storage',e=>{if(e.key==='bussi.charges.v1'&&blockReason(d))app.innerHTML=blockedHtml(blockReason(d))});
-setTimeout(()=>{if(!blockReason(d))toStatus();else app.innerHTML=blockedHtml(blockReason(d))},40000);
- function invoiceMarkup(qrImage){
-  const issue=String(d.issueDate||'').split('-').reverse().join('.');
-  const descFull=/^Black Friday\s+\d+(?:[.,]\d+)?%\s*OFF/i.test(desc)?desc:(discountPct>0?'Black Friday '+discountPct.toLocaleString('pt-BR',{maximumFractionDigits:2})+'% OFF — ':'')+desc.replace(/\s*[—-]\s*Competência:\s*Dezembro\s*$/i,'')+' — Competência: Dezembro';
-  const logoUrl=new URL('logo-consig.svg',location.href).href;
-  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Fatura ${esc(d.invoice||'')}</title><style>
-  @page{size:A4;margin:0}html,body{margin:0;background:#fff;font-family:"Helvetica Neue",Arial,Helvetica,sans-serif;color:#161616}*{box-sizing:border-box}
-  .invoice-page{width:210mm;min-height:297mm;padding:14mm 18mm 10mm;display:flex;flex-direction:column}
-  .invoice-top-model{position:relative;height:92mm;flex:0 0 92mm}.company-model{position:absolute;left:0;top:11mm;width:96mm}.company-model strong{display:block;font-size:8.6px;line-height:1.2;letter-spacing:.015em;color:#5a5a5a}.company-model p{font-size:7.9px;line-height:1.42;color:#6a6a6a;margin:4px 0 0;max-width:92mm}.customer-model{font-size:11px;font-weight:700;color:#151515;margin-top:7mm;letter-spacing:.005em}
-  .inv-logo-img{position:absolute;right:0;top:0;width:37mm;height:37mm;object-fit:cover;display:block}.invoice-meta-model{position:absolute;right:0;top:47mm;width:92mm}.invoice-meta-model h1{font-size:13.5px;margin:0 0 4.5mm;font-weight:800;letter-spacing:.005em}.meta-line-model{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:4.2px 0;border-top:1px solid #e6e6e6;font-size:9.6px;line-height:1.25}.meta-line-model:last-child{border-bottom:1px solid #e6e6e6}.meta-line-model span:last-child{text-align:right;font-weight:700;color:#1c1c1c;font-variant-numeric:tabular-nums}
-  .items-model{width:100%;border-collapse:collapse;table-layout:fixed;font-size:9.4px}.items-model col.desc-col{width:62%}.items-model col.unit-col{width:10%}.items-model col.money-col{width:14%}.items-model thead th{background:#dedede;border:1px solid #d5d5d5;padding:6.5px 7px;text-align:left;font-weight:700;color:#242424;line-height:1.15}.items-model thead th:not(:first-child){text-align:center}.items-model tbody td{border:1px solid #e0e0e0;padding:7.5px 7px;vertical-align:middle;line-height:1.35}.items-model tbody td:not(:first-child){text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.items-model tbody td:nth-child(2){text-align:center}
-  .totals-model{width:53%;margin:7mm 0 0 auto;font-size:9.7px}.trm{display:grid;grid-template-columns:1.55fr .75fr;gap:12px;padding:5.3px 7px}.trm.original span:last-child{text-decoration:line-through;color:#555}.trm span:last-child{text-align:right;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}.trm.total{margin-top:2px;padding:7px;background:#dedede;font-size:11px;font-weight:900}.trm.total span{font-weight:900}
-  .pay-area-model{margin-top:auto;padding-top:7mm;display:grid;grid-template-columns:34mm 1fr;gap:10mm;align-items:end;border-top:1px solid #e5e5e5}.qrbox-model{width:24mm;height:24mm}.qrbox-model img{width:24mm;height:24mm;object-fit:contain}.pay-caption{font-size:7.2px;margin-top:3px;color:#444}.footer-model{text-align:center;color:#4d4d4d;font-size:7.25px;line-height:1.55;padding-bottom:1.5mm}.footer-model strong{font-size:8.3px;color:#222}.footer-model .page-no{font-size:6.9px;color:#777;margin-top:2px}
-  @media print{body{background:#fff}.invoice-page{box-shadow:none}}</style></head><body>
-  <div class="invoice-page"><div class="invoice-top-model"><div class="company-model"><strong>${esc(d.company||'CONSIG BENEFÍCIO S/A')}</strong><div style="font-size:8px;line-height:1.35;color:#666;font-weight:700;margin-top:2px">CNPJ: ${esc(d.cnpj||'66.754.630/0001-60')}</div><p>${esc(d.companyAddress||'Avenida Doutor Cardoso de Melo, nº 1.855, Vila Olímpia, São Paulo/SP, CEP 04548-005')}</p><div class="customer-model">${esc(d.customer||'')}</div></div><img class="inv-logo-img" src="${logoUrl}" alt="CONSIG BENEFÍCIOS"><div class="invoice-meta-model"><h1>Fatura</h1><div class="meta-line-model"><span>Fatura</span><span>${esc(d.invoice||'')}</span></div><div class="meta-line-model"><span>Data de emissão</span><span>${esc(issue)}</span></div></div></div>
-  <table class="items-model"><colgroup><col class="desc-col"><col class="unit-col"><col class="money-col"><col class="money-col"></colgroup><thead><tr><th>Descrição</th><th>Unidade</th><th>P/Total</th><th>P/Desconto</th></tr></thead><tbody><tr><td>${esc(descFull)}</td><td>1</td><td>${money(original)}</td><td>${money(finalVal)}</td></tr></tbody></table>
-  <div class="totals-model"><div class="trm original"><span>Parcela original</span><span>${money(original)}</span></div><div class="trm"><span>Parcela com desconto</span><span>${money(finalVal)}</span></div><div class="trm total"><span>VALOR A SER PAGO</span><span>${money(finalVal)}</span></div></div>
-  <div class="pay-area-model"><div class="pay-model"><div class="qrbox-model">${qrImage?'<img src="'+qrImage+'" alt="QR Pix">':''}</div><div class="pay-caption">Pagar agora</div></div><div class="footer-model"><strong>${esc(d.company||'CONSIG BENEFÍCIO S/A')}</strong><br>${esc(d.companyAddress||'')}<br>Email: ${esc(d.email||'sac@consigbeneficio.com.br')} · CNPJ: ${esc(d.cnpj||'66.754.630/0001-60')}<div class="page-no">Página 1 de 1 da Fatura ${esc(d.invoice||'')}</div></div></div></div></body></html>`
- }
- document.getElementById('downloadCharge').onclick=()=>{track(d,'invoice_downloaded');
-  const w=window.open('','_blank');if(!w)return alert('Permita pop-ups para baixar a fatura.');
-  let qrImage='';
-  try{if(typeof QRCode!=='undefined'){const buf=document.getElementById('qrBuffer');buf.innerHTML='';new QRCode(buf,{text:d.pix,width:180,height:180,correctLevel:QRCode.CorrectLevel.M});const canvas=buf.querySelector('canvas');if(canvas)qrImage=canvas.toDataURL('image/png')}}catch{}
-  w.document.open();w.document.write(invoiceMarkup(qrImage));w.document.close();setTimeout(()=>{w.focus();w.print()},350);
- };
-}
-</script></body></html>
+*{box-sizing:border-box}body{font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;margin:0;background:#f3f5f6;color:#18303b;min-height:100vh;display:grid;place-items:center;padding:18px}
+main{width:min(100%,540px);padding:34px;background:#fff;border:1px solid #dfe8ec;border-radius:18px;box-shadow:0 12px 35px #122c3710;text-align:center}
+img{width:104px;height:104px;object-fit:cover;border-radius:18px;display:block;margin:0 auto 16px}
+h1{font-size:24px;line-height:1.25;margin:0 0 12px}
+p{font-size:15px;line-height:1.6;color:#53626c}
+a{color:#0a7860;font-weight:700}
+small{font-size:12px;color:#6c7983}
+</style>
+</head>
+<body>
+<main>
+<img src="logo-consig.svg" alt="CONSIG BENEFÍCIOS">
+<h1>Link de cobrança anterior encerrado</h1>
+<p>Este endereço pertence a uma versão descontinuada do sistema. Nenhum Pix será emitido nesta página. Para receber uma fatura válida, solicite um novo link ao atendimento da CONSIG BENEFÍCIOS.</p>
+<p><a href="mailto:sac@consigbeneficio.com.br">sac@consigbeneficio.com.br</a></p>
+<small>CONSIG BENEFÍCIO S/A · CNPJ 66.754.630/0001-60</small>
+</main>
+</body></html>
