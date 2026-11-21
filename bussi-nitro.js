@@ -204,8 +204,9 @@
     }finally{cloudBusy=false;}
   }
   function scheduleCloudSync(){
-    if(!cloudReady||cloudRestore)return;
+    if(cloudRestore)return;
     localStorage.setItem(DIRTY_KEY,"1");
+    if(!cloudReady)return;
     clearTimeout(cloudTimer);
     cloudTimer=setTimeout(()=>void uploadSnapshot(),1800);
   }
