@@ -29,7 +29,9 @@ jobs:
           assert.match(js,/autoRefreshToken:true/);
           assert.match(js,/getAuthenticatorAssuranceLevel/);
           assert.match(js,/bussi_portal_arquivos/);
-          assert.match(js,/BACKUP_TABLE,\{conteudo:snapshot\}/);
+          assert.ok(js.includes('BACKUP_TABLE+"?select=id"'));
+          assert.match(js,/cloudLastId/);
+          assert.match(js,/restoreSnapshot\(remote,pending\)/);
           assert.doesNotMatch(js,/assinatura:sig/);
           assert.match(js,/bussi_20261121_payment_0013/);
           assert.match(html,/sac@consigbeneficio.com.br/);
