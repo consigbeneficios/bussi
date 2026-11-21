@@ -175,7 +175,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
   <div class="authcard">
     <div class="authbrand"><div><b>BUSSI</b><div class="tag">Painel de gestão</div></div></div>
 
-    <p><a class="btn ghost" href="recebimentos.html">Faturas e recebimentos · Nitro</a></p>
+    
     <div id="setupAuth" style="display:none">
       <h2>Configurar acesso</h2>
       <p>Usuário fixo: <b>consibeneficio</b>. Defina sua senha para este acesso administrativo.</p>
@@ -263,7 +263,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 
     <section class="view" id="crm">
       <div class="section">
-        <div class="sectionhead"><div><h2>CRM / Clientes</h2><p>Cadastros com salvamento imediato. Excluir um cliente não apaga o histórico de faturas e pagamentos já emitidos.</p></div><div class="toolbar"><input type="file" id="importFile" accept=".xlsx,.xls,.csv" hidden><button class="btn ghost" id="downloadTemplate">Baixar modelo Excel</button><button class="btn ghost" id="downloadTestSheet">Baixar planilha teste</button><button class="btn ghost" id="loadTestClients">Carregar clientes de teste</button><button class="btn ghost" id="importBtn">Importar planilha</button><button class="btn primary" id="newClient">Novo cliente</button></div></div>
+        <div class="sectionhead"><div><h2>CRM / Clientes</h2><p>Cadastros com salvamento imediato. Excluir um cliente não apaga o histórico de faturas e pagamentos já emitidos.</p></div><div class="toolbar"><input type="file" id="importFile" accept=".xlsx,.xls,.csv" hidden><button class="btn ghost" id="downloadTemplate">Baixar modelo Excel</button><button class="btn ghost" id="importBtn">Importar planilha</button><button class="btn primary" id="newClient">Novo cliente</button></div></div>
         <div class="grid2" style="margin-bottom:14px">
           <div class="field"><label>Pesquisar cliente</label><input id="clientSearch" placeholder="Nome, contrato ou telefone"></div>
           <div class="field"><label>Resultados</label><input id="clientSearchCount" readonly value="0 cliente(s)"></div>
@@ -282,22 +282,35 @@ button:disabled{opacity:.5;cursor:not-allowed}
 
     <section class="view" id="charges">
       <div class="section">
-        <div class="sectionhead"><div><h2>Faturas e Pix</h2><p>Para emitir uma fatura individual, acesse a área de recebimentos com seu e-mail e autenticador.</p></div></div>
-        <div class="notice" role="alert" style="margin-top:12px">A emissão pelo formulário antigo está suspensa. Os links antigos contêm dados pessoais codificados. Não compartilhe links antigos nem insira dados reais até a revisão de segurança. A sincronização com o banco anterior também está suspensa; nenhum dado foi migrado.</div>
-    <p><a class="btn ghost" href="recebimentos.html">Faturas e recebimentos · Nitro</a></p>
+        <div class="sectionhead"><div><h2>Faturas e Pix</h2><p>Selecione um cliente cadastrado e emita a fatura pela Nitro diretamente no BUSSI.</p></div></div>
+        <div class="notice" style="margin-top:12px"><b>Emissão centralizada no BUSSI.</b> Os links são registrados na nuvem, e o Pix é solicitado pela Nitro somente após a aceitação pelo pagador. O comprovante e o modelo público da fatura permanecem inalterados.</div>
+        <div class="section" id="nitroAccess" style="margin-top:12px">
+          <div class="sectionhead"><div><h2>Acesso financeiro</h2><p>Autenticação administrativa por e-mail, senha e código do autenticador. Tudo nesta aba do BUSSI.</p></div><button id="nitroLogout" class="btn ghost" type="button" hidden>Encerrar acesso financeiro</button></div>
+          <form id="nitroLoginForm" class="grid3"><div class="field"><label for="nitroEmail">E-mail administrativo</label><input id="nitroEmail" type="email" autocomplete="username" required></div><div class="field"><label for="nitroPassword">Senha</label><input id="nitroPassword" type="password" autocomplete="current-password" required></div><div class="field" style="justify-content:end"><button class="btn primary" type="submit">Entrar para emitir faturas</button></div></form>
+          <form id="nitroVerifyForm" class="grid2" hidden><div class="field"><label for="nitroCode">Código de 6 dígitos do autenticador</label><input id="nitroCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required></div><div class="field" style="justify-content:end"><button class="btn primary" type="submit">Confirmar autenticador</button></div></form>
+          <p id="nitroIssueStatus" aria-live="polite" style="font-size:12px;color:#465966"></p>
+        </div>
+        <div id="nitroWorkspace" hidden>
         <div class="grid3">
           <div class="field"><label>Pesquisar cliente</label><input id="chargeClientSearch" placeholder="Digite nome, contrato ou telefone"></div>
           <div class="field"><label>Cliente</label><select id="chargeClient"></select></div>
           <div class="field"><label>Parcela original</label><input id="chargeOriginal" inputmode="decimal" placeholder="0,00"></div>
-          <div class="field"><label>Desconto (%)</label><input id="chargeDiscount" type="number" min="0" max="100" step="0.01" value="50"></div>
+          <div class="field"><label>Desconto (%)</label><input id="chargeDiscount" type="number" min="50" max="50" step="1" value="50" readonly title="A Nitro está configurada para aplicar desconto fixo de 50%"></div>
           <div class="field"><label>Valor a ser pago</label><input id="chargeFinal" readonly></div>
           <div class="field"><label>Descrição da fatura</label><input id="chargeDesc" value="Black Friday 50% OFF — P/Consignado — Competência: Dezembro" aria-label="Descrição completa da cobrança"></div>
           <div class="field"><label>Vencimento (automático — hoje)</label><input id="chargeDue" type="date" readonly title="O link vence no dia em que é emitido"></div>
         </div>
-        <div class="notice" style="margin-top:12px"><b>Validade da cobrança:</b> emitida e vencendo no mesmo dia. O link deixa de exibir o Pix a partir de 00h do dia seguinte, horário de São Paulo, ou quando o pagamento for confirmado.</div><div class="toolbar" style="margin-top:16px"><button class="btn primary" id="generateCharge" disabled title="Emissão suspensa para revisão de segurança">Gerar cobrança e link</button><button class="btn ghost" id="printInvoice" disabled title="Emissão suspensa para revisão de segurança">Visualizar fatura</button></div>
-        <div id="generatedBox" class="notice" style="display:none;margin-top:16px"><b>Fatura gerada: <span id="generatedInvoiceNumber"></span></b><div style="margin-top:9px;font-size:12px">Link funcional para enviar ao cliente:</div><div class="linkbox" style="margin-top:8px"><input id="generatedLink" readonly><button class="btn dark" id="copyGenerated">Copiar</button><button class="btn primary" id="openGenerated">Abrir</button></div><p data-bussi-cloud-help class="muted" style="margin-top:8px;font-size:12px">Para links persistentes, conecte o armazenamento na nuvem em Integrações.</p></div>
+        <div class="notice" style="margin-top:12px"><b>Validade da cobrança:</b> emitida e vencendo no mesmo dia. O link deixa de exibir o Pix a partir de 00h do dia seguinte, horário de São Paulo, ou quando o pagamento for confirmado.</div><div class="toolbar" style="margin-top:16px"><button class="btn primary" id="generateCharge" disabled>Gerar fatura e link · Nitro</button><button class="btn ghost" id="printInvoice" disabled>Visualizar fatura</button></div>
+        <div id="nitroGenerated" class="notice good" hidden style="margin-top:16px"><b>Fatura emitida: <span id="nitroGeneratedNumber"></span></b><p style="font-size:12px">Link individual de cobrança registrado no servidor:</p><div class="linkbox"><input id="nitroGeneratedLink" readonly aria-label="Link individual da fatura"><button class="btn dark" type="button" id="nitroCopyGenerated">Copiar</button><button class="btn primary" type="button" id="nitroOpenGenerated">Abrir</button></div></div>
+        </div>
       </div>
-      <div class="section"><div class="sectionhead"><div><h2>Histórico de cobranças</h2><p>Somente faturas efetivamente geradas no BUSSI, com opção de exclusão individual.</p></div></div><div class="tablewrap"><table class="table"><thead><tr><th>Fatura</th><th>Cliente</th><th>Original</th><th>Desconto</th><th>Valor a ser pago</th><th>Status</th><th>Ações</th></tr></thead><tbody id="chargeRows"></tbody></table></div></div>
+      <div class="section">
+        <div class="sectionhead"><div><h2>Faturas emitidas · Nitro</h2><p>Histórico centralizado no servidor, acessível após autenticação financeira.</p></div><button class="btn ghost" id="nitroRefresh" type="button">Atualizar situação</button></div>
+        <p id="nitroSummary" class="muted" style="font-size:13px"></p>
+        <div class="tablewrap"><table class="table"><thead><tr><th>Fatura</th><th>Descrição</th><th>Valor</th><th>Situação</th><th>Link</th></tr></thead><tbody id="nitroHistory"></tbody></table></div>
+        <button class="btn ghost" type="button" id="nitroMore" hidden style="margin-top:12px">Ver mais faturas</button>
+      </div>
+      <div class="section"><div class="sectionhead"><div><h2>Histórico anterior · navegador</h2><p>Somente faturas efetivamente geradas no BUSSI, com opção de exclusão individual.</p></div></div><div class="tablewrap"><table class="table"><thead><tr><th>Fatura</th><th>Cliente</th><th>Original</th><th>Desconto</th><th>Valor a ser pago</th><th>Status</th><th>Ações</th></tr></thead><tbody id="chargeRows"></tbody></table></div></div>
     </section>
 
     <section class="view" id="integrations">
@@ -406,44 +419,15 @@ button:disabled{opacity:.5;cursor:not-allowed}
 </div>
 
 <div class="modal" id="clientModal"><div class="dialog"><h3 id="clientModalTitle">Novo cliente</h3><div class="grid2">
-<div class="field"><label>Nome completo</label><input id="cName"></div><div class="field"><label>Contrato</label><input id="cContract"></div><div class="field"><label>Telefone</label><input id="cPhone"></div><div class="field"><label>Parcela original</label><input id="cOriginal"></div><div class="field"><label>Parcela com desconto</label><input id="cFinal"></div>
+<div class="field"><label>Nome completo</label><input id="cName"></div><div class="field"><label>Contrato</label><input id="cContract"></div><div class="field"><label>Telefone com DDD</label><input id="cPhone" inputmode="tel" placeholder="(11) 99999-9999"></div><div class="field"><label>CPF/CNPJ do pagador</label><input id="cDocument" inputmode="numeric" autocomplete="off" placeholder="CPF ou CNPJ válido"></div><div class="field"><label>E-mail do pagador</label><input id="cEmail" type="email" autocomplete="off" placeholder="nome@dominio.com.br"></div><div class="field"><label>Parcela original</label><input id="cOriginal"></div><div class="field"><label>Parcela com desconto</label><input id="cFinal"></div>
 </div><div class="rowend"><button class="btn ghost" data-close="clientModal">Cancelar</button><button class="btn primary" id="saveClient">Salvar cliente</button></div></div></div>
 <div class="modal" id="campaignModal"><div class="dialog"><h3>Nova campanha</h3><div class="grid2"><div class="field"><label>Nome da campanha</label><input id="campName"></div><div class="field"><label>Público</label><select id="campAudience"><option>Todos os clientes</option><option>Clientes com cobrança</option><option>Segmento manual</option></select></div></div><div class="field" style="margin-top:14px"><label>Mensagem</label><textarea id="campMessage" placeholder="Ex.: Olá, {{nome}}. Sua condição especial está disponível..."></textarea></div><div class="rowend"><button class="btn ghost" data-close="campaignModal">Cancelar</button><button class="btn primary" id="saveCampaign">Salvar campanha</button></div></div></div>
 
 <script src="bussi-events.js"></script>
 <script>
 const K={clients:'bussi.clients.v1',campaigns:'bussi.campaigns.v1',charges:'bussi.charges.v1',settings:'bussi.settings.v1'};
-const defaultClients=[
-{name:'Cliente Teste 01',contract:'TESTE-0001',phone:'(00) 90000-0001',original:1200.00,final:600.00},
-{name:'Cliente Teste 02',contract:'TESTE-0002',phone:'(00) 90000-0002',original:985.40,final:492.70},
-{name:'Cliente Teste 03',contract:'TESTE-0003',phone:'(00) 90000-0003',original:1740.80,final:870.40},
-{name:'Cliente Teste 04',contract:'TESTE-0004',phone:'(00) 90000-0004',original:650.00,final:325.00},
-{name:'Cliente Teste 05',contract:'TESTE-0005',phone:'(00) 90000-0005',original:2310.50,final:1155.25},
-{name:'Cliente Teste 06',contract:'TESTE-0006',phone:'(00) 90000-0006',original:1425.30,final:712.65},
-{name:'Cliente Teste 07',contract:'TESTE-0007',phone:'(00) 90000-0007',original:799.90,final:399.95},
-{name:'Cliente Teste 08',contract:'TESTE-0008',phone:'(00) 90000-0008',original:3180.00,final:1590.00},
-{name:'Cliente Teste 09',contract:'TESTE-0009',phone:'(00) 90000-0009',original:1120.60,final:560.30},
-{name:'Cliente Teste 10',contract:'TESTE-0010',phone:'(00) 90000-0010',original:2675.20,final:1337.60},
-{name:'Cliente Teste 11',contract:'TESTE-0011',phone:'(00) 90000-0011',original:930.00,final:465.00},
-{name:'Cliente Teste 12',contract:'TESTE-0012',phone:'(00) 90000-0012',original:1548.70,final:774.35},
-{name:'Cliente Teste 13',contract:'TESTE-0013',phone:'(00) 90000-0013',original:2050.00,final:1025.00},
-{name:'Cliente Teste 14',contract:'TESTE-0014',phone:'(00) 90000-0014',original:745.80,final:372.90},
-{name:'Cliente Teste 15',contract:'TESTE-0015',phone:'(00) 90000-0015',original:1899.90,final:949.95},
-{name:'Cliente Teste 16',contract:'TESTE-0016',phone:'(00) 90000-0016',original:1288.40,final:644.20},
-{name:'Cliente Teste 17',contract:'TESTE-0017',phone:'(00) 90000-0017',original:3560.00,final:1780.00},
-{name:'Cliente Teste 18',contract:'TESTE-0018',phone:'(00) 90000-0018',original:1044.20,final:522.10},
-{name:'Cliente Teste 19',contract:'TESTE-0019',phone:'(00) 90000-0019',original:2215.60,final:1107.80},
-{name:'Cliente Teste 20',contract:'TESTE-0020',phone:'(00) 90000-0020',original:875.00,final:437.50}
-];
 let clients=load(K.clients,[])||[],campaigns=load(K.campaigns,[]),charges=load(K.charges,[]),settings=load(K.settings,{pixType:'auto',pixKey:'',pixName:'CONSIG BENEFICIO SA',pixCity:'SAO PAULO',pixTxid:'***',pixDesc:'FATURA CONSIG',trackingEndpoint:'',metaPhoneId:'',metaWabaId:'',trackingEnv:'',paymentProvider:'',paymentWebhook:'',paymentStatusEndpoint:'',authResetEndpoint:'',authEmail:'sac@consigbeneficio.com.br'}),editClientIndex=-1,lastLink='';
-const TEST_SEED_KEY='bussi.test.clients.seed.v1';
-if(!localStorage.getItem(TEST_SEED_KEY)){
-  const existingContracts=new Set(clients.map(c=>String(c.contract||'')));
-  const seed=defaultClients.filter(c=>!existingContracts.has(String(c.contract||'')));
-  clients=[...clients,...seed];
-  localStorage.setItem(K.clients,JSON.stringify(clients));
-  localStorage.setItem(TEST_SEED_KEY,'1');
-}
+
 function $(id){return document.getElementById(id)}function load(k,f){try{const v=localStorage.getItem(k);return v?JSON.parse(v):f}catch{return f}}function save(k,v){localStorage.setItem(k,JSON.stringify(v));if($('saveState'))$('saveState').textContent='Salvo às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
 const AUTH_USER='consibeneficio';
 const AUTH_KEY='bussi.auth.local.v2';
@@ -529,41 +513,58 @@ function todayPlus(days){const d=new Date();d.setDate(d.getDate()+days);return d
 $('chargeDue').value=todayPlus(7);
 document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));$(b.dataset.view).classList.add('active');$('pageTitle').textContent=b.textContent;renderAll()});
 function openModal(id){$(id).classList.add('open')}function closeModal(id){$(id).classList.remove('open')}document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>closeModal(b.dataset.close));
-$('newClient').onclick=()=>{editClientIndex=-1;$('clientModalTitle').textContent='Novo cliente';['cName','cContract','cPhone','cOriginal','cFinal'].forEach(x=>$(x).value='');openModal('clientModal')};
-$('saveClient').onclick=()=>{const c={name:$('cName').value.trim(),contract:$('cContract').value.trim(),phone:$('cPhone').value.trim(),original:parseMoney($('cOriginal').value),final:parseMoney($('cFinal').value)};if(!c.name)return alert('Informe o nome do cliente.');if(editClientIndex>=0)clients[editClientIndex]=c;else clients.push(c);save(K.clients,clients);closeModal('clientModal');renderAll()};
-function editClient(i){editClientIndex=i;const c=clients[i];$('clientModalTitle').textContent='Editar cliente';$('cName').value=c.name;$('cContract').value=c.contract;$('cPhone').value=c.phone;$('cOriginal').value=fmtInput(c.original);$('cFinal').value=fmtInput(c.final);openModal('clientModal')}
+$('newClient').onclick=()=>{editClientIndex=-1;$('clientModalTitle').textContent='Novo cliente';['cName','cContract','cPhone','cDocument','cEmail','cOriginal','cFinal'].forEach(x=>$(x).value='');openModal('clientModal')};
+function onlyDigits(v){return String(v||'').replace(/\D/g,'')}
+function seededFake(c){return (/^Cliente Teste (0[1-9]|1[0-9]|20)$/.test(String(c?.name||'')) && /^TESTE-00(0[1-9]|1[0-9]|20)$/.test(String(c?.contract||'')) && onlyDigits(c?.phone).startsWith('0090000')) || (c?.name==='Test'&&c?.contract==='1111'&&c?.phone==='1111111')}
+function checkClient(c, existingIndex=-1){
+ const n=String(c.name||'').trim(), contract=String(c.contract||'').trim(), phone=onlyDigits(c.phone), doc=onlyDigits(c.document), email=String(c.email||'').trim();
+ if(seededFake(c))return 'Cadastros fictícios não são aceitos.';
+ if(n.length<5||n.length>120||n.split(/\s+/).length<2)return 'Informe o nome completo verdadeiro do cliente.';
+ if(contract.length<3||contract.length>80)return 'Informe um contrato válido (3 a 80 caracteres).';
+ if(!/^\d{10,11}$/.test(phone)||phone.slice(0,2)==='00')return 'Informe um telefone brasileiro com DDD válido.';
+ if(!(doc.length===11?cpfOk(doc):doc.length===14?cnpjOk(doc):false))return 'Informe um CPF ou CNPJ válido.';
+ if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return 'Informe um e-mail válido.';
+ if(!(Number.isFinite(c.original)&&c.original>0&&c.original<=9999999.99&&Number.isFinite(c.final)&&c.final>0&&c.final<=c.original))return 'Confira os valores originais e com desconto.';
+ if(Math.abs(c.final-Math.ceil(Math.round(c.original*100)/2)/100)>.011)return 'Esta emissão exige 50% de desconto. Confira o valor final.';
+ if(clients.some((other,i)=>i!==existingIndex&&(String(other.contract||'').trim().toLowerCase()===contract.toLowerCase() || (onlyDigits(other.document)===doc&&doc.length>0))))return 'Contrato ou CPF/CNPJ já cadastrado; use Editar.';
+ return '';
+}
+const cleanedClients=clients.filter(c=>!seededFake(c));if(cleanedClients.length!==clients.length){clients=cleanedClients;save(K.clients,clients)}
+$('saveClient').onclick=()=>{
+ const c={name:$('cName').value.trim(),contract:$('cContract').value.trim(),phone:$('cPhone').value.trim(),document:onlyDigits($('cDocument').value),email:$('cEmail').value.trim().toLowerCase(),original:parseMoney($('cOriginal').value),final:parseMoney($('cFinal').value)};
+ const problem=checkClient(c,editClientIndex);if(problem)return alert(problem);
+ if(editClientIndex>=0)clients[editClientIndex]=c;else clients.push(c);
+ save(K.clients,clients);closeModal('clientModal');renderAll();
+};
+function editClient(i){editClientIndex=i;const c=clients[i];$('clientModalTitle').textContent='Editar cliente';$('cName').value=c.name;$('cContract').value=c.contract;$('cPhone').value=c.phone;$('cDocument').value=c.document||'';$('cEmail').value=c.email||'';$('cOriginal').value=fmtInput(c.original);$('cFinal').value=fmtInput(c.final);openModal('clientModal')}
 function delClient(i){const c=clients[i];if(!c)return;if(!confirm('Excluir o cadastro de '+c.name+' do CRM?\n\nAs faturas, comprovantes e registros financeiros já emitidos serão preservados.'))return;clients.splice(i,1);save(K.clients,clients);renderAll()}
 $('downloadTemplate').onclick=()=>{
-  if(typeof XLSX==='undefined'){alert('Não foi possível carregar o módulo de planilhas. Tente novamente com conexão à internet.');return}
-  const rows=[{
-    'Nome completo':'Nome do cliente',
-    'Contrato':'12345678',
-    'Telefone':'(11) 99999-9999',
-    'Valor original':1000.00,
-    'Valor com 50% de desconto':500.00
-  }];
-  const ws=XLSX.utils.json_to_sheet(rows,{header:['Nome completo','Contrato','Telefone','Valor original','Valor com 50% de desconto']});
-  ws['!cols']=[{wch:30},{wch:16},{wch:20},{wch:18},{wch:28}];
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Clientes');
-  XLSX.writeFile(wb,'TEMPLATE_IMPORTACAO_BUSSI.xlsx')
+ if(typeof XLSX==='undefined')return alert('Biblioteca Excel indisponível.');
+ const ws=XLSX.utils.aoa_to_sheet([['Nome completo','Contrato','Telefone','CPF/CNPJ','E-mail','Valor original','Valor com 50% de desconto']]);
+ ws['!cols']=[{wch:30},{wch:20},{wch:20},{wch:22},{wch:34},{wch:20},{wch:30}];
+ const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Clientes');
+ XLSX.writeFile(wb,'BUSSI_MODELO_CLIENTES_REAIS.xlsx');
+};$('importBtn').onclick=()=>$('importFile').click();
+$('importFile').onchange=async e=>{
+ const f=e.target.files?.[0];if(!f)return;
+ try{
+  if(typeof XLSX==='undefined')throw Error('Biblioteca Excel indisponível.');
+  if(f.size>8*1024*1024)throw Error('Planilha maior que 8 MB.');
+  const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
+  const ws=wb.Sheets[wb.SheetNames[0]];if(!ws)throw Error('Planilha sem aba de clientes.');
+  const rows=XLSX.utils.sheet_to_json(ws,{defval:'',raw:true});
+  if(rows.length>5000)throw Error('Importe no máximo 5.000 clientes por planilha.');
+  let added=0,skipped=0;const reasons=[];
+  for(const [i,r] of rows.entries()){
+   const c={name:String(r['Nome completo']||r.Nome||r.nome||'').trim(),contract:String(r.Contrato||r.contrato||'').trim(),phone:String(r.Telefone||r.telefone||'').trim(),document:onlyDigits(r['CPF/CNPJ']||r.CPF||r.CNPJ||r.document||''),email:String(r['E-mail']||r.Email||r.email||'').trim().toLowerCase(),original:parseMoney(r['Valor original']??r.original??0),final:parseMoney(r['Valor com 50% de desconto']??r['Valor com desconto']??r.final??0)};
+   const problem=checkClient(c);if(problem){skipped++;if(reasons.length<5)reasons.push('Linha '+(i+2)+': '+problem);continue;}
+   clients.push(c);added++;
+  }
+  if(added)save(K.clients,clients);renderAll();
+  alert(added+' cliente(s) verdadeiro(s) importado(s). '+skipped+' linha(s) ignorada(s).'+(reasons.length?'\n'+reasons.join('\n'):''));
+ }catch(err){alert('Falha na importação: '+err.message)}
+ finally{e.target.value=''}
 };
-$('downloadTestSheet').onclick=()=>{
-  if(typeof XLSX==='undefined'){alert('Não foi possível carregar o módulo de planilhas. Tente novamente com conexão à internet.');return}
-  const rows=[{"Nome completo":"Cliente Teste 01","Contrato":"TESTE-0001","Telefone":"(00) 90000-0001","Valor original":1200,"Valor com 50% de desconto":600},{"Nome completo":"Cliente Teste 02","Contrato":"TESTE-0002","Telefone":"(00) 90000-0002","Valor original":985.4,"Valor com 50% de desconto":492.7},{"Nome completo":"Cliente Teste 03","Contrato":"TESTE-0003","Telefone":"(00) 90000-0003","Valor original":1740.8,"Valor com 50% de desconto":870.4},{"Nome completo":"Cliente Teste 04","Contrato":"TESTE-0004","Telefone":"(00) 90000-0004","Valor original":650,"Valor com 50% de desconto":325},{"Nome completo":"Cliente Teste 05","Contrato":"TESTE-0005","Telefone":"(00) 90000-0005","Valor original":2310.5,"Valor com 50% de desconto":1155.25},{"Nome completo":"Cliente Teste 06","Contrato":"TESTE-0006","Telefone":"(00) 90000-0006","Valor original":1425.3,"Valor com 50% de desconto":712.65},{"Nome completo":"Cliente Teste 07","Contrato":"TESTE-0007","Telefone":"(00) 90000-0007","Valor original":799.9,"Valor com 50% de desconto":399.95},{"Nome completo":"Cliente Teste 08","Contrato":"TESTE-0008","Telefone":"(00) 90000-0008","Valor original":3180,"Valor com 50% de desconto":1590},{"Nome completo":"Cliente Teste 09","Contrato":"TESTE-0009","Telefone":"(00) 90000-0009","Valor original":1120.6,"Valor com 50% de desconto":560.3},{"Nome completo":"Cliente Teste 10","Contrato":"TESTE-0010","Telefone":"(00) 90000-0010","Valor original":2675.2,"Valor com 50% de desconto":1337.6},{"Nome completo":"Cliente Teste 11","Contrato":"TESTE-0011","Telefone":"(00) 90000-0011","Valor original":930,"Valor com 50% de desconto":465},{"Nome completo":"Cliente Teste 12","Contrato":"TESTE-0012","Telefone":"(00) 90000-0012","Valor original":1548.7,"Valor com 50% de desconto":774.35},{"Nome completo":"Cliente Teste 13","Contrato":"TESTE-0013","Telefone":"(00) 90000-0013","Valor original":2050,"Valor com 50% de desconto":1025},{"Nome completo":"Cliente Teste 14","Contrato":"TESTE-0014","Telefone":"(00) 90000-0014","Valor original":745.8,"Valor com 50% de desconto":372.9},{"Nome completo":"Cliente Teste 15","Contrato":"TESTE-0015","Telefone":"(00) 90000-0015","Valor original":1899.9,"Valor com 50% de desconto":949.95},{"Nome completo":"Cliente Teste 16","Contrato":"TESTE-0016","Telefone":"(00) 90000-0016","Valor original":1288.4,"Valor com 50% de desconto":644.2},{"Nome completo":"Cliente Teste 17","Contrato":"TESTE-0017","Telefone":"(00) 90000-0017","Valor original":3560,"Valor com 50% de desconto":1780},{"Nome completo":"Cliente Teste 18","Contrato":"TESTE-0018","Telefone":"(00) 90000-0018","Valor original":1044.2,"Valor com 50% de desconto":522.1},{"Nome completo":"Cliente Teste 19","Contrato":"TESTE-0019","Telefone":"(00) 90000-0019","Valor original":2215.6,"Valor com 50% de desconto":1107.8},{"Nome completo":"Cliente Teste 20","Contrato":"TESTE-0020","Telefone":"(00) 90000-0020","Valor original":875,"Valor com 50% de desconto":437.5}];
-  const ws=XLSX.utils.json_to_sheet(rows,{header:['Nome completo','Contrato','Telefone','Valor original','Valor com 50% de desconto']});
-  ws['!cols']=[{wch:24},{wch:16},{wch:18},{wch:18},{wch:28}];
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Clientes');
-  XLSX.writeFile(wb,'BUSSI_CLIENTES_FICTICIOS_TESTE.xlsx')
-};
-$('loadTestClients').onclick=()=>{
-  const existing=new Set(clients.map(c=>String(c.contract||'')));
-  const add=defaultClients.filter(c=>!existing.has(c.contract));
-  clients=[...clients,...add];
-  save(K.clients,clients);renderAll();
-  alert(add.length?add.length+' cliente(s) fictício(s) carregado(s).':'A base fictícia já está carregada.')
-};
-$('importBtn').onclick=()=>$('importFile').click();
-$('importFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const buf=await f.arrayBuffer();const wb=XLSX.read(buf,{type:'array'}),ws=wb.Sheets[wb.SheetNames[0]],rows=XLSX.utils.sheet_to_json(ws,{defval:''});const added=rows.map(r=>({name:r['Nome completo']||r.Nome||r.nome||'',contract:String(r['Contrato']||r.contrato||''),phone:String(r['Telefone']||r.telefone||''),original:parseMoney(r['Valor original']||r.original||0),final:parseMoney(r['Valor com 50% de desconto']||r['Valor com desconto']||r.final||0)})).filter(x=>x.name);clients=[...clients,...added];save(K.clients,clients);renderAll();alert(added.length+' cliente(s) importado(s).')}catch(err){alert('Não foi possível importar a planilha.')}e.target.value=''};
 $('newCampaign').onclick=()=>{['campName','campMessage'].forEach(x=>$(x).value='');openModal('campaignModal')};
 $('saveCampaign').onclick=()=>{const c={id:Date.now(),name:$('campName').value.trim(),audience:$('campAudience').value,message:$('campMessage').value.trim(),status:'Rascunho'};if(!c.name)return alert('Informe o nome da campanha.');campaigns.unshift(c);save(K.campaigns,campaigns);closeModal('campaignModal');renderAll()};
 function delCampaign(id){campaigns=campaigns.filter(x=>x.id!==id);save(K.campaigns,campaigns);renderAll()}
@@ -811,7 +812,7 @@ $('backupFile').onchange=async e=>{
   try{
     const data=JSON.parse(await file.text());
     if(!data||!Array.isArray(data.clients)||!Array.isArray(data.campaigns)||!Array.isArray(data.charges)||typeof data.settings!=='object')throw new Error('Formato inválido');
-    clients=data.clients;campaigns=data.campaigns;charges=data.charges;settings=data.settings;
+    clients=data.clients.filter(c=>!seededFake(c));campaigns=data.campaigns;charges=data.charges;settings=data.settings;
     if(Array.isArray(data.events))localStorage.setItem('bussi.events.v1',JSON.stringify(data.events.slice(-5000)));
     if(data.daily&&typeof data.daily==='object'&&!Array.isArray(data.daily))localStorage.setItem('bussi.events.daily.v1',JSON.stringify(data.daily));
     else if(Array.isArray(data.events))window.BussiEvents?.rebuildDaily(data.events);
@@ -979,6 +980,6 @@ $('chargeDue').readOnly=true;
 window.addEventListener('focus',()=>{if($('chargeDue'))$('chargeDue').value=saoPauloToday();});
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.94.1/dist/umd/supabase.min.js"></script>
-<!-- Integração legada desativada: projeto Supabase anterior não está disponível para revisão. -->
+<script src="bussi-nitro.js?v=20261121"></script>
 </body>
 </html>
