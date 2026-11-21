@@ -5,207 +5,23 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <meta name="referrer" content="no-referrer">
-<title>Fatura e Pix — CONSIG BENEFÍCIOS</title>
+<title>CONSIG BENEFÍCIOS — Link de pagamento encerrado</title>
 <style>
-:root{--ink:#1b303a;--teal:#087a66;--muted:#60737c;--border:#dce6e8;--bg:#f4f7f8}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,-apple-system,Segoe UI,Arial,sans-serif}
-main{width:min(620px,calc(100% - 28px));margin:26px auto 48px;background:white;border:1px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:0 16px 45px #102e4010}
-header{padding:28px 26px 21px;text-align:center;border-bottom:1px solid var(--border)}
-header img{height:104px;max-width:180px;object-fit:contain;display:block;margin:0 auto 10px}
-header strong{display:block;font-size:19px}
-header small{color:var(--muted)}
-section{padding:25px 28px}
-h1{font-size:23px;margin:0 0 12px;line-height:1.25}
-h2{font-size:17px;margin:0 0 12px}
-p{margin:8px 0 15px}
-.muted{color:var(--muted);font-size:13px}
-.row{display:flex;align-items:baseline;justify-content:space-between;gap:15px;border-bottom:1px solid var(--border);padding:10px 0}
-.row span:first-child{color:var(--muted)}
-.row span:last-child{text-align:right;font-weight:650;overflow-wrap:anywhere}
-.total{font-size:30px;font-weight:800;color:var(--teal);font-variant-numeric:tabular-nums;margin:9px 0}
-.old{text-decoration:line-through}
-.notice{padding:13px 16px;margin:14px 0;border:1px solid var(--border);border-radius:11px;background:#f4f9fa;color:#294854;line-height:1.55}
-.notice.warn{background:#fff7e9;border-color:#eed7a2;color:#71551e}
-.notice.success{background:#ecf8f1;border-color:#bce3cc;color:#186343}
-button,a.action{font:inherit;font-weight:700;border:0;border-radius:10px;padding:13px 17px;cursor:pointer;text-align:center;text-decoration:none;display:inline-block;background:var(--teal);color:white}
-button.secondary,a.secondary{background:#eef5f5;color:#28505a}
-button:disabled{opacity:.55;cursor:wait}
-.actions{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}
-.actions>button,.actions>a{flex:1}
-#pixArea{border:1px solid var(--border);padding:18px;border-radius:13px;margin:16px 0}
-#qrWrap{min-height:1px;text-align:center}
-#qrWrap img,#qrWrap canvas{display:block;margin:12px auto;max-width:230px;height:auto}
-#pixCode{width:100%;min-height:108px;overflow-wrap:anywhere;word-break:break-all;font:13px/1.5 monospace;border:1px solid var(--border);border-radius:9px;padding:10px;resize:vertical;background:#fbfcfd}
-#status{font-size:14px;overflow-wrap:anywhere}
-footer{padding:16px;text-align:center;background:#fafcfc;border-top:1px solid var(--border);color:var(--muted);font-size:12px}
-footer a{color:#1a7267}
-[hidden]{display:none!important}
-@media(max-width:480px){section{padding:21px 19px}header{padding:22px 17px}main{margin:10px auto 24px}}
-@media print{body{background:white}main{width:100%;margin:0;box-shadow:none;border:0}.actions,footer{display:none}#status{display:none}#pixArea{break-inside:avoid}}
+*{box-sizing:border-box}body{font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;margin:0;background:#f3f5f6;color:#18303b;min-height:100vh;display:grid;place-items:center;padding:18px}
+main{width:min(100%,540px);padding:34px;background:#fff;border:1px solid #dfe8ec;border-radius:18px;box-shadow:0 12px 35px #122c3710;text-align:center}
+img{width:104px;height:104px;object-fit:cover;border-radius:18px;display:block;margin:0 auto 16px}
+h1{font-size:24px;line-height:1.25;margin:0 0 12px}
+p{font-size:15px;line-height:1.6;color:#53626c}
+a{color:#0a7860;font-weight:700}
+small{font-size:12px;color:#6c7983}
 </style>
 </head>
 <body>
 <main>
-<header>
 <img src="logo-consig.svg" alt="CONSIG BENEFÍCIOS">
-<strong>CONSIG BENEFÍCIO S/A</strong>
-<small>CNPJ 66.754.630/0001-60</small>
-</header>
-<section>
-<h1 id="pageTitle">Consultar fatura</h1>
-<div class="notice" id="status" role="status" aria-live="polite">Consultando a fatura no sistema seguro...</div>
-<div id="details" hidden>
-<div class="row"><span>Número da fatura</span><span id="invoiceNumber"></span></div>
-<div class="row"><span>Cliente</span><span id="payerName"></span></div>
-<div class="row"><span>Contrato</span><span id="contract"></span></div>
-<div class="row"><span>Descrição</span><span id="description"></span></div>
-<div class="row"><span>Valor original</span><span id="original" class="old"></span></div>
-<div class="row"><span>Desconto</span><span id="discount">50%</span></div>
-<div class="row"><span>Vencimento</span><span id="due"></span></div>
-<p class="muted" style="margin-bottom:2px">Valor a ser pago</p>
-<div class="total" id="amount"></div>
-<div id="pixArea" hidden>
-<h2>Pix para pagamento</h2>
-<p class="muted">Confirme os dados do favorecido e o valor em seu aplicativo bancário antes de pagar.</p>
-<div id="qrWrap"></div>
-<label for="pixCode" class="muted">Pix Copia e Cola</label>
-<textarea id="pixCode" readonly spellcheck="false"></textarea>
-<div class="actions"><button id="copyPix" type="button">Copiar código Pix</button></div>
-</div>
-<div id="paidArea" hidden>
-<div class="notice success">Pagamento confirmado pela Nitro. O Pix desta fatura foi encerrado.</div>
-<div class="actions"><a class="action" id="receiptLink" href="#">Abrir comprovante de liquidação</a></div>
-</div>
-<div class="actions">
-<button id="pay" type="button" hidden>Solicitar Pix para pagamento</button>
-<button id="refresh" type="button" class="secondary">Atualizar situação</button>
-<button id="printInvoice" type="button" class="secondary">Imprimir / salvar PDF</button>
-</div>
-</div>
-</section>
-<footer>CONSIG BENEFÍCIO S/A · <a href="mailto:sac@consigbeneficio.com.br">sac@consigbeneficio.com.br</a>
-<br><a href="politica-de-privacidade.html">Política de Privacidade</a> · <a href="termos-de-uso.html">Termos de Uso</a></footer>
+<h1>Link de cobrança anterior encerrado</h1>
+<p>Este endereço pertence a uma versão descontinuada do sistema. Nenhum Pix será emitido nesta página. Para receber uma fatura válida, solicite um novo link ao atendimento da CONSIG BENEFÍCIOS.</p>
+<p><a href="mailto:sac@consigbeneficio.com.br">sac@consigbeneficio.com.br</a></p>
+<small>CONSIG BENEFÍCIO S/A · CNPJ 66.754.630/0001-60</small>
 </main>
-<script src="qrcode-local.min.js"></script>
-<script>
-"use strict";
-(()=>{
-const API="https://yzhjtqwpmxhigrijiuze.supabase.co/functions/v1/fatura-bussi";
-const p=new URLSearchParams(location.hash.replace(/^#/,""));
-const numero=Number(p.get("numero")),token=p.get("token");
-const valid=Number.isSafeInteger(numero)&&numero>0&&typeof token==="string"&&/^[a-f0-9]{64}$/.test(token);
-const $=id=>document.getElementById(id);
-const brl=c=>Number(c/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
-let working=false,poll=null,latest=null;
-function status(message,kind=""){
-  $("status").textContent=message;
-  $("status").className="notice"+(kind?" "+kind:"");
-}
-function receiptHref(){
-  const url=new URL("comprovante-liquidacao.html",location.href);
-  url.hash="numero="+encodeURIComponent(numero)+"&token="+encodeURIComponent(token);
-  return url.href;
-}
-function stopPoll(){if(poll!==null){clearTimeout(poll);poll=null;}}
-function schedulePoll(delay=9000){
-  stopPoll();
-  if(document.visibilityState==="hidden")return;
-  poll=setTimeout(()=>{poll=null;void consult(true);},delay);
-}
-function render(data){
- if(!data||Number(data.numero)!==numero)throw Error("Os dados recebidos não pertencem a esta fatura.");
- latest=data;$("details").hidden=false;
- $("invoiceNumber").textContent="fatura"+String(numero).padStart(4,"0");
- $("payerName").textContent=String(data.cliente||"—");
- $("contract").textContent=String(data.contrato||"—");
- $("description").textContent=data.descricao||"Fatura CONSIG BENEFÍCIOS";
- $("original").textContent=brl(Number(data.original));
- $("amount").textContent=brl(Number(data.valor));
- const disc=Number(data.original)>0?(100-Number(data.valor)/Number(data.original)*100):0;
- $("discount").textContent=disc.toLocaleString("pt-BR",{maximumFractionDigits:2})+"%";
- $("due").textContent=data.vence?new Date(data.vence).toLocaleDateString("pt-BR",{timeZone:"America/Sao_Paulo"}):"Conforme emissão";
- $("pageTitle").textContent="Consultar fatura";
- $("pay").hidden=true;$("pixArea").hidden=true;$("paidArea").hidden=true;
- stopPoll();
- const state=String(data.situacao||"");
- if(state==="pago"){
-   $("pageTitle").textContent="Pagamento confirmado";
-   $("paidArea").hidden=false;
-   $("receiptLink").href=receiptHref();
-   status("A Nitro confirmou o recebimento. O comprovante está disponível.","success");
- } else if(state==="pendente"){
-   $("pageTitle").textContent="Aguardando pagamento";
-   if(typeof data.pix==="string"&&data.pix.startsWith("000201")){
-     $("pixArea").hidden=false;
-     $("pixCode").value=data.pix;
-     const qr=$("qrWrap");qr.replaceChildren();
-     if(typeof data.qr==="string"&&/^[A-Za-z0-9+/=]{1,80000}$/.test(data.qr)){
-       const image=document.createElement("img");image.src="data:image/png;base64,"+data.qr;image.alt="QR Code Pix da fatura";qr.append(image);
-     }else if(typeof window.QRCode==="function"){
-       try{new window.QRCode(qr,{text:data.pix,width:224,height:224,colorDark:"#1b303a",colorLight:"#ffffff"});}
-       catch{qr.textContent="Use o código Pix Copia e Cola abaixo.";}
-     }else{qr.textContent="Use o código Pix Copia e Cola abaixo.";}
-     status("Pix emitido. Após pagar, o BUSSI verificará a confirmação da Nitro.","success");
-   }else status("A Nitro ainda não retornou o código Pix. Atualize a situação; não emita outra cobrança.","warn");
-   schedulePoll(10000);
- }else if(state==="processando"){
-   status("A solicitação está em processamento. Consultando a Nitro sem criar outro Pix.","warn");
-   schedulePoll(11000);
- }else if(state==="aberta"){
-   $("pay").hidden=false;
-   status("Confira os valores. O Pix será solicitado à Nitro somente após clicar em Solicitar Pix.");
- }else if(state==="cancelado"||state==="expirada"||state==="reembolsado"){
-   status("Esta cobrança não está disponível para novo pagamento: "+state+". Entre em contato com o atendimento.","warn");
- }else{
-   status("Situação temporariamente indisponível. Consulte novamente.","warn");
- }
-}
-async function request(action){
- const response=await fetch(API,{
-    method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({numero,token,acao:action,...(action==="aceitar"?{aceito:true}:{})}),
-    cache:"no-store",redirect:"error",signal:AbortSignal.timeout(action==="aceitar"?45000:18000)
- });
- const body=await response.json().catch(()=>({}));
- if(!response.ok)throw Error(body?.erro||"Não foi possível consultar a Nitro.");
- return body;
-}
-async function consult(background=false){
- if(working||!valid)return;
- working=true;$("refresh").disabled=true;$("pay").disabled=true;
- try{
-   const data=await request("consultar");
-   render(data);
- }catch(err){
-   if(!background||!latest)status("Não foi possível atualizar: "+String(err.message||"Falha de conexão")+". Tente novamente.","warn");
-   if(latest&&["processando","pendente"].includes(latest.situacao))schedulePoll(13000);
- }finally{working=false;$("refresh").disabled=false;$("pay").disabled=false;}
-}
-async function accept(){
- if(working||!valid||latest?.situacao!=="aberta")return;
- working=true;stopPoll();$("pay").disabled=true;$("refresh").disabled=true;
- status("Solicitando o Pix à Nitro. Não feche esta página nem clique novamente.");
- try{render(await request("aceitar"));}
- catch(err){
-   status("Não houve confirmação da emissão. Verificando o estado antes de permitir outra tentativa.","warn");
-   working=false;$("refresh").disabled=false;
-   await consult();
-   return;
- }
- finally{working=false;$("refresh").disabled=false;$("pay").disabled=false;}
-}
-$("pay").addEventListener("click",()=>void accept());
-$("refresh").addEventListener("click",()=>void consult());
-$("printInvoice").addEventListener("click",()=>window.print());
-$("copyPix").addEventListener("click",async()=>{
- try{await navigator.clipboard.writeText($("pixCode").value);$("copyPix").textContent="Código Pix copiado";}
- catch{$("pixCode").focus();$("pixCode").select();$("copyPix").textContent="Selecione e copie o código";}
-});
-document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&valid)void consult();else stopPoll();});
-if(!valid)status("Link de fatura inválido. Solicite um novo endereço à CONSIG BENEFÍCIOS.","warn");
-else void consult();
-})();
-</script>
-</body>
-</html>
+</body></html>
