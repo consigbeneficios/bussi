@@ -172,41 +172,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 </style>
 </head>
 <body>
-<div class="authgate" id="authGate">
-  <div class="authcard">
-    <div class="authbrand"><div><b>BUSSI</b><div class="tag">Painel de gestão</div></div></div>
-
-    
-    <div id="setupAuth" style="display:none">
-      <h2>Configurar acesso</h2>
-      <p>Usuário fixo: <b>consibeneficio</b>. Defina sua senha para este acesso administrativo.</p>
-      <div class="field"><label>Usuário</label><input value="consibeneficio" readonly></div>
-      <div class="field" style="margin-top:10px"><label>Nova senha</label><input id="setupPass" type="password" autocomplete="new-password" placeholder="Mínimo de 8 caracteres"></div>
-      <div class="field" style="margin-top:10px"><label>Confirmar senha</label><input id="setupPass2" type="password" autocomplete="new-password"></div>
-      <button class="btn primary" id="createAccess" style="width:100%;margin-top:16px">Salvar senha e entrar</button>
-      <div class="autherror" id="setupError"></div>
-    </div>
-
-    <div id="loginAuth" style="display:none">
-      <h2>Entrar no BUSSI</h2>
-      
-      <div class="field"><label>Usuário</label><input id="loginUser" value="consibeneficio" autocomplete="username"></div>
-      <div class="field" style="margin-top:10px"><label>Senha</label><input id="loginPass" type="password" autocomplete="current-password"></div>
-      <button class="btn primary" id="loginBtn" style="width:100%;margin-top:16px">Entrar</button>
-      <button class="btn ghost" id="forgotBtn" style="width:100%;margin-top:8px">Esqueci minha senha</button>
-      <div class="autherror" id="loginError"></div>
-    </div>
-
-    <div id="resetAuth" style="display:none">
-      <h2>Redefinir senha</h2>
-      <p>Será solicitado o envio de um link de redefinição para o e-mail administrativo cadastrado.</p>
-      <div class="field"><label>E-mail de recuperação</label><input id="resetEmail" value="sac@consigbeneficio.com.br" readonly></div>
-      <button class="btn primary" id="sendResetBtn" style="width:100%;margin-top:16px">Enviar link de redefinição</button>
-      <button class="btn ghost" id="backLoginBtn" style="width:100%;margin-top:8px">Voltar para entrar</button>
-      <div class="autherror" id="resetError"></div>
-    </div>
-  </div>
-</div>
+<div class="authgate" id="authGate"><div class="authcard"><div class="authbrand"><b>CONSIG BENEFÍCIOS</b></div><h2>Acesso seguro</h2><p>Autenticando administrador...</p></div></div>
 <div class="app" id="mainApp" style="display:none">
 <aside class="side">
   <div class="brand"><div class="brandmark"><img src="logo-consig.svg" alt="CONSIG BENEFÍCIOS"></div><div><b>BUSSI</b><small>CRM · Campanhas · Cobranças</small></div></div>
@@ -293,11 +259,6 @@ button:disabled{opacity:.5;cursor:not-allowed}
           <p id="bussiCloudSyncStatus" aria-live="polite" style="font-size:12px;color:#17634d">Informações salvas neste navegador. Para ativar a nuvem, confirme sua sessão administrativa.</p>
         </div>
         <div id="nitroWorkspace" hidden>
-          <div class="notice good" style="margin:12px 0 18px">
-            <b>Teste real de recebimento Pix · R$ 7,00</b>
-            <p style="margin:7px 0 12px">O BUSSI prepara uma fatura de R$ 14,00 com 50% de desconto. Cadastre seus dados verdadeiros para validar o pagamento pela Nitro. Nenhuma fatura ou Pix é criado até você confirmar a emissão e, depois, optar pelo pagamento.</p>
-            <button type="button" class="btn primary" id="prepareRealPix7">Preparar cliente e fatura de teste</button>
-          </div>
         <div class="grid3">
           <div class="field"><label>Pesquisar cliente</label><input id="chargeClientSearch" placeholder="Digite nome, contrato ou telefone"></div>
           <div class="field"><label>Cliente</label><select id="chargeClient"></select></div>
@@ -308,9 +269,9 @@ button:disabled{opacity:.5;cursor:not-allowed}
             <option value="Black Friday 50% OFF - Referente a Competência: Dezembro">Black Friday 50% OFF - Referente a Competência: Dezembro</option>
             <option value="Black Friday 50% OFF - Referente a Competência: Janeiro">Black Friday 50% OFF - Referente a Competência: Janeiro</option>
           </select></div>
-          <div class="field"><label>Vencimento (automático — hoje)</label><input id="chargeDue" type="date" readonly title="O link vence no dia em que é emitido"></div>
+          <div class="field"><label>Vencimento (automático — dia seguinte)</label><input id="chargeDue" type="date" readonly title="O link vence ao final do dia seguinte"></div>
         </div>
-        <div class="notice" style="margin-top:12px"><b>Validade da cobrança:</b> emitida e vencendo no mesmo dia. O link deixa de exibir o Pix a partir de 00h do dia seguinte, horário de São Paulo, ou quando o pagamento for confirmado.</div><div class="toolbar" style="margin-top:16px"><button class="btn primary" id="generateCharge" disabled>Emitir fatura pelo BUSSI</button><button class="btn ghost" id="printInvoice" disabled>Visualizar fatura</button></div>
+        <div class="notice" style="margin-top:12px"><b>Validade da cobrança:</b> válida até o final do dia seguinte à emissão (Brasília), ou até a confirmação do pagamento, o que ocorrer primeiro. O Pix é encerrado após a liquidação.</div><div class="toolbar" style="margin-top:16px"><button class="btn primary" id="generateCharge" disabled>Emitir fatura pelo BUSSI</button><button class="btn ghost" id="printInvoice" disabled>Visualizar fatura</button></div>
         <div id="nitroGenerated" class="notice good" hidden style="margin-top:16px"><b>Fatura emitida: <span id="nitroGeneratedNumber"></span></b><p style="font-size:12px">Link individual de cobrança registrado no servidor:</p><div class="linkbox"><input id="nitroGeneratedLink" readonly aria-label="Link individual da fatura"><button class="btn dark" type="button" id="nitroCopyGenerated">Copiar</button><button class="btn primary" type="button" id="nitroOpenGenerated">Abrir</button></div></div>
         </div>
       </div>
@@ -320,7 +281,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
         <div class="tablewrap"><table class="table"><thead><tr><th>Fatura</th><th>Cliente / contrato</th><th>Descrição</th><th>Original</th><th>A pagar</th><th>Situação</th><th>Link</th></tr></thead><tbody id="nitroHistory"></tbody></table></div>
         <button class="btn ghost" type="button" id="nitroMore" hidden style="margin-top:12px">Ver mais faturas</button>
       </div>
-      <div class="section"><div class="sectionhead"><div><h2>Histórico anterior · navegador</h2><p>Somente faturas efetivamente geradas no BUSSI, com opção de exclusão individual.</p></div></div><div class="tablewrap"><table class="table"><thead><tr><th>Fatura</th><th>Cliente</th><th>Original</th><th>Desconto</th><th>Valor a ser pago</th><th>Status</th><th>Ações</th></tr></thead><tbody id="chargeRows"></tbody></table></div></div>
+      <div class="section" hidden><div class="sectionhead"><div><h2>Histórico anterior · navegador (arquivado)</h2><p>Somente faturas efetivamente geradas no BUSSI, com opção de exclusão individual.</p></div></div><div class="tablewrap" hidden><table class="table"><thead><tr><th>Fatura</th><th>Cliente</th><th>Original</th><th>Desconto</th><th>Valor a ser pago</th><th>Status</th><th>Ações</th></tr></thead><tbody id="chargeRows"></tbody></table></div></div>
     </section>
 
     <section class="view" id="integrations">
@@ -433,78 +394,24 @@ button:disabled{opacity:.5;cursor:not-allowed}
 
 <script src="bussi-events.js"></script>
 <script>
+// Retira os dados antigos deste dispositivo uma única vez; o registro pago vem da nuvem.
+const BUSSI_RESET_ID='bussi_20261121_payment_0013';
+if(localStorage.getItem('bussi.resetId.v1')!==BUSSI_RESET_ID){
+  ['bussi.clients.v1','bussi.campaigns.v1','bussi.charges.v1','bussi.settings.v1',
+   'bussi.events.v1','bussi.events.daily.v1','bussi.events.activity.v1',
+   'bussi.charge.draft.v1','bussi.invoice.next.v1','bussi.cloud.last_signature.v1',
+   'bussi.cloud.unsynced.v1','bussi.auth.local.v2','bussi.session'].forEach(k=>localStorage.removeItem(k));
+  localStorage.setItem('bussi.resetId.v1',BUSSI_RESET_ID);
+}
 const K={clients:'bussi.clients.v1',campaigns:'bussi.campaigns.v1',charges:'bussi.charges.v1',settings:'bussi.settings.v1'};
 let clients=load(K.clients,[])||[],campaigns=load(K.campaigns,[]),charges=load(K.charges,[]),settings=load(K.settings,{pixType:'auto',pixKey:'',pixName:'CONSIG BENEFICIO SA',pixCity:'SAO PAULO',pixTxid:'***',pixDesc:'FATURA CONSIG',trackingEndpoint:'',metaPhoneId:'',metaWabaId:'',trackingEnv:'',paymentProvider:'',paymentWebhook:'',paymentStatusEndpoint:'',authResetEndpoint:'',authEmail:'sac@consigbeneficio.com.br'}),editClientIndex=-1,lastLink='';
 
 function $(id){return document.getElementById(id)}function load(k,f){try{const v=localStorage.getItem(k);return v?JSON.parse(v):f}catch{return f}}function save(k,v){localStorage.setItem(k,JSON.stringify(v));if($('saveState'))$('saveState').textContent='Salvo às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});window.dispatchEvent(new Event('bussi:datachange'))}
-const AUTH_USER='consibeneficio';
-const AUTH_KEY='bussi.auth.local.v2';
-async function passwordHash(password,salt){
-  const enc=new TextEncoder();
-  const key=await crypto.subtle.importKey('raw',enc.encode(password),'PBKDF2',false,['deriveBits']);
-  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:enc.encode(salt),iterations:210000,hash:'SHA-256'},key,256);
-  return [...new Uint8Array(bits)].map(x=>x.toString(16).padStart(2,'0')).join('');
-}
-function authState(){try{return JSON.parse(localStorage.getItem(AUTH_KEY)||'null')}catch{return null}}
-function showAuth(){
-  const a=authState();
-  $('authGate').style.display='grid';
-  $('mainApp').style.display='none';
-  $('setupAuth').style.display=a?'none':'block';
-  $('loginAuth').style.display=a?'block':'none';
-  $('resetAuth').style.display='none';
-  if($('loginPass'))$('loginPass').value='';
-  if($('loginError'))$('loginError').classList.remove('show');
-  if($('setupError'))$('setupError').classList.remove('show')
-}
-function enterApp(){sessionStorage.setItem('bussi.session','1');$('authGate').style.display='none';$('mainApp').style.display='grid'}
-$('createAccess').onclick=async()=>{
-  const p=$('setupPass').value,p2=$('setupPass2').value,e=$('setupError');
-  e.classList.remove('show');
-  if(p.length<8){e.textContent='A senha deve ter pelo menos 8 caracteres.';e.classList.add('show');return}
-  if(p!==p2){e.textContent='As senhas não conferem.';e.classList.add('show');return}
-  const salt=crypto.getRandomValues(new Uint32Array(4)).join('-');
-  const hash=await passwordHash(p,salt);
-  localStorage.setItem(AUTH_KEY,JSON.stringify({user:AUTH_USER,salt,hash,createdAt:new Date().toISOString()}));
-  enterApp()
-};
-$('loginBtn').onclick=async()=>{
-  const a=authState(),u=$('loginUser').value.trim(),p=$('loginPass').value,e=$('loginError');
-  e.classList.remove('show');
-  const attempts=Number(sessionStorage.getItem('bussi.login.attempts')||0);
-  const lockUntil=Number(sessionStorage.getItem('bussi.login.lockUntil')||0);
-  if(Date.now()<lockUntil){e.textContent='Muitas tentativas. Tente novamente em alguns instantes.';e.classList.add('show');return}
-  if(!a||u!==AUTH_USER){e.textContent='Usuário ou senha inválidos.';e.classList.add('show');return}
-  const hash=await passwordHash(p,a.salt);
-  if(hash!==a.hash){
-    const next=attempts+1;sessionStorage.setItem('bussi.login.attempts',String(next));
-    if(next>=5){sessionStorage.setItem('bussi.login.lockUntil',String(Date.now()+30000));sessionStorage.setItem('bussi.login.attempts','0')}
-    e.textContent='Usuário ou senha inválidos.';e.classList.add('show');return
-  }
-  sessionStorage.removeItem('bussi.login.attempts');sessionStorage.removeItem('bussi.login.lockUntil');enterApp()
-};
-$('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')$('loginBtn').click()});
-$('forgotBtn').onclick=()=>{$('loginAuth').style.display='none';$('resetAuth').style.display='block';$('resetEmail').value=settings.authEmail||'sac@consigbeneficio.com.br';$('resetError').classList.remove('show')};
-$('backLoginBtn').onclick=()=>{$('resetAuth').style.display='none';$('loginAuth').style.display='block'};
-$('sendResetBtn').onclick=async()=>{
-  const e=$('resetError'),email=settings.authEmail||'sac@consigbeneficio.com.br',endpoint=(settings.authResetEndpoint||'').trim();
-  e.classList.remove('show');
-  if(!endpoint){
-    e.textContent='Envio automático ainda não conectado. Configure o endpoint de recuperação em Integrações.';
-    e.classList.add('show');
-    return
-  }
-  $('sendResetBtn').disabled=true;$('sendResetBtn').textContent='Enviando...';
-  try{
-    const res=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:AUTH_USER,email,app:'BUSSI',returnUrl:new URL('redefinir-senha.html',location.href).href})});
-    if(!res.ok)throw new Error('Falha no serviço');
-    e.style.color='#155f4a';e.textContent='Solicitação enviada. Verifique o e-mail para redefinir sua senha.';e.classList.add('show')
-  }catch(err){
-    e.style.color='#a43b3b';e.textContent='Não foi possível enviar o e-mail. Verifique a integração de autenticação.';e.classList.add('show')
-  }finally{$('sendResetBtn').disabled=false;$('sendResetBtn').textContent='Enviar link de redefinição'}
-};
-$('logoutBtn').onclick=()=>{sessionStorage.removeItem('bussi.session');window.dispatchEvent(new Event('bussi:logout'));showAuth()};
-if(sessionStorage.getItem('bussi.session')==='1'&&authState())enterApp();else showAuth()
+// Acesso unificado: somente Supabase com conta administrativa e autenticação MFA.
+function showAuth(){$('authGate').style.display='grid';$('mainApp').style.display='none'}
+function enterApp(){$('authGate').style.display='none';$('mainApp').style.display='grid'}
+$('logoutBtn').onclick=()=>{window.dispatchEvent(new Event('bussi:logout'));showAuth()};
+showAuth();
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function money(n){return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
 function parseMoney(v){
@@ -521,7 +428,6 @@ function todayPlus(days){const d=new Date();d.setDate(d.getDate()+days);return d
 $('chargeDue').value=todayPlus(7);
 document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));$(b.dataset.view).classList.add('active');$('pageTitle').textContent=b.textContent;renderAll()});
 function openModal(id){$(id).classList.add('open')}function closeModal(id){$(id).classList.remove('open')}document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>closeModal(b.dataset.close));
-let prepararTesteRealPendente=false;
 $('newClient').onclick=()=>{editClientIndex=-1;$('clientModalTitle').textContent='Novo cliente';['cName','cContract','cPhone','cDocument','cEmail','cOriginal','cFinal'].forEach(x=>$(x).value='');$('cEmail').value='sac@consigbeneficio.com.br';openModal('clientModal')};
 function onlyDigits(v){return String(v||'').replace(/\D/g,'')}
 function seededFake(c){return (/^Cliente Teste (0[1-9]|1[0-9]|20)$/.test(String(c?.name||'')) && /^TESTE-00(0[1-9]|1[0-9]|20)$/.test(String(c?.contract||'')) && onlyDigits(c?.phone).startsWith('0090000')) || (c?.name==='Test'&&c?.contract==='1111'&&c?.phone==='1111111')}
@@ -543,33 +449,8 @@ $('saveClient').onclick=()=>{
  const c={name:$('cName').value.trim(),contract:$('cContract').value.trim(),phone:$('cPhone').value.trim(),document:onlyDigits($('cDocument').value),email:$('cEmail').value.trim().toLowerCase(),original:parseMoney($('cOriginal').value),final:parseMoney($('cFinal').value)};
  const problem=checkClient(c,editClientIndex);if(problem)return alert(problem);
  if(editClientIndex>=0)clients[editClientIndex]=c;else clients.push(c);
- const indiceSalvo=editClientIndex>=0?editClientIndex:clients.length-1;
  save(K.clients,clients);closeModal('clientModal');renderAll();
- if(prepararTesteRealPendente){
-   prepararTesteRealPendente=false;
-   $('chargeClientSearch').value='';
-   renderChargeClientOptions();
-   $('chargeClient').value=String(indiceSalvo);
-   $('chargeOriginal').value=fmtInput(14);
-   $('chargeDiscount').value='50';
-   $('chargeDesc').value='Black Friday 50% OFF - Referente a Competência: Dezembro';
-   calcCharge();
-   saveChargeDraft();
-   document.querySelector('.nav button[data-view="charges"]')?.click();
-   $('nitroIssueStatus').textContent='Cadastro real salvo. A fatura de R$ 14,00 com 50% de desconto está preparada. Confirme os dados e use Emitir fatura pelo BUSSI.';
- }
 };
-$('prepareRealPix7').onclick=()=>{
- prepararTesteRealPendente=false;
- $('newClient').click();
- prepararTesteRealPendente=true;
- $('clientModalTitle').textContent='Cadastrar pagador real · teste Pix de R$ 7,00';
- $('cContract').value='VALIDACAO-PIX-'+saoPauloToday().replace(/-/g,'')+'-'+String(Date.now()).slice(-4);
- $('cOriginal').value='14,00';
- $('cFinal').value='7,00';
- $('cName').focus();
-};
-document.querySelector('[data-close="clientModal"]')?.addEventListener('click',()=>{prepararTesteRealPendente=false});
 function editClient(i){editClientIndex=i;const c=clients[i];$('clientModalTitle').textContent='Editar cliente';$('cName').value=c.name;$('cContract').value=c.contract;$('cPhone').value=c.phone;$('cDocument').value=c.document||'';$('cEmail').value=c.email||'sac@consigbeneficio.com.br';$('cOriginal').value=fmtInput(c.original);$('cFinal').value=fmtInput(c.final);openModal('clientModal')}
 function delClient(i){const c=clients[i];if(!c)return;if(!confirm('Excluir o cadastro de '+c.name+' do CRM?\n\nAs faturas, comprovantes e registros financeiros já emitidos serão preservados.'))return;clients.splice(i,1);save(K.clients,clients);renderAll()}
 $('downloadTemplate').onclick=()=>{
@@ -958,13 +839,14 @@ window.addEventListener('storage',e=>{if(e.key===window.BussiEvents?.key)renderD
 function renderAll(){renderDashboard();$('mClients').textContent=clients.length;$('mCampaigns').textContent=campaigns.length;$('mCharges').textContent=charges.length;$('mTracking').textContent=settings.trackingEndpoint?'Endpoint informado • não validado':'Eventos locais • integração pendente';const visibleClients=filteredClients();if($('clientSearchCount'))$('clientSearchCount').value=visibleClients.length+' cliente(s)';$('clientRows').innerHTML=visibleClients.length?visibleClients.map(c=>`<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.contract)}</td><td>${esc(c.phone)}</td><td>${money(c.original)}</td><td>${money(c.final)}</td><td><div class="toolbar"><button class="btn sm ghost" onclick="editClient(${c._i})">Editar</button><button class="btn sm danger" onclick="delClient(${c._i})">Excluir cliente</button></div></td></tr>`).join(''):'<tr><td colspan="6" class="empty">Nenhum cliente encontrado.</td></tr>';$('campaignRows').innerHTML=campaigns.length?campaigns.map(c=>`<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.audience)}</td><td><span class="badge yellow">${esc(c.status)}</span></td><td>${esc(c.message).slice(0,90)}</td><td><button class="btn sm danger" onclick="delCampaign(${c.id})">Excluir</button></td></tr>`).join(''):'<tr><td colspan="5" class="empty">Nenhuma campanha criada.</td></tr>';$('chargeRows').innerHTML=charges.length?charges.map(c=>`<tr><td>${esc(c.invoice)}</td><td><b>${esc(c.customer)}</b></td><td><span style="text-decoration:line-through">${money(c.original)}</span></td><td>${Number(c.discount||0).toFixed(0)}% OFF</td><td><b>${money(c.amount)}</b></td><td><span class="badge ${c.status==='Pagamento confirmado'?'green':'yellow'}">${esc(c.status)}</span></td><td><div class="toolbar">${c.status==='Pagamento confirmado'?'<button class="btn sm primary" onclick="openReceipt('+c.id+')">Comprovante</button><button class="btn sm ghost" onclick="copyReceipt('+c.id+')">Copiar link</button>':c.status==='Pagamento recusado'?'<button class="btn sm ghost" onclick="reopenCharge('+c.id+')">Reabrir</button>':'<button class="btn sm primary" disabled title="Aguardando confirmação financeira verificável">Validação pendente</button><button class="btn sm danger" onclick="refuseCharge('+c.id+')">Recusar</button>'}<button class="btn sm ghost" onclick="openPaymentCharge('+Number(c.id)+')">Abrir cobrança</button><button class="btn sm ghost" onclick="copyPaymentCharge('+Number(c.id)+')">Copiar link</button><button class="btn sm danger" onclick="deleteCharge('+Number(c.id)+')">Excluir fatura</button></div></td></tr>`).join(''):'<tr><td colspan="7" class="empty">Nenhuma cobrança gerada.</td></tr>';const cur=$('chargeClient').value;renderChargeClientOptions();if(cur!==''&&clients[Number(cur)])$('chargeClient').value=cur;const selected=selectedChargeClient();if(selected){if(!$('chargeOriginal').value.trim()){$('chargeOriginal').value=fmtInput(selected.original);$('chargeDiscount').value=selected.original?Math.round((100-selected.final/selected.original*100)*100)/100:50}calcCharge()}['pixType','pixKey','pixName','pixCity','pixTxid','pixDesc','trackingEndpoint','metaPhoneId','metaWabaId','trackingEndpoint2','trackingEnv','paymentProvider','paymentWebhook','paymentStatusEndpoint','authEmail','authResetEndpoint'].forEach(id=>{const map={pixType:'pixType',pixKey:'pixKey',pixName:'pixName',pixCity:'pixCity',pixTxid:'pixTxid',pixDesc:'pixDesc',trackingEndpoint:'trackingEndpoint',metaPhoneId:'metaPhoneId',metaWabaId:'metaWabaId',trackingEndpoint2:'trackingEndpoint',trackingEnv:'trackingEnv',paymentProvider:'paymentProvider',paymentWebhook:'paymentWebhook',paymentStatusEndpoint:'paymentStatusEndpoint',authEmail:'authEmail',authResetEndpoint:'authResetEndpoint'};if($(id)&&document.activeElement!==$(id))$(id).value=settings[map[id]]??''});if($('metaChip')){$('metaChip').textContent=(settings.metaPhoneId&&settings.metaWabaId)?'Configurado':'Não conectado';$('metaChip').className='statuschip'+((settings.metaPhoneId&&settings.metaWabaId)?' on':'')}if($('trackingChip')){$('trackingChip').textContent=settings.trackingEndpoint?'Configurado':'Não conectado';$('trackingChip').className='statuschip'+(settings.trackingEndpoint?' on':'')}if($('paymentChip')){$('paymentChip').textContent=settings.paymentProvider?(settings.paymentWebhook?'Configurado':'Provedor selecionado'):'Manual';$('paymentChip').className='statuschip'+(settings.paymentProvider&&settings.paymentWebhook?' on':'')}if($('authChip')){$('authChip').textContent=settings.authResetEndpoint?'Recuperação conectada':'Local';$('authChip').className='statuschip'+(settings.authResetEndpoint?' on':'')}renderPixStatus();window.BussiServerKpis?.apply?.()}
 renderAll();
 restoreChargeDraft();
-$('chargeDue').value=saoPauloToday();
+function dueTomorrow(){const p=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));return new Date(Date.UTC(Number(p.year),Number(p.month)-1,Number(p.day)+1)).toISOString().slice(0,10)}
+$('chargeDue').value=dueTomorrow();
 $('chargeDue').readOnly=true;
-window.addEventListener('focus',()=>{if($('chargeDue'))$('chargeDue').value=saoPauloToday();});
+window.addEventListener('focus',()=>{if($('chargeDue'))$('chargeDue').value=dueTomorrow();});
 function abrirAbaFaturas(){if(location.hash==='#faturas')document.querySelector('.nav button[data-view="charges"]')?.click()}
 window.addEventListener('hashchange',abrirAbaFaturas);abrirAbaFaturas();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.94.1/dist/umd/supabase.min.js"></script>
-<script src="bussi-nitro.js?v=20261121-nuvem-mfa"></script>
+<script src="bussi-nitro.js?v=20261121-reset-final"></script>
 </body>
 </html>
