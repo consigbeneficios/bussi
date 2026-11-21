@@ -77,11 +77,8 @@ if(!d){document.getElementById('app').innerHTML='<div class="shell"><div class="
 const discountValue=Math.max(0,Number(d.original||0)-Number(d.amount||0));
 
 const pct=Number.isFinite(Number(d.discount))?Number(d.discount):50;
-const cleanDescription=String(d.description||'P/Consignado')
- .replace(/^Black Friday\s+\d+(?:[.,]\d+)?%\s*OFF\s*[—-]?\s*/i,'')
- .replace(/\s*[—-]\s*Competência:\s*Dezembro\s*$/i,'')
- .trim()||'P/Consignado';
-const receiptDescription='Black Friday '+pct.toLocaleString('pt-BR',{maximumFractionDigits:2})+'% OFF — '+cleanDescription+' — Competência: Dezembro';
+// Respeita a competência escolhida na emissão (Dezembro ou Janeiro) sem reescrever o histórico.
+const receiptDescription=String(d.description||'Black Friday 50% OFF - Referente a Competência: Dezembro').trim();
 
 document.getElementById('app').innerHTML=`<main class="shell">
 <header class="top"><img class="logo" src="logo-consig.svg" alt="CONSIG BENEFÍCIOS"><div class="topright"><b>CONSIG BENEFÍCIO S/A</b><span>CNPJ 66.754.630/0001-60</span></div></header>
