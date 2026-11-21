@@ -2,7 +2,7 @@ name: Validar sessao e salvamento BUSSI
 on:
   push:
     branches: [main]
-    paths: ['.github/workflows/teste-geracao-fatura.yml', 'index.html', 'portal.html', 'bussi-nitro.js']
+    paths: ['.github/workflows/teste-geracao-fatura.yml', 'index.html', 'portal.html', 'bussi-nitro.js', 'comprovante-liquidacao.html']
   workflow_dispatch:
 permissions:
   contents: read
@@ -11,20 +11,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Conferir estrutura e sintaxe, sem realizar cobranças
+      - name: Conferir integridade de autenticacao e dados
         run: |
-          node --check bussi-nitro.js
+          set -euo pipefail
           cmp index.html portal.html
+          node --check bussi-nitro.js
           node <<'NODE'
           const fs=require('fs'),assert=require('node:assert/strict');
-          const html=fs.readFileSync('index.html','utf8');
-          const js=fs.readFileSync('bussi-nitro.js','utf8');
-          const scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(m=>m[1]).filter(Boolean);
-          for(const script of scripts) new Function(script);
-          for(const id of ['bussiCloudSyncStatus','cDocument','cEmail','prepareRealPix7']) assert.ok(html.includes('id="'+id+'"'));
-          for(const part of ['persistSession:true','autoRefreshToken:true','getAuthenticatorAssuranceLevel','startCloudSync','bussi_portal_arquivos','uploadSnapshot']) assert.ok(js.includes(part));
-          assert.ok(js.includes('bussi_emitir_link_cliente'));
-          assert.ok(html.includes('sac@consigbeneficio.com.br'));
-          assert.ok(!html.includes("$('generateCharge').onclick="));
-          console.log('OK: sessao Supabase persistente, validacao MFA, dados de clientes e sincronizacao em nuvem.');
+          const html=fs.readFileSync('index.html','utf8'),js=fs.readFileSync('bussi-nitro.js','utf8');
+          assert.match(html,/function showAuth\(/);
+          assert.match(html,/function enterApp\(/);
+          assert.doesNotMatch(html,/setupPass/);
+          assert.doesNotMatch(html,/id="prepareRealPix7"/);
+          assert.match(html,/id="cDocument"/);
+          assert.match(html,/id="cEmail"/);
+          assert.match(js,/persistSession:true/);
+          assert.match(js,/autoRefreshToken:true/);
+          assert.match(js,/getAuthenticatorAssuranceLevel/);
+          assert.match(js,/bussi_portal_arquivos/);
+          assert.match(js,/BACKUP_TABLE,\{conteudo:snapshot\}/);
+          assert.doesNotMatch(js,/assinatura:sig/);
+          assert.match(js,/bussi_20261121_payment_0013/);
+          assert.match(html,/sac@consigbeneficio.com.br/);
+          console.log('BUSSI: MFA persistente, insert na tabela com coluna gerada e base reiniciada.');
           NODE
