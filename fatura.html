@@ -1,27 +1,64 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex,nofollow">
-<meta name="referrer" content="no-referrer">
-<title>CONSIG BENEFÍCIOS — Link de pagamento encerrado</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
+<meta http-equiv="Cache-Control" content="no-store">
+<title>Fatura quitada | CONSIG BENEFÍCIOS</title>
 <style>
-*{box-sizing:border-box}body{font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;margin:0;background:#f3f5f6;color:#18303b;min-height:100vh;display:grid;place-items:center;padding:18px}
-main{width:min(100%,540px);padding:34px;background:#fff;border:1px solid #dfe8ec;border-radius:18px;box-shadow:0 12px 35px #122c3710;text-align:center}
-img{width:104px;height:104px;object-fit:cover;border-radius:18px;display:block;margin:0 auto 16px}
-h1{font-size:24px;line-height:1.25;margin:0 0 12px}
-p{font-size:15px;line-height:1.6;color:#53626c}
-a{color:#0a7860;font-weight:700}
-small{font-size:12px;color:#6c7983}
+*{box-sizing:border-box}body{margin:0;background:#f3f6f8;font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;color:#172c36;padding:20px}
+.sheet{max-width:680px;margin:28px auto;background:white;border:1px solid #dce5e9;border-radius:18px;box-shadow:0 12px 35px #18364013;overflow:hidden}
+header{padding:27px 26px 17px;border-bottom:1px solid #e6edf0;text-align:center}
+header img{width:115px;height:115px;display:block;object-fit:cover;margin:0 auto 15px;border-radius:18px}
+h1{font-size:24px;line-height:1.25;margin:0;color:#17363f}h2{font-size:19px;margin:0 0 8px}
+.muted{color:#62727a;font-size:13px}.content{padding:24px 27px 30px}
+.approved{display:flex;align-items:center;gap:10px;color:#14664d;background:#eaf7f0;border:1px solid #c7e6d7;border-radius:12px;padding:13px 15px;font-weight:750;margin:0 0 23px}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:10px 0;border-bottom:1px solid #eff2f4}
+.row span{color:#596b76}.row strong{text-align:right;overflow-wrap:anywhere}
+.total{font-size:27px;font-weight:800;color:#14664d;margin:13px 0}
+.btn{display:block;text-decoration:none;text-align:center;border-radius:11px;padding:14px 20px;background:#0b6d57;color:#fff;font-weight:750;margin:21px 0 0}
+.note{text-align:center;color:#66757d;font-size:12px;padding:18px 20px;border-top:1px solid #e6edf0}
+.error{color:#8a3737;background:#fff0f0;padding:15px;border-radius:12px}
+@media(max-width:480px){body{padding:0}.sheet{margin:0;min-height:100vh;border:0;border-radius:0}.content{padding:22px 19px}.row{display:block}.row strong{display:block;text-align:left}}
 </style>
 </head>
-<body>
-<main>
-<img src="logo-consig.svg" alt="CONSIG BENEFÍCIOS">
-<h1>Link de cobrança anterior encerrado</h1>
-<p>Este endereço pertence a uma versão descontinuada do sistema. Nenhum Pix será emitido nesta página. Para receber uma fatura válida, solicite um novo link ao atendimento da CONSIG BENEFÍCIOS.</p>
-<p><a href="mailto:sac@consigbeneficio.com.br">sac@consigbeneficio.com.br</a></p>
-<small>CONSIG BENEFÍCIO S/A · CNPJ 66.754.630/0001-60</small>
+<body><main class="sheet">
+<header><img src="logo-consig.svg" alt="CONSIG BENEFÍCIOS"><h1>Fatura de parcela</h1><div class="muted">CONSIG BENEFÍCIO S/A · CNPJ 66.754.630/0001-60</div></header>
+<section class="content" id="content"><p>Consultando a confirmação financeira da fatura...</p></section>
+<footer class="note">A confirmação de pagamento é verificada na base financeira da CONSIG BENEFÍCIOS.<div>Atendimento: sac@consigbeneficio.com.br</div></footer>
 </main>
-</body></html>
+<script>
+"use strict";
+const node=document.getElementById("content");
+const brl=n=>Number(n||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function fail(message){node.replaceChildren();const box=document.createElement("p");box.className="error";box.textContent=message;node.append(box);}
+(async()=>{
+ const params=new URLSearchParams(location.hash.slice(1)),numero=Number(params.get("numero")),token=params.get("token");
+ if(!Number.isSafeInteger(numero)||numero<1||!/^[a-f0-9]{64}$/.test(token||"")){fail("Link inválido. Consulte a fatura original no BUSSI.");return;}
+ try{
+  const res=await fetch("https://yzhjtqwpmxhigrijiuze.supabase.co/functions/v1/comprovante-bussi",{
+   method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({numero,token}),cache:"no-store",redirect:"error",signal:AbortSignal.timeout(15000)
+  });
+  if(!res.ok){const error=await res.json().catch(()=>({}));throw Error(error.erro||"Fatura sem confirmação de pagamento.");}
+  const data=await res.json();
+  if(data?.status!=="LIQUIDADO"||data?.verification!=="nitro_ledger"||Number(data.numero)!==numero)throw Error("Pagamento não verificado.");
+  const receipt=new URL("comprovante-liquidacao.html",location.href);
+  receipt.hash="numero="+encodeURIComponent(numero)+"&token="+encodeURIComponent(token);
+  node.innerHTML=`<div class="approved">✓ Pagamento confirmado</div>
+   <h2>${esc(data.invoice)}</h2>
+   <div class="row"><span>Cliente</span><strong>${esc(data.customer||"—")}</strong></div>
+   <div class="row"><span>Contrato</span><strong>${esc(data.contract||"—")}</strong></div>
+   <div class="row"><span>Descrição</span><strong>${esc(data.description||"—")}</strong></div>
+   <div class="row"><span>Valor original</span><strong>${brl(data.original)}</strong></div>
+   <div class="row"><span>Desconto aplicado</span><strong>${Number(data.discount||0).toLocaleString("pt-BR")}%</strong></div>
+   <div class="row"><span>Valor pago</span><strong class="total">${brl(data.amount)}</strong></div>
+   <div class="row"><span>Nº do comprovante</span><strong>${esc(data.receiptNumber||"—")}</strong></div>
+   <a class="btn" id="receiptLink">Ver comprovante de liquidação</a>
+   <p class="muted">O Pix desta fatura foi encerrado após a liquidação. Nenhuma nova cobrança será emitida.</p>`;
+  const button=document.getElementById("receiptLink");
+  button.href=receipt.href;
+  button.rel="noopener noreferrer";
+ }catch(e){fail(e.message||"Não foi possível conferir esta fatura.");}
+})();
+</script></body></html>
