@@ -52,8 +52,15 @@ jobs:
 
       - name: Testar URLs publicas e certificados
         run: |
-          for url in 'https://consigbeneficios.github.io/bussi/' 'https://pay.consigbeneficio.com.br/' 'https://pay.consigbeneficio.com.br/pagamento.html'; do
+          for url in 'https://consigbeneficios.github.io/bussi/' 'https://pay.consigbeneficio.com.br/' 'https://pay.consigbeneficio.com.br/fatura0013'; do
             echo "TESTE $url"
             curl --location --silent --show-error --output /dev/null --max-time 25 --write-out 'HTTP=%{http_code} URL_FINAL=%{url_effective} TLS=%{ssl_verify_result}' "$url" || echo 'ERRO: falha de conexao ou certificado'
             echo
           done
+
+      - name: Conferir fatura oficial sem acionar cobranca ou consultar dados privados
+        run: |
+          set -euo pipefail
+          resultado=$(curl --location --silent --show-error --output /dev/null --max-time 25 --write-out '%{http_code} TLS=%{ssl_verify_result} URL=%{url_effective}' 'https://pay.consigbeneficio.com.br/fatura0013')
+          echo "FATURA0013 $resultado"
+          case "$resultado" in '200 TLS=0 URL=https://pay.consigbeneficio.com.br/fatura0013') echo 'DOMINIO_E_ROTA_OK' ;; * ) echo 'ROTA_DA_FATURA_NAO_CONFIRMADA'; exit 1 ;; esac
