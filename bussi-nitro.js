@@ -61,7 +61,7 @@
       $("nitroCode").value="";
       $("nitroVerifyForm").hidden=true;$("nitroWorkspace").hidden=false;
       $("generateCharge").disabled=false;
-      status("Acesso administrativo verificado. Emita faturas para clientes cadastrados no BUSSI.");
+      status("Acesso BUSSI validado. Emita a fatura no BUSSI; a Nitro participa somente do recebimento Pix.");
       await history();
       await summary();
     });
@@ -89,7 +89,7 @@
   $("generateCharge").addEventListener("click",event=>{
     event.preventDefault();
     void handle(async()=>{
-      if(!jwt||$("nitroWorkspace").hidden)throw Error("Faça a autenticação financeira primeiro.");
+      if(!jwt||$("nitroWorkspace").hidden)throw Error("Confirme seu acesso administrativo ao BUSSI primeiro.");
       const payer=clientInfo();
       const amount=cents($("chargeOriginal").value);
       const desc=$("chargeDesc").value.trim();
@@ -105,7 +105,7 @@
         lastLink=linkFor(row);$("nitroGenerated").hidden=false;$("nitroGeneratedLink").value=lastLink;
         $("nitroGeneratedNumber").textContent="fatura"+String(row.numero).padStart(4,"0");
         $("printInvoice").disabled=false;
-        status("Fatura registrada. O Pix somente será solicitado quando o cliente aceitar o pagamento.");
+        status("Fatura emitida pelo BUSSI. Nenhuma cobrança foi enviada à Nitro; o Pix será solicitado apenas quando o cliente optar por pagar.");
         requestId=null;await history();await summary();
       }finally{$("generateCharge").disabled=oldDisabled;}
     });
@@ -123,21 +123,47 @@
     if(!older)$("nitroHistory").replaceChildren();
     for(const r of rows){
       const row=document.createElement("tr");
-      const number=document.createElement("td"),description=document.createElement("td"),value=document.createElement("td"),situation=document.createElement("td"),link=document.createElement("td");
+      const number=document.createElement("td"),customer=document.createElement("td"),description=document.createElement("td"),
+        original=document.createElement("td"),value=document.createElement("td"),situation=document.createElement("td"),link=document.createElement("td");
       number.textContent="fatura"+String(r.numero).padStart(4,"0");
+      customer.textContent=[r.cliente||"Sem identificação",r.contrato||""].filter(Boolean).join(" · ");
       description.textContent=r.descricao;
-      value.textContent=brl(r.valor_centavos/100);
+      original.textContent=brl(Number(r.original_centavos||0)/100);
+      value.textContent=brl(Number(r.valor_centavos||0)/100);
       situation.textContent=r.situacao;
       try{link.append(makeLink(r,"Abrir fatura"));}catch{link.textContent="Indisponível";}
-      row.append(number,description,value,situation,link);$("nitroHistory").append(row);
+      row.append(number,customer,description,original,value,situation,link);$("nitroHistory").append(row);
     }
-    if(!older&&!rows.length){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=5;td.textContent="Nenhuma fatura emitida.";tr.append(td);$("nitroHistory").append(tr);}
+    if(!older&&!rows.length){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=7;td.textContent="Nenhuma fatura emitida.";tr.append(td);$("nitroHistory").append(tr);}
     before=rows.at(-1)?.numero??null;$("nitroMore").hidden=rows.length<50;
   }
+  // Indicadores financeiros consolidados no próprio banco do BUSSI.
+  // O gateway de pagamento não emite faturas nem determina valores.
+  window.BussiServerKpis={
+    data:null,
+    apply(){
+      const d=this.data;if(!d)return;
+      const nodes={
+        mCharges:String(d.faturas),
+        mConfirmed:String(d.pagas),
+        mPaidValue:brl(Number(d.recebido_centavos||0)/100),
+        mPaidCount:d.pagas+" recebimento(s) confirmado(s)",
+        mPendingValue:brl(Number(d.aguardando_centavos||0)/100),
+        mPendingCount:d.aguardando+" fatura(s) aguardando pagamento"
+      };
+      for(const [id,value] of Object.entries(nodes)){const node=$(id);if(node)node.textContent=value;}
+    }
+  };
   async function summary(){
     if(!jwt)return;
-    const data=await api("/rest/v1/rpc/bussi_resumo_recebimentos",{});
-    $("nitroSummary").textContent=Number(data.quantidade||0)+" pagamento(s) conciliado(s) · "+brl(Number(data.total_centavos||0)/100);
+    const [data,metrics]=await Promise.all([
+      api("/rest/v1/rpc/bussi_resumo_recebimentos",{}),
+      api("/rest/v1/rpc/bussi_dashboard_faturas",{})
+    ]);
+    $("nitroSummary").textContent=Number(data.quantidade||0)+" recebimento(s) confirmado(s) pela Nitro · "+brl(Number(data.total_centavos||0)/100);
+    if(!metrics||!Number.isSafeInteger(Number(metrics.faturas)))throw Error("Indicadores BUSSI indisponíveis.");
+    window.BussiServerKpis.data=metrics;
+    window.BussiServerKpis.apply();
   }
   $("nitroRefresh").addEventListener("click",()=>void handle(async()=>{await history();await summary();status("Situação consultada no servidor.");}));
   $("nitroMore").addEventListener("click",()=>void handle(()=>history(true)));
