@@ -40,10 +40,45 @@ async function confirmar(f:any, id:string) {
   const result=await resp.json(), d=result.data;
   if(result.success!==true || d?.id!==id || d.payment_method!=="pix" || (d.currency!=null&&d.currency!=="BRL") || centavos(d.amount)!==f.valor_centavos || d.metadata?.order_id!==f.id || !Object.hasOwn(states,d.status)) throw Error("divergencia");
   if(!f.nitro_id && f.situacao==="processando") {
-    if(states[d.status]==="pendente" && typeof d.pix_code!=="string") return f;
-    await db("vincular",f.token_hash,{id,pix:typeof d.pix_code==="string"?d.pix_code:null,qr:null});
+    if(states[d.status]==="pendente" && (typeof d.pix_code!=="string" || !d.pix_code.startsWith("000201") || d.pix_code.length>2048)) return f;
+    await db("vincular",f.token_hash,{id,pix:typeof d.pix_code==="string"?d.pix_code:null,qr:typeof d.pix_qr_code==="string" && /^[A-Za-z0-9+/=]{1,80000}$/.test(d.pix_qr_code)?d.pix_qr_code:null});
   }
   return await db("verificar",f.token_hash,{id,ordem:f.id,centavos:f.valor_centavos,situacao:states[d.status]}) || f;
+}
+// A consultation can recover a timed-out creation, but never issues another charge.
+async function recuperarEmissao(f:any) {
+  const lock = await fetch(base+"/rest/v1/rpc/bussi_reservar_consulta_emissao", {
+    method:"POST",headers:{apikey:secret,Authorization:"Bearer "+secret,"Content-Type":"application/json"},
+    body:JSON.stringify({p_hash:f.token_hash}),redirect:"error",signal:AbortSignal.timeout(8000)
+  });
+  if (!lock.ok || await lock.json() !== true) return f;
+  const url = new URL("/transactions",endpoint);
+  const day = (v:number) => new Date(v).toISOString().slice(0,10);
+  url.searchParams.set("start_date",day(Date.parse(f.aceite_em)-86400000));
+  url.searchParams.set("end_date",day(Date.now()+86400000));
+  url.searchParams.set("limit","100");
+  for (let page=1;page<=3;page++) {
+    url.searchParams.set("page",String(page));
+    const response = await fetch(url,{headers:gatewayHeaders(),redirect:"error",signal:AbortSignal.timeout(8000)});
+    if (!response.ok) { console.warn("nitro_consulta_emissao",f.numero,response.status); return f; }
+    const result=await response.json(), list=result?.data;
+    const rows=Array.isArray(list)?list:list?.transactions ?? list?.transacoes;
+    if (result?.success!==true || !Array.isArray(rows)) { console.warn("nitro_lista_formato",f.numero); return f; }
+    const match=rows.find((r:any)=>r && (r.metadata?.order_id===f.id || r.external_ref===f.id) && typeof r.id==="string" && idPattern.test(r.id));
+    if (match) return await confirmar(f,match.id);
+    if (rows.length<100) break;
+  }
+  console.info("nitro_referencia_ausente_na_consulta",f.numero);
+  return f;
+}
+function motivoNitro(status:number, data:any) {
+  // Inspect validation text in memory. Logs and public responses use only these categories.
+  const detail=JSON.stringify([data?.message,data?.error,data?.errors,data?.mensagem]).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  if ([401,403].includes(status)) return "autorizacao";
+  if (![400,422].includes(status)) return "indeterminado";
+  if (/(minim|minimum|at least)/.test(detail) && /(amount|valor|montante|transa[cç]ao)/.test(detail)) return "valor_minimo";
+  if (/(cpf|cnpj|document|telefone|phone|email|e-mail|customer)/.test(detail)) return "cadastro";
+  return "validacao";
 }
 export async function handle(req:Request) {
   const origin=req.headers.get("Origin");
@@ -83,15 +118,28 @@ export async function handle(req:Request) {
           metadata:{order_id:f.id},source_url:src,source_label:"Cartão de Benefícios CONSIG",postbackUrl:base+"/functions/v1/fatura-bussi?retorno="+f.id})});
       const data=await response.json().catch(()=>null);
       if(!response.ok){
-        if([400,422].includes(response.status)&&data?.success===false)await db("recusada",hash);
-        return out(502,{erro:"A Nitro não confirmou a criação do Pix. Atualize a situação antes de tentar novamente."});
+        const motivo=motivoNitro(response.status,data);
+        console.warn("nitro_emissao",f.numero,response.status,motivo);
+        // Reopen only an explicit rejection; a proxy or ambiguous failure may follow a successful issuance.
+        const recusada=[400,422].includes(response.status) && data?.success===false;
+        const estado=recusada ? await db("recusada",hash) : await db("ler",hash);
+        const mensagens:Record<string,string>={
+          autorizacao:"A Nitro recusou o acesso da integração. O atendimento precisa verificar a conta.",
+          valor_minimo:"A Nitro informou que o valor está abaixo do mínimo aceito.",
+          cadastro:"A Nitro recusou os dados do pagador. Confira o cadastro antes de solicitar o Pix.",
+          validacao:"A Nitro recusou os dados da solicitação. Entre em contato com o atendimento.",
+          indeterminado:"A emissão ainda não foi confirmada. Acompanhe a situação nesta fatura."
+        };
+        return out(502,{erro:mensagens[motivo],fatura:publico(estado || current)});
       }
       const d=data?.data;
       if(data?.success!==true||typeof d?.id!=="string"||!idPattern.test(d.id)||d.payment_method!=="pix"||d.status!=="pendente"||centavos(d.amount)!==f.valor_centavos||d.metadata?.order_id!==f.id||typeof d.pix_code!=="string"||!d.pix_code.startsWith("000201")||d.pix_code.length>2048)throw Error("resposta");
       const qr=typeof d.pix_qr_code==="string" && /^[A-Za-z0-9+/=]{1,80000}$/.test(d.pix_qr_code)?d.pix_qr_code:null;
       f=await db("vincular",hash,{id:d.id,pix:d.pix_code,qr}) || await db("ler",hash);
     }else if(body.acao==="consultar"){
-      if(f.nitro_id && (!f.verificado_em||Date.parse(f.verificado_em)<Date.now()-30000))f=await confirmar(f,f.nitro_id);
+      if(!f.nitro_id && f.situacao==="processando") {
+        try { f=await recuperarEmissao(f); } catch { console.warn("nitro_consulta_indisponivel",f.numero); }
+      } else if(f.nitro_id && (!f.verificado_em||Date.parse(f.verificado_em)<Date.now()-30000))f=await confirmar(f,f.nitro_id);
     }else return out(400,{erro:"Operação inválida."});
     return out(200,publico(f));
   }catch{return out(503,{erro:"Serviço temporariamente indisponível. Consulte novamente em instantes."});}
