@@ -4,7 +4,13 @@
   const apikey = "sb_publishable_fimYRn4YWFbiwYiADnrQvg_mACDleaU";
   const $ = id => document.getElementById(id);
   const brl = n => Number(n).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+  // O cliente Supabase preserva a sessão MFA AAL2 e renova os tokens válidos.
+  // Nunca gravar senhas, códigos TOTP ou tokens em backups do CRM.
+  const auth = window.supabase.createClient(base,apikey,{
+    auth:{storageKey:"bussi-finance-session-v1",persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}
+  });
   let jwt = null, factor = null, busy = false, requestId = null, lastLink = "", before = null;
+  let cloudReady = false, cloudBusy = false, cloudTimer = null, cloudRestore = false, cloudSignature = "";
   const status = message => { $("nitroIssueStatus").textContent = message; };
   function resetRequest(){requestId=null;lastLink="";$("nitroGenerated").hidden=true;$("printInvoice").disabled=true;}
   function digits(s){return String(s??"").replace(/\D/g,"");}
@@ -20,11 +26,14 @@
     return Number.isSafeInteger(valueCents)&&valueCents>0?valueCents:null;
   }
   async function api(path,payload,method="POST"){
-    const headers={apikey,"Content-Type":"application/json"};
-    if(jwt)headers.Authorization="Bearer "+jwt;
+    const {data:{session},error:sessionError}=await auth.auth.getSession();
+    if(sessionError||!session?.access_token)throw Error("Sua sessão BUSSI expirou. Entre novamente para sincronizar.");
+    jwt=session.access_token;
+    const headers={apikey,"Content-Type":"application/json",Authorization:"Bearer "+jwt};
+    if(method==="POST" && path==="/rest/v1/bussi_portal_arquivos")headers.Prefer="return=minimal";
     const response=await fetch(base+path,{method,headers,body:payload===undefined?undefined:JSON.stringify(payload),cache:"no-store",redirect:"error",signal:AbortSignal.timeout(30000)});
     const data=await response.json().catch(()=>null);
-    if(!response.ok)throw new Error(data?.message||data?.erro||(response.status===401||response.status===403?"Acesso negado. Entre novamente com o autenticador.":"Operação indisponível."));
+    if(!response.ok)throw Object.assign(new Error(data?.message||data?.erro||(response.status===401||response.status===403?"Acesso negado. Verifique sua sessão BUSSI.":"Operação indisponível.")),{status:response.status,code:data?.code});
     return data;
   }
   function showLogin(){jwt=null;factor=null;$("nitroLoginForm").hidden=false;$("nitroVerifyForm").hidden=true;$("nitroWorkspace").hidden=true;$("nitroLogout").hidden=true;$("generateCharge").disabled=true;$("printInvoice").disabled=true;resetRequest();}
@@ -34,39 +43,201 @@
     try{await action();}catch(err){status(err?.message||"Não foi possível concluir.");}
     finally{busy=false;}
   }
+  async function openVerifiedWorkspace(remembered=false){
+    const {data:{user},error:userError}=await auth.auth.getUser();
+    if(userError||!user)throw Error("Sessão inválida. Entre novamente.");
+    const {data:assurance,error:assuranceError}=await auth.auth.mfa.getAuthenticatorAssuranceLevel();
+    if(assuranceError || assurance?.currentLevel!=="aal2")throw Error("É necessária uma verificação do autenticador para esta sessão.");
+    // A validação da função SQL confirma também a condição de administrador.
+    await api("/rest/v1/rpc/bussi_dashboard_faturas",{});
+    if(typeof enterApp==="function")enterApp();
+    $("nitroLoginForm").hidden=true;$("nitroVerifyForm").hidden=true;
+    $("nitroWorkspace").hidden=false;$("nitroLogout").hidden=false;
+    $("generateCharge").disabled=false;
+    status(remembered?"Sessão reconhecida neste navegador. Autenticador não solicitado novamente.":"Acesso BUSSI confirmado. Sessão lembrada neste navegador.");
+    try{await startCloudSync();}catch(err){syncStatus("Nuvem indisponível: alterações continuam salvas neste navegador.",true);}
+    await history();await summary();
+  }
   $("nitroLoginForm").addEventListener("submit",event=>{
     event.preventDefault();void handle(async()=>{
       if(!window.isSecureContext)throw Error("Acesse o BUSSI usando HTTPS.");
-      const pwd=$("nitroPassword").value;
       try{
-        const login=await api("/auth/v1/token?grant_type=password",{email:$("nitroEmail").value.trim(),password:pwd});
-        jwt=login.access_token;
-        const user=await api("/auth/v1/user",undefined,"GET");
-        factor=user.factors?.find(x=>x.factor_type==="totp"&&x.status==="verified")?.id;
-        if(!factor)throw Error("O acesso financeiro exige autenticador de dois fatores ativo.");
+        const {data,error}=await auth.auth.signInWithPassword({email:$("nitroEmail").value.trim(),password:$("nitroPassword").value});
+        if(error)throw error;
+        const {data:userData,error:userError}=await auth.auth.getUser();
+        if(userError)throw userError;
+        factor=(userData.user?.factors||data.user?.factors||[]).find(f=>f.factor_type==="totp"&&f.status==="verified")?.id;
+        if(!factor)throw Error("Esta conta precisa ter o autenticador TOTP configurado.");
         $("nitroLoginForm").hidden=true;$("nitroVerifyForm").hidden=false;$("nitroLogout").hidden=false;
-        status("Informe o código de seis dígitos do autenticador.");
+        status("Informe o código de seis dígitos do autenticador somente para autorizar a sessão.");
         $("nitroCode").focus();
-      }catch(error){jwt=null;throw error;}
-      finally{$("nitroPassword").value="";}
+      }finally{$("nitroPassword").value="";}
     });
   });
   $("nitroVerifyForm").addEventListener("submit",event=>{
     event.preventDefault();void handle(async()=>{
-      if(!factor||!jwt)throw Error("Entre com seu e-mail novamente.");
-      const endpoint="/auth/v1/factors/"+encodeURIComponent(factor);
-      const challenge=await api(endpoint+"/challenge",{});
-      const result=await api(endpoint+"/verify",{challenge_id:challenge.id,code:$("nitroCode").value.trim()});
-      jwt=result.access_token;
-      $("nitroCode").value="";
-      $("nitroVerifyForm").hidden=true;$("nitroWorkspace").hidden=false;
-      $("generateCharge").disabled=false;
-      status("Acesso BUSSI validado. Emita a fatura no BUSSI; a Nitro participa somente do recebimento Pix.");
-      await history();
-      await summary();
+      if(!factor)throw Error("Entre com seu e-mail novamente.");
+      try{
+        const {error}=await auth.auth.mfa.challengeAndVerify({factorId:factor,code:$("nitroCode").value.trim()});
+        if(error)throw error;
+        await openVerifiedWorkspace(false);
+      }finally{$("nitroCode").value="";}
     });
   });
-  $("nitroLogout").addEventListener("click",()=>{const old=jwt;showLogin();if(old)void fetch(base+"/auth/v1/logout?scope=local",{method:"POST",headers:{apikey,Authorization:"Bearer "+old},cache:"no-store"}).catch(()=>{});status("Acesso financeiro encerrado.");});
+  $("nitroLogout").addEventListener("click",()=>void handle(async()=>{
+    await auth.auth.signOut({scope:"local"});
+    stopCloudSync();showLogin();status("Sessão encerrada. Os dados do CRM continuam preservados.");
+  }));
+  window.addEventListener("bussi:logout",()=>void auth.auth.signOut({scope:"local"}).finally(()=>{stopCloudSync();showLogin();}));
+  // Uma nova visita recupera a sessão AAL2 existente; não substitui MFA por uma flag local.
+  async function restoreVerifiedSession(){
+    try{
+      const {data:{session}}=await auth.auth.getSession();
+      if(!session){showLogin();return;}
+      await openVerifiedWorkspace(true);
+    }catch(error){
+      showLogin();
+      status("Sua sessão anterior não pode ser reutilizada. Faça login e confirme o autenticador.");
+    }
+  }
+
+  // Sincronização do CRM: snapshots versionados protegidos por RLS e AAL2.
+  const BACKUP_TABLE="/rest/v1/bussi_portal_arquivos";
+  const MARKER_KEY="bussi.cloud.last_signature.v1";
+  const DIRTY_KEY="bussi.cloud.unsynced.v1";
+  const cloudKeys={clients:"bussi.clients.v1",campaigns:"bussi.campaigns.v1",charges:"bussi.charges.v1",
+    settings:"bussi.settings.v1",events:"bussi.events.v1",daily:"bussi.events.daily.v1",
+    activity:"bussi.events.activity.v1",invoiceNext:"bussi.invoice.next.v1",chargeDraft:"bussi.charge.draft.v1"};
+  function syncStatus(message,error=false){
+    const el=$("bussiCloudSyncStatus");if(el){el.textContent=message;el.style.color=error?"#a43b3b":"#17634d";}
+  }
+  function readLocal(k,fallback){
+    try{const v=localStorage.getItem(k);return v===null?fallback:JSON.parse(v)}catch{return fallback;}
+  }
+  function captureSnapshot(){
+    const result={version:5,clients:[],campaigns:[],charges:[],settings:{}};
+    for(const [k,key] of Object.entries(cloudKeys)){
+      const defaultVal=k==="invoiceNext"?11:k==="chargeDraft"||k==="settings"||k==="daily"||k==="activity"?{}:[];
+      result[k]=readLocal(key,defaultVal);
+    }
+    if(!Array.isArray(result.clients))result.clients=[];
+    result.clients=result.clients.filter(c=>!seededFake(c));
+    if(!Array.isArray(result.charges))result.charges=[];
+    if(!Array.isArray(result.campaigns))result.campaigns=[];
+    if(!result.settings||typeof result.settings!=="object"||Array.isArray(result.settings))result.settings={};
+    // Nunca persistir material de autenticação ou credenciais no backup.
+    for(const key of Object.keys(result.settings)){
+      if(/password|secret|token|credential|otp|session/i.test(key))delete result.settings[key];
+    }
+    return result;
+  }
+  function parseRemote(data){
+    if(!data||typeof data!=="object"||!Array.isArray(data.clients)||!Array.isArray(data.campaigns)||
+       !Array.isArray(data.charges)||!data.settings||typeof data.settings!=="object")throw Error("Arquivo remoto BUSSI inválido.");
+    return data;
+  }
+  function rowKey(row,type){
+    if(type==="clients")return String(row?.contract||"").toLowerCase().trim()||String(row?.document||"").trim();
+    if(type==="charges")return String(row?.invoice||row?.id||"").trim();
+    if(type==="campaigns")return String(row?.id||row?.name||"").trim();
+    return String(row?.id||row?.at||JSON.stringify(row));
+  }
+  function mergeRows(remote,local,type){
+    const map=new Map();let k=0;
+    for(const item of [...remote,...local]){
+      if(!item||typeof item!=="object")continue;
+      if(type==="clients"&&seededFake(item))continue;
+      const key=rowKey(item,type)||"unknown_"+(k++);
+      map.set(key,item);
+    }
+    return [...map.values()];
+  }
+  function restoreSnapshot(remote,mergeLocal=false){
+    const stored=captureSnapshot();
+    const data=parseRemote(remote);
+    const next={
+      ...data,
+      clients:mergeLocal?mergeRows(data.clients,stored.clients,"clients"):data.clients.filter(c=>!seededFake(c)),
+      campaigns:mergeLocal?mergeRows(data.campaigns,stored.campaigns,"campaigns"):data.campaigns,
+      charges:mergeLocal?mergeRows(data.charges,stored.charges,"charges"):data.charges,
+      settings:mergeLocal?{...data.settings,...stored.settings}:data.settings
+    };
+    if(mergeLocal){
+      next.events=mergeRows(Array.isArray(data.events)?data.events:[],Array.isArray(stored.events)?stored.events:[],"events");
+      next.daily={...(data.daily||{}),...(stored.daily||{})};
+      next.activity={...(data.activity||{}),...(stored.activity||{})};
+      next.invoiceNext=Math.max(Number(data.invoiceNext)||11,Number(stored.invoiceNext)||11);
+    }
+    cloudRestore=true;
+    try{
+      for(const [field,key] of Object.entries(cloudKeys)){
+        if(field==="chargeDraft" && localStorage.getItem(key)!==null)continue; // edição em andamento é local
+        if(next[field]!==undefined)localStorage.setItem(key,JSON.stringify(next[field]));
+      }
+      clients=next.clients;campaigns=next.campaigns;charges=next.charges;settings=next.settings;
+      if(typeof persistAll==="function")persistAll();
+      if(typeof renderAll==="function")renderAll();
+      if(typeof restoreChargeDraft==="function")restoreChargeDraft();
+    }finally{cloudRestore=false;}
+  }
+  async function snapshotSignature(data){
+    const raw=new TextEncoder().encode(JSON.stringify(data));
+    const bytes=await crypto.subtle.digest("SHA-256",raw);
+    return [...new Uint8Array(bytes)].map(v=>v.toString(16).padStart(2,"0")).join("");
+  }
+  async function uploadSnapshot(force=false){
+    if(!cloudReady||cloudBusy||cloudRestore)return;
+    cloudBusy=true;
+    try{
+      const snapshot=captureSnapshot(),sig=await snapshotSignature(snapshot);
+      if(!force&&sig===cloudSignature)return;
+      // A assinatura única evita acumular cópias idênticas a cada atualização.
+      try{await api(BACKUP_TABLE,{conteudo:snapshot,assinatura:sig});}
+      catch(error){if(error.status!==409||error.code!=="23505")throw error;}
+      cloudSignature=sig;
+      localStorage.setItem(MARKER_KEY,sig);
+      localStorage.removeItem(DIRTY_KEY);
+      syncStatus("Nuvem sincronizada · "+new Date().toLocaleString("pt-BR"));
+    }catch(error){
+      localStorage.setItem(DIRTY_KEY,"1");
+      syncStatus("Nuvem pendente: "+String(error.message||"falha de rede")+". Dados locais preservados.",true);
+    }finally{cloudBusy=false;}
+  }
+  function scheduleCloudSync(){
+    if(!cloudReady||cloudRestore)return;
+    localStorage.setItem(DIRTY_KEY,"1");
+    clearTimeout(cloudTimer);
+    cloudTimer=setTimeout(()=>void uploadSnapshot(),1800);
+  }
+  function stopCloudSync(){
+    cloudReady=false;cloudSignature="";clearTimeout(cloudTimer);
+  }
+  async function startCloudSync(){
+    const copies=await api(BACKUP_TABLE+"?select=conteudo,assinatura,criado_em&order=criado_em.desc&limit=1",undefined,"GET");
+    const latest=Array.isArray(copies)?copies[0]:null;
+    const local=captureSnapshot();
+    const lastDeviceSignature=localStorage.getItem(MARKER_KEY);
+    const hasUnsynced=localStorage.getItem(DIRTY_KEY)==="1"||
+      (!lastDeviceSignature&&(local.clients.length||local.campaigns.length||local.charges.length));
+    if(latest?.conteudo){
+      const remote=parseRemote(latest.conteudo);
+      restoreSnapshot(remote,Boolean(hasUnsynced));
+      cloudSignature=String(latest.assinatura||"");
+      syncStatus(hasUnsynced?"Dados da nuvem reunidos com os registros locais.":"Dados recuperados da nuvem.");
+    }else{
+      syncStatus("Primeira cópia na nuvem preparada.");
+    }
+    cloudReady=true;
+    await uploadSnapshot();
+  }
+  window.addEventListener("bussi:datachange",scheduleCloudSync);
+  window.addEventListener("online",()=>void uploadSnapshot());
+  document.addEventListener("visibilitychange",()=>{
+    if(document.visibilityState==="visible"&&cloudReady)void uploadSnapshot();
+  });
+  // Abrir e manter dados em sincronia sem criar cópias iguais.
+  setInterval(()=>{if(cloudReady)void uploadSnapshot();},15000);
+  window.BussiCloudSync={sync:()=>uploadSnapshot(true),get active(){return cloudReady;}};
   function linkFor(row){
     const n=Number(row.numero);
     if(!Number.isSafeInteger(n)||n<1||!/^[a-f0-9]{64}$/.test(String(row.token||"")))throw Error("Link retornado incompleto.");
@@ -168,4 +339,5 @@
   $("nitroRefresh").addEventListener("click",()=>void handle(async()=>{await history();await summary();status("Situação consultada no servidor.");}));
   $("nitroMore").addEventListener("click",()=>void handle(()=>history(true)));
   showLogin();
+  void restoreVerifiedSession();
 })();
