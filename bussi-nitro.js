@@ -11,6 +11,9 @@
   });
   let jwt = null, factor = null, busy = false, requestId = null, lastLink = "", before = null;
   let cloudReady = false, cloudBusy = false, cloudTimer = null, cloudRestore = false, cloudSignature = "";
+  // O acesso ao portal e ao financeiro depende da MESMA sessão Supabase + MFA.
+  const gate=$("authGate"),accessPanel=$("nitroAccess");
+  if(gate&&accessPanel){gate.replaceChildren(accessPanel);gate.style.display="grid";gate.style.padding="24px";accessPanel.style.maxWidth="680px";accessPanel.style.margin="0 auto";}
   const status = message => { $("nitroIssueStatus").textContent = message; };
   function resetRequest(){requestId=null;lastLink="";$("nitroGenerated").hidden=true;$("printInvoice").disabled=true;}
   function digits(s){return String(s??"").replace(/\D/g,"");}
@@ -36,7 +39,7 @@
     if(!response.ok)throw Object.assign(new Error(data?.message||data?.erro||(response.status===401||response.status===403?"Acesso negado. Verifique sua sessão BUSSI.":"Operação indisponível.")),{status:response.status,code:data?.code});
     return data;
   }
-  function showLogin(){jwt=null;factor=null;$("nitroLoginForm").hidden=false;$("nitroVerifyForm").hidden=true;$("nitroWorkspace").hidden=true;$("nitroLogout").hidden=true;$("generateCharge").disabled=true;$("printInvoice").disabled=true;resetRequest();}
+  function showLogin(){jwt=null;factor=null;$("nitroLoginForm").hidden=false;$("nitroVerifyForm").hidden=true;$("nitroWorkspace").hidden=true;$("nitroLogout").hidden=true;$("generateCharge").disabled=true;$("printInvoice").disabled=true;resetRequest();if(typeof showAuth==="function")showAuth();}
   async function handle(action){
     if(busy)return;
     busy=true;
@@ -86,7 +89,7 @@
   });
   $("nitroLogout").addEventListener("click",()=>void handle(async()=>{
     await auth.auth.signOut({scope:"local"});
-    stopCloudSync();showLogin();status("Sessão encerrada. Os dados do CRM continuam preservados.");
+    stopCloudSync();showLogin();status("Sessão encerrada. Os registros permanecem preservados na nuvem.");
   }));
   window.addEventListener("bussi:logout",()=>void auth.auth.signOut({scope:"local"}).finally(()=>{stopCloudSync();showLogin();}));
   // Uma nova visita recupera a sessão AAL2 existente; não substitui MFA por uma flag local.
@@ -105,6 +108,7 @@
   const BACKUP_TABLE="/rest/v1/bussi_portal_arquivos";
   const MARKER_KEY="bussi.cloud.last_signature.v1";
   const DIRTY_KEY="bussi.cloud.unsynced.v1";
+  const RESET_ID="bussi_20261121_payment_0013", CUTOVER_KEY="bussi.resetId.v1";
   const cloudKeys={clients:"bussi.clients.v1",campaigns:"bussi.campaigns.v1",charges:"bussi.charges.v1",
     settings:"bussi.settings.v1",events:"bussi.events.v1",daily:"bussi.events.daily.v1",
     activity:"bussi.events.activity.v1",invoiceNext:"bussi.invoice.next.v1",chargeDraft:"bussi.charge.draft.v1"};
@@ -115,9 +119,9 @@
     try{const v=localStorage.getItem(k);return v===null?fallback:JSON.parse(v)}catch{return fallback;}
   }
   function captureSnapshot(){
-    const result={version:5,clients:[],campaigns:[],charges:[],settings:{}};
+    const result={version:6,resetId:RESET_ID,clients:[],campaigns:[],charges:[],settings:{}};
     for(const [k,key] of Object.entries(cloudKeys)){
-      const defaultVal=k==="invoiceNext"?11:k==="chargeDraft"||k==="settings"||k==="daily"||k==="activity"?{}:[];
+      const defaultVal=k==="invoiceNext"?14:k==="chargeDraft"||k==="settings"||k==="daily"||k==="activity"?{}:[];
       result[k]=readLocal(key,defaultVal);
     }
     if(!Array.isArray(result.clients))result.clients=[];
@@ -171,7 +175,7 @@
     cloudRestore=true;
     try{
       for(const [field,key] of Object.entries(cloudKeys)){
-        if(field==="chargeDraft" && localStorage.getItem(key)!==null)continue; // edição em andamento é local
+        if(field==="chargeDraft" && mergeLocal && localStorage.getItem(key)!==null)continue; // edição após limpeza
         if(next[field]!==undefined)localStorage.setItem(key,JSON.stringify(next[field]));
       }
       clients=next.clients;campaigns=next.campaigns;charges=next.charges;settings=next.settings;
@@ -192,7 +196,7 @@
       const snapshot=captureSnapshot(),sig=await snapshotSignature(snapshot);
       if(!force&&sig===cloudSignature)return;
       // A assinatura única evita acumular cópias idênticas a cada atualização.
-      try{await api(BACKUP_TABLE,{conteudo:snapshot,assinatura:sig});}
+      try{await api(BACKUP_TABLE,{conteudo:snapshot});}
       catch(error){if(error.status!==409||error.code!=="23505")throw error;}
       cloudSignature=sig;
       localStorage.setItem(MARKER_KEY,sig);
@@ -222,11 +226,17 @@
       (!lastDeviceSignature&&(local.clients.length||local.campaigns.length||local.charges.length));
     if(latest?.conteudo){
       const remote=parseRemote(latest.conteudo);
-      restoreSnapshot(remote,Boolean(hasUnsynced));
-      cloudSignature=String(latest.assinatura||"");
-      syncStatus(hasUnsynced?"Dados da nuvem reunidos com os registros locais.":"Dados recuperados da nuvem.");
+      if(remote.resetId!==RESET_ID)throw Error("A limpeza financeira não consta no backup. Sincronização bloqueada.");
+      const firstLoad=localStorage.getItem(CUTOVER_KEY)!==RESET_ID;
+      const merge=!firstLoad && Boolean(hasUnsynced);
+      const remoteSig=await snapshotSignature(remote);
+      restoreSnapshot(remote,merge);
+      cloudSignature=merge?remoteSig:await snapshotSignature(captureSnapshot());
+      if(!merge)localStorage.removeItem(DIRTY_KEY);
+      localStorage.setItem(CUTOVER_KEY,RESET_ID);
+      syncStatus(merge?"Dados novos locais reunidos com o backup.":"Base limpa recuperada da nuvem.");
     }else{
-      syncStatus("Primeira cópia na nuvem preparada.");
+      throw Error("O backup inicial do BUSSI não foi encontrado.");
     }
     cloudReady=true;
     await uploadSnapshot();
@@ -246,6 +256,11 @@
   }
   function makeLink(row, label){
     const a=document.createElement("a");a.href=linkFor(row);a.textContent=label;a.rel="noopener noreferrer";a.target="_blank";return a;
+  }
+  function receiptLink(row){
+    const url=new URL("comprovante-liquidacao.html",location.href);
+    url.hash="numero="+encodeURIComponent(row.numero)+"&token="+encodeURIComponent(row.token);
+    const a=document.createElement("a");a.href=url.href;a.textContent="Comprovante";a.target="_blank";a.rel="noopener noreferrer";return a;
   }
   function clientInfo(){
     const c=typeof selectedChargeClient==="function"?selectedChargeClient():null;
@@ -303,7 +318,10 @@
       original.textContent=brl(Number(r.original_centavos||0)/100);
       value.textContent=brl(Number(r.valor_centavos||0)/100);
       situation.textContent=r.situacao;
-      try{link.append(makeLink(r,"Abrir fatura"));}catch{link.textContent="Indisponível";}
+      try{
+        link.append(makeLink(r,"Abrir fatura"));
+        if(r.situacao==="pago"){link.append(document.createTextNode(" · "),receiptLink(r));}
+      }catch{link.textContent="Indisponível";}
       row.append(number,customer,description,original,value,situation,link);$("nitroHistory").append(row);
     }
     if(!older&&!rows.length){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=7;td.textContent="Nenhuma fatura emitida.";tr.append(td);$("nitroHistory").append(tr);}
