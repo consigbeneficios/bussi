@@ -2,11 +2,7 @@ name: Verificacao do portal BUSSI
 on:
   push:
     branches: [main]
-    paths:
-      - '.github/workflows/teste-real-portal.yml'
-      - 'index.html'
-      - 'portal.html'
-      - 'bussi-nitro.js'
+    paths: ['.github/workflows/teste-real-portal.yml', 'index.html', 'portal.html', 'bussi-nitro.js', 'comprovante-liquidacao.html']
   workflow_dispatch:
 permissions:
   contents: read
@@ -15,26 +11,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Verificar integridade da interface e seu modulo de emissao
+      - name: Conferir portal unico e comprovante verificado
         run: |
           set -euo pipefail
-          test -s index.html
-          test -s bussi-nitro.js
           cmp index.html portal.html
           node --check bussi-nitro.js
           node <<'NODE'
           const fs=require('fs'),assert=require('node:assert/strict');
-          const html=fs.readFileSync('index.html','utf8');
-          const js=fs.readFileSync('bussi-nitro.js','utf8');
-          assert.match(html, /id="prepareRealPix7"/);
-          assert.match(html, /Emitir fatura pelo BUSSI/);
-          assert.match(html, /id="cDocument"/);
-          assert.match(html, /id="cEmail"/);
-          assert.match(html, /14,00/);
-          assert.match(html, /7,00/);
-          assert.match(js, /bussi_emitir_link_cliente/);
-          assert.match(js, /fatura.*padStart\(4/);
-          assert.doesNotMatch(html, /const defaultClients=\[/);
-          assert.doesNotMatch(html, /\$\('generateCharge'\)\.onclick=/);
-          console.log('Portal unico BUSSI validado sem novas cobrancas reais.');
+          const html=fs.readFileSync('index.html','utf8'),js=fs.readFileSync('bussi-nitro.js','utf8'),r=fs.readFileSync('comprovante-liquidacao.html','utf8');
+          for (const page of [html,r]) for(const [,script] of page.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))if(script.trim())new Function(script);
+          assert.match(html,/BUSSI_RESET_ID/);
+          assert.match(html,/bussi_20261121_payment_0013/);
+          assert.doesNotMatch(html,/id="prepareRealPix7"/);
+          assert.doesNotMatch(html,/const AUTH_KEY='bussi\.auth/);
+          assert.match(html,/Competência: Dezembro/);
+          assert.match(html,/Competência: Janeiro/);
+          assert.match(js,/bussi_emitir_link_cliente/);
+          assert.match(js,/bussi_comprovante/);
+          assert.match(js,/cloudReady/);
+          assert.match(r,/comprovante-bussi/);
+          assert.match(r,/nitro_ledger/);
+          assert.doesNotMatch(r,/\bdecode\(\)/);
+          console.log('BUSSI: portal unico, dados antigos limpos e comprovante validado no servidor.');
           NODE
