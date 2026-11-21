@@ -2,7 +2,7 @@ name: Verificacao do portal BUSSI
 on:
   push:
     branches: [main]
-    paths: ['.github/workflows/teste-real-portal.yml', 'index.html', 'portal.html', 'bussi-nitro.js', 'comprovante-liquidacao.html']
+    paths: ['.github/workflows/teste-real-portal.yml', 'index.html', 'portal.html', 'bussi-nitro.js', 'comprovante-liquidacao.html', 'fatura.html']
   workflow_dispatch:
 permissions:
   contents: read
@@ -31,6 +31,13 @@ jobs:
           assert.match(js,/cloudReady/);
           assert.match(r,/comprovante-bussi/);
           assert.match(r,/nitro_ledger/);
+          const paid=fs.readFileSync('fatura.html','utf8');
+          for(const [,script] of paid.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/g))if(script.trim())new Function(script);
+          assert.match(paid,/Ver comprovante de liquidação/);
+          assert.match(paid,/comprovante-bussi/);
+          assert.match(paid,/nitro_ledger/);
+          assert.match(js,/Fatura quitada/);
+          assert.doesNotMatch(paid,/gerar Pix|emitir Pix/i);
           assert.doesNotMatch(r,/\bdecode\(\)/);
           console.log('BUSSI: portal unico, dados antigos limpos e comprovante validado no servidor.');
           NODE
