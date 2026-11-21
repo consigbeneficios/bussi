@@ -257,10 +257,13 @@
   function makeLink(row, label){
     const a=document.createElement("a");a.href=linkFor(row);a.textContent=label;a.rel="noopener noreferrer";a.target="_blank";return a;
   }
-  function receiptLink(row){
-    const url=new URL("comprovante-liquidacao.html",location.href);
+  function paidDocumentLink(row,page,label){
+    const url=new URL(page,location.href);
     url.hash="numero="+encodeURIComponent(row.numero)+"&token="+encodeURIComponent(row.token);
-    const a=document.createElement("a");a.href=url.href;a.textContent="Comprovante";a.target="_blank";a.rel="noopener noreferrer";return a;
+    const a=document.createElement("a");a.href=url.href;a.textContent=label;a.target="_blank";a.rel="noopener noreferrer";return a;
+  }
+  function receiptLink(row){
+    return paidDocumentLink(row,"comprovante-liquidacao.html","Comprovante");
   }
   function clientInfo(){
     const c=typeof selectedChargeClient==="function"?selectedChargeClient():null;
@@ -320,7 +323,10 @@
       situation.textContent=r.situacao;
       try{
         link.append(makeLink(r,"Abrir fatura"));
-        if(r.situacao==="pago"){link.append(document.createTextNode(" · "),receiptLink(r));}
+        if(r.situacao==="pago"){
+          link.append(document.createTextNode(" · "),paidDocumentLink(r,"fatura.html","Fatura quitada"),
+            document.createTextNode(" · "),receiptLink(r));
+        }
       }catch{link.textContent="Indisponível";}
       row.append(number,customer,description,original,value,situation,link);$("nitroHistory").append(row);
     }
