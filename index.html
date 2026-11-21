@@ -292,6 +292,11 @@ button:disabled{opacity:.5;cursor:not-allowed}
           <p id="nitroIssueStatus" aria-live="polite" style="font-size:12px;color:#465966"></p>
         </div>
         <div id="nitroWorkspace" hidden>
+          <div class="notice good" style="margin:12px 0 18px">
+            <b>Teste real de recebimento Pix · R$ 7,00</b>
+            <p style="margin:7px 0 12px">O BUSSI prepara uma fatura de R$ 14,00 com 50% de desconto. Cadastre seus dados verdadeiros para validar o pagamento pela Nitro. Nenhuma fatura ou Pix é criado até você confirmar a emissão e, depois, optar pelo pagamento.</p>
+            <button type="button" class="btn primary" id="prepareRealPix7">Preparar cliente e fatura de teste</button>
+          </div>
         <div class="grid3">
           <div class="field"><label>Pesquisar cliente</label><input id="chargeClientSearch" placeholder="Digite nome, contrato ou telefone"></div>
           <div class="field"><label>Cliente</label><select id="chargeClient"></select></div>
@@ -512,6 +517,7 @@ function todayPlus(days){const d=new Date();d.setDate(d.getDate()+days);return d
 $('chargeDue').value=todayPlus(7);
 document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));$(b.dataset.view).classList.add('active');$('pageTitle').textContent=b.textContent;renderAll()});
 function openModal(id){$(id).classList.add('open')}function closeModal(id){$(id).classList.remove('open')}document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>closeModal(b.dataset.close));
+let prepararTesteRealPendente=false;
 $('newClient').onclick=()=>{editClientIndex=-1;$('clientModalTitle').textContent='Novo cliente';['cName','cContract','cPhone','cDocument','cEmail','cOriginal','cFinal'].forEach(x=>$(x).value='');openModal('clientModal')};
 function onlyDigits(v){return String(v||'').replace(/\D/g,'')}
 function seededFake(c){return (/^Cliente Teste (0[1-9]|1[0-9]|20)$/.test(String(c?.name||'')) && /^TESTE-00(0[1-9]|1[0-9]|20)$/.test(String(c?.contract||'')) && onlyDigits(c?.phone).startsWith('0090000')) || (c?.name==='Test'&&c?.contract==='1111'&&c?.phone==='1111111')}
@@ -533,8 +539,33 @@ $('saveClient').onclick=()=>{
  const c={name:$('cName').value.trim(),contract:$('cContract').value.trim(),phone:$('cPhone').value.trim(),document:onlyDigits($('cDocument').value),email:$('cEmail').value.trim().toLowerCase(),original:parseMoney($('cOriginal').value),final:parseMoney($('cFinal').value)};
  const problem=checkClient(c,editClientIndex);if(problem)return alert(problem);
  if(editClientIndex>=0)clients[editClientIndex]=c;else clients.push(c);
+ const indiceSalvo=editClientIndex>=0?editClientIndex:clients.length-1;
  save(K.clients,clients);closeModal('clientModal');renderAll();
+ if(prepararTesteRealPendente){
+   prepararTesteRealPendente=false;
+   $('chargeClientSearch').value='';
+   renderChargeClientOptions();
+   $('chargeClient').value=String(indiceSalvo);
+   $('chargeOriginal').value=fmtInput(14);
+   $('chargeDiscount').value='50';
+   $('chargeDesc').value='Teste operacional real de integração Pix BUSSI e Nitro';
+   calcCharge();
+   saveChargeDraft();
+   document.querySelector('.nav button[data-view="charges"]')?.click();
+   $('nitroIssueStatus').textContent='Cadastro real salvo. A fatura de R$ 14,00 com 50% de desconto está preparada. Confirme os dados e use Emitir fatura pelo BUSSI.';
+ }
 };
+$('prepareRealPix7').onclick=()=>{
+ prepararTesteRealPendente=false;
+ $('newClient').click();
+ prepararTesteRealPendente=true;
+ $('clientModalTitle').textContent='Cadastrar pagador real · teste Pix de R$ 7,00';
+ $('cContract').value='VALIDACAO-PIX-'+saoPauloToday().replace(/-/g,'')+'-'+String(Date.now()).slice(-4);
+ $('cOriginal').value='14,00';
+ $('cFinal').value='7,00';
+ $('cName').focus();
+};
+document.querySelector('[data-close="clientModal"]')?.addEventListener('click',()=>{prepararTesteRealPendente=false});
 function editClient(i){editClientIndex=i;const c=clients[i];$('clientModalTitle').textContent='Editar cliente';$('cName').value=c.name;$('cContract').value=c.contract;$('cPhone').value=c.phone;$('cDocument').value=c.document||'';$('cEmail').value=c.email||'';$('cOriginal').value=fmtInput(c.original);$('cFinal').value=fmtInput(c.final);openModal('clientModal')}
 function delClient(i){const c=clients[i];if(!c)return;if(!confirm('Excluir o cadastro de '+c.name+' do CRM?\n\nAs faturas, comprovantes e registros financeiros já emitidos serão preservados.'))return;clients.splice(i,1);save(K.clients,clients);renderAll()}
 $('downloadTemplate').onclick=()=>{
