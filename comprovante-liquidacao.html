@@ -140,7 +140,6 @@ document.getElementById('app').innerHTML=`<main class="shell">
     <div class="row"><span>Valor total liquidado (valor original)</span><b>${money(d.original)}</b></div>
     <div class="row"><span>Valor pago</span><b>${money(d.amount)}</b></div>
     <div class="row"><span>Nº do comprovante</span><b>${esc(d.receiptNumber||'—')}</b></div>
-    <div class="row"><span>Confirmação registrada por</span><b>${esc(d.confirmedBy||'consibeneficio')}</b></div>
   </div>
 
   ${d.notes?'<div class="section"><h2>Observações</h2><div class="row"><span>Registro</span><b>'+esc(d.notes)+'</b></div></div>':''}
