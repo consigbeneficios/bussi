@@ -32,12 +32,17 @@ jobs:
           assert.match(r,/comprovante-bussi/);
           assert.match(r,/nitro_ledger/);
           const paid=fs.readFileSync('fatura.html','utf8');
+          const qr=fs.readFileSync('qrcode-local.min.js','utf8');
           for(const script of paid.split('<script>').slice(1).map(x=>x.split('</script>')[0])) if(script.trim())new Function(script);
-          assert.match(paid,/Ver comprovante de liquidação/);
-          assert.match(paid,/comprovante-bussi/);
-          assert.match(paid,/nitro_ledger/);
-          assert.match(js,/Fatura quitada/);
-          assert.doesNotMatch(paid,/gerar Pix|emitir Pix/i);
+          new Function(qr);
+          assert.match(paid,/Solicitar Pix para pagamento/);
+          assert.match(paid,/\/functions\/v1\/fatura-bussi/);
+          assert.match(paid,/comprovante-liquidacao\.html/);
+          assert.match(paid,/qrcode-local\.min\.js/);
+          assert.match(js,/Link alternativo/);
+          assert.match(js,/nitroGeneratedBackup/);
+          assert.match(html,/id="nitroCopyBackup"/);
+          assert.match(html,/id="nitroOpenBackup"/);
           assert.doesNotMatch(r,/\bdecode\(\)/);
           console.log('BUSSI: portal unico, dados antigos limpos e comprovante validado no servidor.');
           NODE
