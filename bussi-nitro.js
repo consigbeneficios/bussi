@@ -10,7 +10,7 @@
     auth:{storageKey:"bussi-finance-session-v1",persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}
   });
   let jwt = null, factor = null, busy = false, requestId = null, lastLink = "", lastBackupLink = "", before = null;
-  let cloudReady = false, cloudBusy = false, cloudTimer = null, cloudRestore = false, cloudSignature = "";
+  let cloudReady = false, cloudBusy = false, cloudTimer = null, cloudRestore = false, cloudSignature = "", cloudLastId = null;
   // O acesso ao portal e ao financeiro depende da MESMA sessão Supabase + MFA.
   const gate=$("authGate"),accessPanel=$("nitroAccess");
   if(gate&&accessPanel){gate.replaceChildren(accessPanel);gate.style.display="grid";gate.style.padding="24px";accessPanel.style.maxWidth="680px";accessPanel.style.margin="0 auto";}
@@ -33,7 +33,7 @@
     if(sessionError||!session?.access_token)throw Error("Sua sessão BUSSI expirou. Entre novamente para sincronizar.");
     jwt=session.access_token;
     const headers={apikey,"Content-Type":"application/json",Authorization:"Bearer "+jwt};
-    if(method==="POST" && path==="/rest/v1/bussi_portal_arquivos")headers.Prefer="return=minimal";
+    if(method==="POST" && path.startsWith("/rest/v1/bussi_portal_arquivos"))headers.Prefer="return=representation";
     const response=await fetch(base+path,{method,headers,body:payload===undefined?undefined:JSON.stringify(payload),cache:"no-store",redirect:"error",signal:AbortSignal.timeout(30000)});
     const data=await response.json().catch(()=>null);
     if(!response.ok)throw Object.assign(new Error(data?.message||data?.erro||(response.status===401||response.status===403?"Acesso negado. Verifique sua sessão BUSSI.":"Operação indisponível.")),{status:response.status,code:data?.code});
@@ -193,11 +193,33 @@
     if(!cloudReady||cloudBusy||cloudRestore)return;
     cloudBusy=true;
     try{
-      const snapshot=captureSnapshot(),sig=await snapshotSignature(snapshot);
+      let snapshot=captureSnapshot(),sig=await snapshotSignature(snapshot);
       if(!force&&sig===cloudSignature)return;
-      // A assinatura única evita acumular cópias idênticas a cada atualização.
-      try{await api(BACKUP_TABLE,{conteudo:snapshot});}
-      catch(error){if(error.status!==409||error.code!=="23505")throw error;}
+      // Antes de gravar, verificar se outro navegador salvou uma versão mais recente.
+      const copies=await api(BACKUP_TABLE+"?select=id,conteudo&order=criado_em.desc&limit=1",undefined,"GET");
+      const latest=Array.isArray(copies)?copies[0]:null;
+      if(!latest?.id||!latest?.conteudo)throw Error("Backup remoto indisponível.");
+      const remote=parseRemote(latest.conteudo);
+      if(remote.resetId!==RESET_ID)throw Error("Versão remota incompatível com a base limpa.");
+      if(cloudLastId && latest.id!==cloudLastId){
+        const pending=localStorage.getItem(DIRTY_KEY)==="1";
+        // Dados de outro dispositivo nunca são substituídos por uma cópia antiga.
+        restoreSnapshot(remote,pending);
+        cloudLastId=latest.id;
+        snapshot=captureSnapshot();
+        sig=await snapshotSignature(snapshot);
+        if(!pending){
+          cloudSignature=sig;
+          localStorage.setItem(MARKER_KEY,sig);
+          syncStatus("Atualizado com os registros mais recentes da nuvem.");
+          return;
+        }
+      }else if(!cloudLastId)cloudLastId=latest.id;
+      // Receber o id do novo snapshot confirma que a gravação realmente ocorreu.
+      const result=await api(BACKUP_TABLE+"?select=id",{conteudo:snapshot});
+      if(!Array.isArray(result)||typeof result[0]?.id!=="string")
+        throw Error("O servidor não confirmou o salvamento.");
+      cloudLastId=result[0].id;
       cloudSignature=sig;
       localStorage.setItem(MARKER_KEY,sig);
       localStorage.removeItem(DIRTY_KEY);
@@ -215,10 +237,10 @@
     cloudTimer=setTimeout(()=>void uploadSnapshot(),1800);
   }
   function stopCloudSync(){
-    cloudReady=false;cloudSignature="";clearTimeout(cloudTimer);
+    cloudReady=false;cloudSignature="";cloudLastId=null;clearTimeout(cloudTimer);
   }
   async function startCloudSync(){
-    const copies=await api(BACKUP_TABLE+"?select=conteudo,assinatura,criado_em&order=criado_em.desc&limit=1",undefined,"GET");
+    const copies=await api(BACKUP_TABLE+"?select=id,conteudo,assinatura,criado_em&order=criado_em.desc&limit=1",undefined,"GET");
     const latest=Array.isArray(copies)?copies[0]:null;
     const local=captureSnapshot();
     const lastDeviceSignature=localStorage.getItem(MARKER_KEY);
@@ -231,6 +253,7 @@
       const merge=!firstLoad && Boolean(hasUnsynced);
       const remoteSig=await snapshotSignature(remote);
       restoreSnapshot(remote,merge);
+      cloudLastId=latest.id;
       cloudSignature=merge?remoteSig:await snapshotSignature(captureSnapshot());
       if(!merge)localStorage.removeItem(DIRTY_KEY);
       localStorage.setItem(CUTOVER_KEY,RESET_ID);
