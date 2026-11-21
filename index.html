@@ -286,10 +286,11 @@ button:disabled{opacity:.5;cursor:not-allowed}
         <div class="sectionhead"><div><h2>Faturas e Pix</h2><p>Selecione o cliente no CRM e emita a fatura pelo próprio BUSSI. A Nitro participa somente do recebimento Pix.</p></div></div>
         <div class="notice" style="margin-top:12px"><b>BUSSI emite e administra a fatura.</b> O número, cliente, descrição, desconto e valor são registrados no BUSSI. A Nitro somente processa o Pix quando o cliente decide pagar. O modelo visual da fatura e os links existentes foram preservados.</div>
         <div class="section" id="nitroAccess" style="margin-top:12px">
-          <div class="sectionhead"><div><h2>Segurança da emissão no BUSSI</h2><p>Verifique seu acesso administrativo ao BUSSI com e-mail, senha e autenticador. A Nitro não é usada para criar a fatura.</p></div><button id="nitroLogout" class="btn ghost" type="button" hidden>Encerrar sessão de emissão</button></div>
+          <div class="sectionhead"><div><h2>Acesso seguro à emissão no BUSSI</h2><p>Confirme o autenticador no primeiro acesso. Neste navegador, uma sessão financeira válida será lembrada e renovada automaticamente, sem pedir o código a cada visita.</p></div><button id="nitroLogout" class="btn ghost" type="button" hidden>Encerrar sessão de emissão</button></div>
           <form id="nitroLoginForm" class="grid3"><div class="field"><label for="nitroEmail">E-mail administrativo</label><input id="nitroEmail" type="email" autocomplete="username" required></div><div class="field"><label for="nitroPassword">Senha</label><input id="nitroPassword" type="password" autocomplete="current-password" required></div><div class="field" style="justify-content:end"><button class="btn primary" type="submit">Entrar para emitir faturas</button></div></form>
           <form id="nitroVerifyForm" class="grid2" hidden><div class="field"><label for="nitroCode">Código de 6 dígitos do autenticador</label><input id="nitroCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required></div><div class="field" style="justify-content:end"><button class="btn primary" type="submit">Confirmar autenticador</button></div></form>
           <p id="nitroIssueStatus" aria-live="polite" style="font-size:12px;color:#465966"></p>
+          <p id="bussiCloudSyncStatus" aria-live="polite" style="font-size:12px;color:#17634d">Informações salvas neste navegador. Para ativar a nuvem, confirme sua sessão administrativa.</p>
         </div>
         <div id="nitroWorkspace" hidden>
           <div class="notice good" style="margin:12px 0 18px">
@@ -400,7 +401,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
       </div>
       <div class="section">
         <div class="sectionhead"><div><h2>Dados e backup</h2><p>Salve e restaure sua base operacional neste dispositivo.</p></div></div>
-        <div class="notice good"><b>Salvamento automático ativo.</b> Clientes, campanhas, cobranças e configurações ficam salvos neste navegador.</div>
+        <div class="notice good"><b>Salvamento automático ativo.</b> Clientes, contratos, valores, campanhas, histórico e configurações são mantidos neste navegador e sincronizados com a nuvem Supabase após o acesso financeiro válido. Os dados remotos são recuperados no próximo acesso autorizado, inclusive de outro dispositivo.</div>
         <input type="file" id="backupFile" accept=".json" hidden>
         <div class="toolbar" style="margin-top:14px">
           <button class="btn primary" id="saveAllNow">Salvar agora</button>
@@ -432,7 +433,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 const K={clients:'bussi.clients.v1',campaigns:'bussi.campaigns.v1',charges:'bussi.charges.v1',settings:'bussi.settings.v1'};
 let clients=load(K.clients,[])||[],campaigns=load(K.campaigns,[]),charges=load(K.charges,[]),settings=load(K.settings,{pixType:'auto',pixKey:'',pixName:'CONSIG BENEFICIO SA',pixCity:'SAO PAULO',pixTxid:'***',pixDesc:'FATURA CONSIG',trackingEndpoint:'',metaPhoneId:'',metaWabaId:'',trackingEnv:'',paymentProvider:'',paymentWebhook:'',paymentStatusEndpoint:'',authResetEndpoint:'',authEmail:'sac@consigbeneficio.com.br'}),editClientIndex=-1,lastLink='';
 
-function $(id){return document.getElementById(id)}function load(k,f){try{const v=localStorage.getItem(k);return v?JSON.parse(v):f}catch{return f}}function save(k,v){localStorage.setItem(k,JSON.stringify(v));if($('saveState'))$('saveState').textContent='Salvo às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
+function $(id){return document.getElementById(id)}function load(k,f){try{const v=localStorage.getItem(k);return v?JSON.parse(v):f}catch{return f}}function save(k,v){localStorage.setItem(k,JSON.stringify(v));if($('saveState'))$('saveState').textContent='Salvo às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});window.dispatchEvent(new Event('bussi:datachange'))}
 const AUTH_USER='consibeneficio';
 const AUTH_KEY='bussi.auth.local.v2';
 async function passwordHash(password,salt){
@@ -499,7 +500,7 @@ $('sendResetBtn').onclick=async()=>{
     e.style.color='#a43b3b';e.textContent='Não foi possível enviar o e-mail. Verifique a integração de autenticação.';e.classList.add('show')
   }finally{$('sendResetBtn').disabled=false;$('sendResetBtn').textContent='Enviar link de redefinição'}
 };
-$('logoutBtn').onclick=()=>{sessionStorage.removeItem('bussi.session');showAuth()};
+$('logoutBtn').onclick=()=>{sessionStorage.removeItem('bussi.session');window.dispatchEvent(new Event('bussi:logout'));showAuth()};
 if(sessionStorage.getItem('bussi.session')==='1'&&authState())enterApp();else showAuth()
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function money(n){return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
@@ -776,7 +777,7 @@ function persistAll(){
   localStorage.setItem(K.settings,JSON.stringify(settings));
   if($('saveState'))$('saveState').textContent='Salvo às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})
 }
-$('saveAllNow').onclick=()=>{persistAll();alert('Informações salvas neste navegador.')};
+$('saveAllNow').onclick=()=>{persistAll();window.dispatchEvent(new Event('bussi:datachange'));alert('Informações salvas neste navegador. Com sessão financeira válida, a cópia na nuvem será sincronizada automaticamente.')};
 $('exportBackup').onclick=()=>{
   persistAll();
   const backup={version:4,exportedAt:new Date().toISOString(),clients,campaigns,charges,settings,events:dashboardEvents(),daily:window.BussiEvents?.daily()||{},activity:window.BussiEvents?.activity()||{},invoiceNext:nextInvoiceNumber(),chargeDraft:load('bussi.charge.draft.v1',{})};
@@ -799,7 +800,7 @@ $('backupFile').onchange=async e=>{
      localStorage.setItem(INVOICE_SEQUENCE_KEY,String(Math.max(nextInvoiceNumber(),Number(data.invoiceNext))))
     }
     if(data.chargeDraft&&typeof data.chargeDraft==='object')localStorage.setItem('bussi.charge.draft.v1',JSON.stringify(data.chargeDraft));
-    persistAll();renderAll();restoreChargeDraft();alert('Backup restaurado com sucesso.')
+    persistAll();renderAll();restoreChargeDraft();window.dispatchEvent(new Event('bussi:datachange'));alert('Backup restaurado no BUSSI. Com acesso financeiro válido, a nova versão será salva na nuvem.')
   }catch(err){alert('Não foi possível restaurar este backup.')}
   e.target.value=''
 };
@@ -959,6 +960,6 @@ function abrirAbaFaturas(){if(location.hash==='#faturas')document.querySelector(
 window.addEventListener('hashchange',abrirAbaFaturas);abrirAbaFaturas();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.94.1/dist/umd/supabase.min.js"></script>
-<script src="bussi-nitro.js?v=20261121-bussi-emissor"></script>
+<script src="bussi-nitro.js?v=20261121-nuvem-mfa"></script>
 </body>
 </html>
