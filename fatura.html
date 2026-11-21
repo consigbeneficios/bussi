@@ -2,136 +2,26 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
 <meta name="referrer" content="no-referrer">
-<title>BUSSI — Fatura e pagamento Pix</title>
+<title>CONSIG BENEFÍCIOS — Link de pagamento encerrado</title>
 <style>
-:root{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:#182b35;background:#f1f5f7}
-*{box-sizing:border-box}body{margin:0;min-height:100vh}
-.container{max-width:720px;margin:24px auto;padding:0 14px 40px}
-.card{background:#fff;border:1px solid #e0e8ec;border-radius:17px;padding:26px;box-shadow:0 10px 35px rgba(0,25,35,.05);margin:16px 0}
-.brand{font-size:14px;font-weight:800;letter-spacing:.05em;color:#08715d}
-h1{font-size:28px;margin:10px 0;line-height:1.25}h2{font-size:21px;margin:8px 0}
-.amount{font-size:40px;font-weight:850;color:#087b62;font-variant-numeric:tabular-nums;margin:20px 0}
-.muted{font-size:14px;color:#62717d;line-height:1.6}
-.info{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #e5eaf0;font-size:14px}
-.info span:first-child{color:#687680}.info strong{text-align:right;max-width:65%;overflow-wrap:anywhere}
-button{background:#0a856b;border:0;border-radius:10px;color:#fff;font:inherit;font-weight:750;padding:15px 19px;cursor:pointer}
-button:focus-visible{outline:3px solid #126c7d;outline-offset:3px}
-button.secondary{background:#edf4f4;color:#245a55;border:1px solid #cadee1}
-.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
-.actions button{flex:1;min-width:160px}
-#qr{display:flex;justify-content:center;min-height:220px;margin:20px 0 8px}
-#message{margin:0}#checkout,#pixPanel{display:none}
-#printHeader{display:none}
-footer{text-align:center;font-size:12px;color:#697984;margin-top:15px;line-height:1.7}
-@media print{.container{max-width:none;margin:0}.card{box-shadow:none;border:0;margin:0}.actions,footer,#pixPanel{display:none!important}#printHeader{display:block}}
+*{box-sizing:border-box}body{font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;margin:0;background:#f3f5f6;color:#18303b;min-height:100vh;display:grid;place-items:center;padding:18px}
+main{width:min(100%,540px);padding:34px;background:#fff;border:1px solid #dfe8ec;border-radius:18px;box-shadow:0 12px 35px #122c3710;text-align:center}
+img{width:104px;height:104px;object-fit:cover;border-radius:18px;display:block;margin:0 auto 16px}
+h1{font-size:24px;line-height:1.25;margin:0 0 12px}
+p{font-size:15px;line-height:1.6;color:#53626c}
+a{color:#0a7860;font-weight:700}
+small{font-size:12px;color:#6c7983}
 </style>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
-<body><div class="container">
-  <main class="card" aria-live="polite">
-    <div class="brand">CONSIG BENEFÍCIOS · BUSSI</div>
-    <section id="loading"><h1>Consulta de fatura</h1><p class="muted" id="message">Consultando sua cobrança em conexão segura...</p></section>
-    <section id="checkout">
-      <p class="muted" id="invoice"></p>
-      <h1>Pagamento via Pix</h1>
-      <p class="muted">Confira as informações antes de realizar o pagamento.</p>
-      <div class="amount" id="amount"></div>
-      <div class="info"><span>Cliente</span><strong id="customer"></strong></div>
-      <div class="info"><span>Contrato</span><strong id="contract"></strong></div>
-      <div class="info"><span>Descrição</span><strong id="description"></strong></div>
-      <div class="info"><span>Valor original</span><strong id="original"></strong></div>
-      <div class="info"><span>Desconto</span><strong id="discount"></strong></div>
-      <div class="info"><span>Valor com desconto</span><strong id="final"></strong></div>
-      <div class="info"><span>Data de vencimento</span><strong id="due"></strong></div>
-      <div class="actions">
-        <button id="showPix" type="button">Pagar com Pix</button>
-        <button id="downloadInvoice" class="secondary" type="button">Imprimir / salvar PDF</button>
-      </div>
-      <section id="pixPanel" aria-label="Instruções de pagamento">
-        <h2>Pix Copia e Cola</h2>
-        <p class="muted">Escaneie o QR Code ou copie o código no aplicativo do seu banco.</p>
-        <div id="qr"></div>
-        <div class="actions"><button id="copyPix" type="button">Copiar código Pix</button></div>
-      </section>
-    </section>
-  </main>
-  <footer>CONSIG BENEFÍCIO S/A · SAC: sac@consigbeneficio.com.br
-  <p>O pagamento deve ser confirmado pelo banco. Esta página não representa um comprovante de liquidação.</p></footer>
-</div>
-<script>
-(async function(){
-  'use strict';
-  const API='https://qzelhgfwrppkhdmolhys.supabase.co/functions/v1/bussi-invoice';
-  const search=new URLSearchParams(location.search);
-  const token=search.get('token')||'';
-  const $=id=>document.getElementById(id);
-  const showError=message=>{
-    $('loading').style.display='block';
-    $('checkout').style.display='none';
-    $('message').textContent=message;
-  };
-  const price=n=>Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-  const validToken=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if(!validToken.test(token)){showError('Link de cobrança incompleto ou inválido. Solicite um novo link ao atendimento.');return;}
-  let d;
-  async function retrieve(){
-    const response=await fetch(API+'?token='+encodeURIComponent(token),{
-      cache:'no-store',signal:AbortSignal.timeout(12000)
-    });
-    if(response.status===410)throw new Error('Esta cobrança foi encerrada ou venceu. Solicite uma nova fatura.');
-    if(response.status===404)throw new Error('Fatura não localizada. Confira o endereço recebido.');
-    if(!response.ok)throw new Error('Não foi possível consultar a cobrança. Tente novamente.');
-    const data=await response.json();
-    if(!data||!data.pix||!data.invoice||!Number.isFinite(Number(data.amount)))throw new Error('Os dados desta cobrança estão incompletos.');
-    return data;
-  }
-  try {d=await retrieve();}
-  catch(err){showError(err.message||'Não foi possível carregar esta fatura.');return;}
-  $('loading').style.display='none';
-  $('checkout').style.display='block';
-  $('invoice').textContent='Fatura '+d.invoice;
-  $('amount').textContent=price(d.amount);
-  $('customer').textContent=d.customer||'Não informado';
-  $('contract').textContent=d.contract||d.invoice;
-  $('description').textContent=d.description||'Parcela consignada';
-  $('original').textContent=price(d.original);
-  $('discount').textContent=Number(d.discount||0).toLocaleString('pt-BR',{maximumFractionDigits:2})+'%';
-  $('final').textContent=price(d.amount);
-  $('due').textContent=d.due?new Date(String(d.due)+'T12:00:00').toLocaleDateString('pt-BR'):'Não informado';
-  let qrCreated=false;
-  $('showPix').onclick=async()=>{
-    $('showPix').disabled=true;
-    try {
-      d=await retrieve();
-      if(!qrCreated){
-        const target=$('qr');target.replaceChildren();
-        if(typeof window.QRCode==='function'){
-          new window.QRCode(target,{text:d.pix,width:220,height:220,correctLevel:window.QRCode.CorrectLevel.M});
-        } else {
-          target.textContent='QR Code indisponível. Utilize o botão Copiar código Pix.';
-        }
-        qrCreated=true;
-      }
-      $('pixPanel').style.display='block';
-      $('pixPanel').scrollIntoView({behavior:'smooth',block:'nearest'});
-    } catch(err){
-      $('pixPanel').style.display='none';
-      showError(err.message||'Pagamento indisponível.');
-    } finally {$('showPix').disabled=false;}
-  };
-  $('copyPix').onclick=async()=>{
-    try{
-      d=await retrieve();
-      await navigator.clipboard.writeText(d.pix);
-      $('copyPix').textContent='Pix copiado!';
-      setTimeout(()=>$('copyPix').textContent='Copiar código Pix',1400);
-    }catch(err){
-      showError(err.message||'Não foi possível copiar o código Pix.');
-    }
-  };
-  $('downloadInvoice').onclick=()=>window.print();
-})();
-</script>
+<body>
+<main>
+<img src="logo-consig.svg" alt="CONSIG BENEFÍCIOS">
+<h1>Link de cobrança anterior encerrado</h1>
+<p>Este endereço pertence a uma versão descontinuada do sistema. Nenhum Pix será emitido nesta página. Para receber uma fatura válida, solicite um novo link ao atendimento da CONSIG BENEFÍCIOS.</p>
+<p><a href="mailto:sac@consigbeneficio.com.br">sac@consigbeneficio.com.br</a></p>
+<small>CONSIG BENEFÍCIO S/A · CNPJ 66.754.630/0001-60</small>
+</main>
 </body></html>
