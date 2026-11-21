@@ -1,3 +1,4 @@
+import {consultarTransacao} from "../_shared/nitro.ts";
 // The RPC authenticates the session, enrolled operator and MFA before any vendor request.
 const portal = "https://consigbeneficios.github.io";
 const origins = new Set([portal, "https://consigbeneficio.com.br", "https://pay.consigbeneficio.com.br"]);
@@ -32,13 +33,12 @@ export async function handle(request: Request) {
     const pub = Deno.env.get("NITRO_PUBLIC_KEY");
     const secret = Deno.env.get("NITRO_SECRET_KEY");
     if (!pub || !secret) return reply(503, {erro:"Credenciais da Nitro indisponíveis no servidor."});
-    const response = await fetch("https://api.nitropagamento.app/transactions/" + encodeURIComponent(input.id), {
-      headers:{Authorization:"Basic " + btoa(pub + ":" + secret), Accept:"application/json"},
-      redirect:"error", signal:AbortSignal.timeout(30000)
+    const response = await consultarTransacao(input.id, {
+      Authorization:"Basic " + btoa(pub + ":" + secret), Accept:"application/json", "Content-Type":"application/json"
     });
     if (response.status === 404) return reply(404, {erro:"Transação não encontrada."});
     if (!response.ok) return reply(502, {erro:"A Nitro não concluiu a consulta."});
-    const payload = await response.json();
+    const payload = response.payload;
     const data = payload?.data;
     if (payload?.success !== true || data?.id !== input.id || data.payment_method !== "pix" || (data.currency != null && data.currency !== "BRL")) {
       return reply(422, {erro:"O provedor não confirmou esse Pix em reais."});

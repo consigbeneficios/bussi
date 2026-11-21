@@ -1,7 +1,7 @@
+import {consultarTransacao, endpoint, imagemPix} from "../_shared/nitro.ts";
 const base = Deno.env.get("SUPABASE_URL")!;
 const secret = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const allowed = new Set(["https://pay.consigbeneficio.com.br","https://consig-beneficios-faturas.zanysundae4.chatgpt.site"]);
-const endpoint = "https://api.nitropagamento.app";
 const idPattern = /^[a-zA-Z0-9_-]{1,150}$/;
 const states: Record<string,string> = {pendente:"pendente", pago:"pago", cancelado:"cancelado", expirado:"cancelado", reembolsado:"reembolsado"};
 async function db(op:string,key:string,values:Record<string,unknown>={}) {
@@ -36,13 +36,15 @@ function publico(f:any) {
     pix:situacao==="pendente"?f.pix:null,qr:situacao==="pendente"?f.qr:null};
 }
 async function confirmar(f:any, id:string) {
-  const resp=await fetch(endpoint+"/transactions/"+encodeURIComponent(id),{headers:gatewayHeaders(),redirect:"error",signal:AbortSignal.timeout(30000)});
+  const resp=await consultarTransacao(id,gatewayHeaders());
   if(!resp.ok) throw Error("consulta");
-  const result=await resp.json(), d=result.data;
-  if(result.success!==true || d?.id!==id || d.payment_method!=="pix" || (d.currency!=null&&d.currency!=="BRL") || centavos(d.amount)!==f.valor_centavos || d.metadata?.order_id!==f.id || !Object.hasOwn(states,d.status)) throw Error("divergencia");
+  const result=resp.payload, d=result?.data;
+  const ordem=d?.metadata?.order_id ?? d?.external_ref;
+  const corresponde=ordem==null ? f.nitro_id===id : ordem===f.id;
+  if(result?.success!==true || d?.id!==id || d.payment_method!=="pix" || (d.currency!=null&&d.currency!=="BRL") || centavos(d.amount)!==f.valor_centavos || !corresponde || !Object.hasOwn(states,d.status)) throw Error("divergencia");
   if(!f.nitro_id && f.situacao==="processando") {
     if(states[d.status]==="pendente" && (typeof d.pix_code!=="string" || !d.pix_code.startsWith("000201") || d.pix_code.length>2048)) return f;
-    await db("vincular",f.token_hash,{id,pix:typeof d.pix_code==="string"?d.pix_code:null,qr:typeof d.pix_qr_code==="string" && /^[A-Za-z0-9+/=]{1,80000}$/.test(d.pix_qr_code)?d.pix_qr_code:null});
+    await db("vincular",f.token_hash,{id,pix:typeof d.pix_code==="string"?d.pix_code:null,qr:imagemPix(d.pix_qr_code)});
   }
   return await db("verificar",f.token_hash,{id,ordem:f.id,centavos:f.valor_centavos,situacao:states[d.status]}) || f;
 }
@@ -141,8 +143,8 @@ export async function handle(req:Request) {
         return out(502,{erro:mensagens[motivo],fatura:publico(estado || current)});
       }
       const d=data?.data;
-      if(data?.success!==true||typeof d?.id!=="string"||!idPattern.test(d.id)||d.payment_method!=="pix"||d.status!=="pendente"||centavos(d.amount)!==f.valor_centavos||d.metadata?.order_id!==f.id||typeof d.pix_code!=="string"||!d.pix_code.startsWith("000201")||d.pix_code.length>2048)throw Error("resposta");
-      const qr=typeof d.pix_qr_code==="string" && /^[A-Za-z0-9+/=]{1,80000}$/.test(d.pix_qr_code)?d.pix_qr_code:null;
+      if(data?.success!==true||typeof d?.id!=="string"||!idPattern.test(d.id)||d.payment_method!=="pix"||d.status!=="pendente"||centavos(d.amount)!==f.valor_centavos||(d.metadata?.order_id ?? d.external_ref)!==f.id||typeof d.pix_code!=="string"||!d.pix_code.startsWith("000201")||d.pix_code.length>2048)throw Error("resposta");
+      const qr=imagemPix(d.pix_qr_code);
       f=await db("vincular",hash,{id:d.id,pix:d.pix_code,qr}) || await db("ler",hash);
     }else if(body.acao==="consultar"){
       if(!f.nitro_id && f.situacao==="processando") {
