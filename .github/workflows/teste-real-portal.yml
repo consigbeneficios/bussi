@@ -32,7 +32,7 @@ jobs:
           assert.match(r,/comprovante-bussi/);
           assert.match(r,/nitro_ledger/);
           const paid=fs.readFileSync('fatura.html','utf8');
-          for(const [,script] of paid.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/g))if(script.trim())new Function(script);
+          for(const script of paid.split('<script>').slice(1).map(x=>x.split('</script>')[0])) if(script.trim())new Function(script);
           assert.match(paid,/Ver comprovante de liquidação/);
           assert.match(paid,/comprovante-bussi/);
           assert.match(paid,/nitro_ledger/);
