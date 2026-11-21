@@ -9,13 +9,13 @@
   const auth = window.supabase.createClient(base,apikey,{
     auth:{storageKey:"bussi-finance-session-v1",persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}
   });
-  let jwt = null, factor = null, busy = false, requestId = null, lastLink = "", before = null;
+  let jwt = null, factor = null, busy = false, requestId = null, lastLink = "", lastBackupLink = "", before = null;
   let cloudReady = false, cloudBusy = false, cloudTimer = null, cloudRestore = false, cloudSignature = "";
   // O acesso ao portal e ao financeiro depende da MESMA sessão Supabase + MFA.
   const gate=$("authGate"),accessPanel=$("nitroAccess");
   if(gate&&accessPanel){gate.replaceChildren(accessPanel);gate.style.display="grid";gate.style.padding="24px";accessPanel.style.maxWidth="680px";accessPanel.style.margin="0 auto";}
   const status = message => { $("nitroIssueStatus").textContent = message; };
-  function resetRequest(){requestId=null;lastLink="";$("nitroGenerated").hidden=true;$("printInvoice").disabled=true;}
+  function resetRequest(){requestId=null;lastLink="";lastBackupLink="";$("nitroGenerated").hidden=true;$("printInvoice").disabled=true;}
   function digits(s){return String(s??"").replace(/\D/g,"");}
   function cents(value){
     const raw=String(value??"").trim().replace(/R\$/gi,"").replace(/\s/g,"");
@@ -254,6 +254,13 @@
     if(!Number.isSafeInteger(n)||n<1||!/^[a-f0-9]{64}$/.test(String(row.token||"")))throw Error("Link retornado incompleto.");
     return "https://pay.consigbeneficio.com.br/fatura"+String(n).padStart(4,"0")+"#"+row.token;
   }
+  function backupUrl(row){
+    const n=Number(row.numero),token=String(row.token||"");
+    if(!Number.isSafeInteger(n)||n<1||!/^[a-f0-9]{64}$/.test(token))throw Error("Dados da fatura incompletos.");
+    const url=new URL("fatura.html",location.href);
+    url.hash="numero="+encodeURIComponent(n)+"&token="+encodeURIComponent(token);
+    return url.href;
+  }
   function makeLink(row, label){
     const a=document.createElement("a");a.href=linkFor(row);a.textContent=label;a.rel="noopener noreferrer";a.target="_blank";return a;
   }
@@ -292,7 +299,9 @@
       try{
         requestId??=crypto.randomUUID();
         const row=await api("/rest/v1/rpc/bussi_emitir_link_cliente",{p_descricao:desc,p_original:amount,p_pedido:requestId,p_pagador:payer,p_contrato:payer.contract});
-        lastLink=linkFor(row);$("nitroGenerated").hidden=false;$("nitroGeneratedLink").value=lastLink;
+        lastLink=linkFor(row);lastBackupLink=backupUrl(row);
+        $("nitroGenerated").hidden=false;$("nitroGeneratedLink").value=lastLink;
+        $("nitroGeneratedBackup").value=lastBackupLink;
         $("nitroGeneratedNumber").textContent="fatura"+String(row.numero).padStart(4,"0");
         $("printInvoice").disabled=false;
         status("Fatura emitida pelo BUSSI. Nenhuma cobrança foi enviada à Nitro; o Pix será solicitado apenas quando o cliente optar por pagar.");
@@ -303,9 +312,11 @@
   for(const id of ["chargeClient","chargeOriginal","chargeDiscount","chargeDesc"]){
     $(id)?.addEventListener("input",resetRequest);$(id)?.addEventListener("change",resetRequest);
   }
-  $("printInvoice").addEventListener("click",()=>{if(lastLink)window.open(lastLink,"_blank","noopener,noreferrer");});
+  $("printInvoice").addEventListener("click",()=>{if(lastBackupLink)window.open(lastBackupLink,"_blank","noopener,noreferrer");});
   $("nitroOpenGenerated").addEventListener("click",()=>{if(lastLink)window.open(lastLink,"_blank","noopener,noreferrer");});
-  $("nitroCopyGenerated").addEventListener("click",async()=>{if(!lastLink)return;try{await navigator.clipboard.writeText(lastLink);status("Link seguro copiado.");}catch{prompt("Copie o link:",lastLink);}});
+  $("nitroCopyGenerated").addEventListener("click",async()=>{if(!lastLink)return;try{await navigator.clipboard.writeText(lastLink);status("Link do domínio pay copiado.");}catch{prompt("Copie o link:",lastLink);}});
+  $("nitroOpenBackup").addEventListener("click",()=>{if(lastBackupLink)window.open(lastBackupLink,"_blank","noopener,noreferrer");});
+  $("nitroCopyBackup").addEventListener("click",async()=>{if(!lastBackupLink)return;try{await navigator.clipboard.writeText(lastBackupLink);status("Link alternativo copiado. Ele consulta a mesma cobrança e não cria um Pix duplicado.");}catch{prompt("Copie o link alternativo:",lastBackupLink);}});
   async function history(older=false){
     if(!jwt)return;
     const rows=await api("/rest/v1/rpc/bussi_historico_faturas",{p_antes:older?before:null});
@@ -322,10 +333,9 @@
       value.textContent=brl(Number(r.valor_centavos||0)/100);
       situation.textContent=r.situacao;
       try{
-        link.append(makeLink(r,"Abrir fatura"));
+        link.append(makeLink(r,"Domínio pay"),document.createTextNode(" · "),paidDocumentLink(r,"fatura.html","Link alternativo"));
         if(r.situacao==="pago"){
-          link.append(document.createTextNode(" · "),paidDocumentLink(r,"fatura.html","Fatura quitada"),
-            document.createTextNode(" · "),receiptLink(r));
+          link.append(document.createTextNode(" · "),receiptLink(r));
         }
       }catch{link.textContent="Indisponível";}
       row.append(number,customer,description,original,value,situation,link);$("nitroHistory").append(row);
