@@ -820,7 +820,9 @@ function restoreChargeDraft(){
   if(d.chargeClientSearch!==undefined)$('chargeClientSearch').value=d.chargeClientSearch;
   renderChargeClientOptions();
   if(d.chargeClient!==undefined&&clients[Number(d.chargeClient)])$('chargeClient').value=d.chargeClient;
-  ['chargeOriginal','chargeDiscount','chargeDesc','chargeDue'].forEach(id=>{if(d[id]!==undefined)$(id).value=d[id]});
+  ['chargeOriginal','chargeDiscount','chargeDue'].forEach(id=>{if(d[id]!==undefined)$(id).value=d[id]});
+   const allowedDescriptions=Array.from($('chargeDesc').options,o=>o.value);
+   $('chargeDesc').value=allowedDescriptions.includes(d.chargeDesc)?d.chargeDesc:allowedDescriptions[0];
   calcCharge()
  }catch{}
 }
