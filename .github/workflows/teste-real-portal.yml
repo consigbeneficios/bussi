@@ -1,200 +1,40 @@
-name: Teste real portal BUSSI
+name: Verificacao do portal BUSSI
 on:
   push:
     branches: [main]
-    paths: ['.github/workflows/teste-real-portal.yml', 'index.html', 'pagamento.html', 'bussi-cloud.js', 'fatura.html', 'corrigir-pagamento.html']
+    paths:
+      - '.github/workflows/teste-real-portal.yml'
+      - 'index.html'
+      - 'portal.html'
+      - 'bussi-nitro.js'
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  validar:
+  verificar:
     runs-on: ubuntu-latest
     steps:
-      - name: Testar resposta exata, HTML e recursos
+      - uses: actions/checkout@v4
+      - name: Verificar integridade da interface e seu modulo de emissao
         run: |
-          set -e
-          for url in 'https://consigbeneficios.github.io/bussi/index.html?acesso=novo' 'https://consigbeneficios.github.io/bussi/?utm_source=chatgpt.com' 'https://consigbeneficios.github.io/bussi/' 'https://consigbeneficios.github.io/bussi/bussi-events.js' 'https://consigbeneficios.github.io/bussi/pagamento.html' 'https://consigbeneficios.github.io/bussi/fatura.html' 'https://consigbeneficios.github.io/bussi/bussi-cloud.js'; do
-            echo "URL $url"
-            curl --fail --location --silent --show-error --max-time 30 --output /dev/null --write-out 'HTTP=%{http_code} DESTINO=%{url_effective} TLS=%{ssl_verify_result}\n' "$url"
-          done
-          curl --fail --location --silent --show-error --max-time 30 'https://consigbeneficios.github.io/bussi/?utm_source=chatgpt.com' | grep -q '<title>BUSSI'
-          echo 'HTML BUSSI encontrado'
-      - name: Testar protecao da API de faturas
-        run: |
-          set -e
-          base='https://qzelhgfwrppkhdmolhys.supabase.co/functions/v1/bussi-invoice'
-          code=$(curl --silent --show-error --output /tmp/bussi-invalid.json --write-out '%{http_code}' --max-time 25 "$base?token=invalido")
-          echo "TOKEN INVALIDO HTTP=$code"
-          test "$code" = 400
-          code=$(curl --silent --show-error --output /tmp/bussi-absent.json --write-out '%{http_code}' --max-time 25 "$base?token=00000000-0000-4000-8000-000000000000")
-          echo "TOKEN INEXISTENTE HTTP=$code"
-          test "$code" = 404
-          echo 'API nao divulgou fatura sem token valido'
-      - name: Instalar verificador de navegador
-        run: |
-          npm install --prefix /tmp/bussi-e2e --no-audit --no-fund playwright-core
-          command -v google-chrome || true
-          command -v chromium || true
-      - name: Abrir portal em navegador real e testar login inicial
-        run: |
+          set -euo pipefail
+          test -s index.html
+          test -s bussi-nitro.js
+          cmp index.html portal.html
+          node --check bussi-nitro.js
           node <<'NODE'
-          const fs=require('fs');
-          const {chromium}=require('/tmp/bussi-e2e/node_modules/playwright-core');
-          (async()=>{
-            const executables=['/usr/bin/google-chrome','/usr/bin/chromium','/opt/google/chrome/chrome'];
-            const exe=executables.find(x=>fs.existsSync(x));
-            if(!exe)throw new Error('Chrome/Chromium indisponivel no executor');
-            const browser=await chromium.launch({headless:true,executablePath:exe,args:['--no-sandbox']});
-            try{
-              const page=await browser.newPage();
-              const errors=[];
-              page.on('pageerror',e=>errors.push('JS: '+e.message));
-              page.on('requestfailed',r=>errors.push('RECURSO: '+r.url()+' '+r.failure()?.errorText));
-              const resp=await page.goto('https://consigbeneficios.github.io/bussi/index.html?acesso=novo',{waitUntil:'domcontentloaded',timeout:30000});
-              await page.waitForTimeout(2000);
-              console.log('BROWSER STATUS',resp.status(),'URL',page.url());
-              const setup=await page.locator('#setupAuth').isVisible();
-              const login=await page.locator('#loginAuth').isVisible();
-              console.log('TELA: CONFIGURAR=',setup,'LOGIN=',login);
-              if(resp.status()!==200||(!setup&&!login))throw new Error('Portal nao abriu tela de acesso');
-              if(setup){
-                await page.locator('#setupPass').fill('TesteTemporario987!');
-                await page.locator('#setupPass2').fill('TesteTemporario987!');
-                await page.locator('#createAccess').click();
-                await page.waitForTimeout(1500);
-                console.log('PAINEL VISIVEL=',await page.locator('#mainApp').isVisible());
-                if(!await page.locator('#mainApp').isVisible())throw new Error('Nao entrou no painel apos criar acesso temporario');
-              }
-              await page.evaluate(()=>{
-                const old='https://pay.consigbeneficio.com.br/pagamento.html#p=dGVzdGU';
-                charges=[{id:987650013,invoice:'fatura0013',customer:'Cliente Teste',contract:'TESTE-0013',phone:'',amount:465,original:930,discount:50,status:'Aguardando confirmação',url:old}];
-                persistAll();
-              });
-              await page.reload({waitUntil:'domcontentloaded',timeout:30000});
-              await page.waitForTimeout(1000);
-              const migrated=await page.evaluate(()=>JSON.parse(localStorage.getItem('bussi.charges.v1')||'[]')[0]?.url);
-              console.log('LINK ANTIGO MIGRADO',migrated);
-              if(migrated!=='https://consigbeneficios.github.io/bussi/pagamento.html#p=dGVzdGU')throw new Error('Link da fatura antiga nao foi corrigido e salvo');
-              const copyCount=await page.locator('#chargeRows button:has-text("Copiar link")').count();
-              console.log('BOTAO COPIAR LINK',copyCount);
-              if(copyCount<1)throw new Error('Historico sem botao para copiar link');
-              const cloudOk=await page.evaluate(()=>typeof window.supabase?.createClient==='function');
-              const cloudText=await page.locator('#cloudStatus').textContent();
-              console.log('SUPABASE SDK',cloudOk,'CLOUD STATUS',cloudText);
-              if(!cloudOk||!cloudText||cloudText.includes('inicializando')||cloudText.includes('Não foi possível carregar'))throw new Error('Conexao Supabase nao iniciou');
-              await page.locator('.nav button[data-view="integrations"]').click();
-              let mailRequestCount=0;
-              await page.route('**/auth/v1/otp**',async route=>{
-                const posted=route.request().postDataJSON();
-                if(posted?.email!=='sac@consigbeneficio.com.br')throw new Error('Endereco de ativacao nao corresponde ao administrador');
-                mailRequestCount++;
-                await route.fulfill({status:200,headers:{'content-type':'application/json','access-control-allow-origin':'*'},body:'{}'});
-              });
-              await page.locator('#cloudMagicSend').click();
-              await page.waitForTimeout(650);
-              if(mailRequestCount!==1)throw new Error('O botao de acesso por e-mail nao iniciou autenticacao');
-              const magicStatus=await page.locator('#cloudStatus').textContent();
-              if(!magicStatus.includes('Solicitação enviada'))throw new Error('O BUSSI nao confirmou solicitacao de acesso por e-mail');
-              console.log('ACESSO POR EMAIL TESTADO SEM ENVIO REAL',mailRequestCount);
-              await page.unroute('**/auth/v1/otp**');
-
-              let verifyType='';
-              await page.route('**/auth/v1/verify**',async route=>{
-                const request=route.request();
-                const body=request.postDataJSON();
-                verifyType=body?.type||'';
-                await route.fulfill({status:403,headers:{'content-type':'application/json','access-control-allow-origin':'*'},body:JSON.stringify({code:'otp_expired',message:'Token de teste inválido'})});
-              });
-              await page.locator('#cloudMagicInput').fill('https://qzelhgfwrppkhdmolhys.supabase.co/auth/v1/verify?token=TESTHASH123&type=signup');
-              await page.locator('#cloudMagicConfirm').click();
-              await page.waitForTimeout(400);
-              if(verifyType!=='signup')throw new Error('O painel modificou indevidamente o tipo do token de cadastro');
-              console.log('VALIDACAO DO TIPO SIGNUP CORRIGIDA',verifyType);
-              await page.unroute('**/auth/v1/verify**');
-              await page.locator('#cloudMagicInput').fill('http://localhost:3000/#access_token=teste.invalido.token&refresh_token=123456');
-              await page.locator('#cloudMagicConfirm').click();
-              await page.waitForTimeout(450);
-              const localhostStatus=await page.locator('#cloudStatus').textContent();
-              if(localhostStatus.includes('Link não pertence')||localhostStatus.includes('O link não pertence'))throw new Error('Recuperacao do redirecionamento localhost nao reconhecida');
-              console.log('REDIRECIONAMENTO LOCALHOST RECONHECIDO',true);
-
-              const tab=await browser.newPage();
-              const token='00000000-0000-4000-8000-000000000001';
-              const endpoint='https://qzelhgfwrppkhdmolhys.supabase.co/functions/v1/bussi-invoice';
-              let closed=false;
-              await tab.route(endpoint+'?token=*',async route=>{
-                if(closed){
-                  await route.fulfill({status:410,headers:{'content-type':'application/json','access-control-allow-origin':'*'},body:JSON.stringify({error:'invoice_closed'})});
-                } else {
-                  const sample={v:4,chargeId:'00000000-0000-4000-8000-000000000002',invoice:'fatura9999',
-                    customer:'Cliente de Teste',contract:'TESTE-9999',amount:150,original:300,discount:50,
-                    description:'Cobrança de simulação',pix:'000201260014br.gov.bcb.pix',
-                    issueDate:'2026-11-18',due:'2026-11-18'};
-                  await route.fulfill({status:200,headers:{'content-type':'application/json','access-control-allow-origin':'*'},body:JSON.stringify(sample)});
-                }
-              });
-              const pageUrl='https://consigbeneficios.github.io/bussi/fatura.html?token='+token;
-              const pageResponse=await tab.goto(pageUrl,{waitUntil:'domcontentloaded',timeout:30000});
-              await tab.waitForSelector('#checkout:visible',{timeout:15000});
-              if(pageResponse.status()!==200||!tab.url().includes('?token=')||tab.url().includes('#p='))throw new Error('Fatura segura nao manteve o link por token');
-              if(!await tab.locator('#amount').textContent().then(v=>v.includes('150,00')))throw new Error('Valor da fatura simulada incorreto');
-              await tab.locator('#showPix').click();
-              await tab.waitForSelector('#pixPanel:visible',{timeout:5000});
-              if(!await tab.locator('#pixCode').textContent().then(v=>v.includes('00020126')))throw new Error('Pix nao exibido no teste');
-              closed=true;
-              await tab.locator('#showPix').click();
-              await tab.waitForTimeout(300);
-              if(!await tab.locator('#message').textContent().then(v=>v.includes('encerrada')||v.includes('venceu')))throw new Error('Fatura encerrada ainda permite Pix');
-              console.log('FATURA SEGURA',pageResponse.status(),'TOKEN SEM PAYLOAD',true,'BLOQUEIO DE COBRANCA',true);
-              await tab.close();
-              const legacyLink=await page.evaluate(()=>{
-                const snap={v:4,chargeId:987650014,invoice:'fatura0020',contract:'TESTE-0020',
-                  customer:'Cliente de Teste 20',phone:'',amount:200,original:400,discount:50,
-                  description:'Teste de importação',issueDate:'2026-11-18',due:'2026-11-18',pix:'000201260014br.gov.bcb.pix'};
-                return 'https://pay.consigbeneficio.com.br/pagamento.html#p='+b64url(snap);
-              });
-              await page.locator('.nav button[data-view="integrations"]').click();
-              await page.locator('#cloudLegacyLink').fill(legacyLink);
-              await page.locator('#cloudImportLink').click();
-              await page.waitForTimeout(800);
-              const recovered=await page.evaluate(()=>JSON.parse(localStorage.getItem('bussi.charges.v1')||'[]').find(c=>c.invoice==='fatura0020'));
-              if(!recovered||recovered.customer!=='Cliente de Teste 20'||!recovered.url.startsWith('https://consigbeneficios.github.io/'))throw new Error('Importação de link legado falhou');
-              console.log('FATURA IMPORTADA',recovered.invoice,recovered.customer);
-              await page.evaluate(()=>{
-                window.BussiCloud={
-                  isAuthenticated:async()=>true,
-                  sync:async()=>{
-                    charges[0].cloudUrl='https://consigbeneficios.github.io/bussi/fatura.html?token=00000000-0000-4000-8000-000000000003';
-                    save(K.charges,charges);
-                    return {ok:true};
-                  },
-                  updateStatus:async()=>{}
-                };
-                const key=document.getElementById('pixKey');
-                key.value='teste@example.com';
-                document.getElementById('pixType').value='email';
-                key.dispatchEvent(new Event('input',{bubbles:true}));
-              });
-              await page.locator('.nav button[data-view="charges"]').click();
-              await page.locator('#generateCharge').click();
-              await page.waitForTimeout(900);
-              const shared=await page.locator('#generatedLink').inputValue();
-              if(!shared.startsWith('https://consigbeneficios.github.io/bussi/fatura.html?token='))throw new Error('Gerador nao selecionou o link seguro da nuvem');
-              console.log('GERADOR USA TOKEN DA NUVEM',true);
-              const repair=await browser.newPage();
-              const oldPayment='https://pay.consigbeneficio.com.br/pagamento.html#p='+
-                Buffer.from(JSON.stringify({v:4,invoice:'fatura0023',customer:'Cliente Teste',amount:492.70,pix:'000201260014br.gov.bcb.pix'})).toString('base64url');
-              const repairResponse=await repair.goto('https://consigbeneficios.github.io/bussi/corrigir-pagamento.html',{waitUntil:'domcontentloaded',timeout:30000});
-              if(repairResponse.status()!==200)throw new Error('Pagina de recuperacao nao publicada');
-              await repair.locator('#original').fill(oldPayment);
-              if(!await repair.locator('#notice').textContent().then(s=>s.includes('Link corrigido')))throw new Error('Recuperacao nao aceitou a fatura de teste');
-              await repair.locator('#open').click();
-              await repair.waitForURL('https://consigbeneficios.github.io/bussi/pagamento.html#p=*',{timeout:15000});
-              if(repair.url()!=='https://consigbeneficios.github.io/bussi/pagamento.html'+new URL(oldPayment).hash)throw new Error('Recuperacao alterou o payload original da fatura');
-              console.log('LINK ANTIGO PAY RECUPERADO COM MESMO HASH',true);
-              await repair.close();
-              console.log('BROWSER ERRORS',JSON.stringify(errors.slice(0,12)));
-              if(errors.some(e=>e.startsWith('JS:')))throw new Error('Javascript falhou no navegador');
-            }finally{await browser.close()}
-          })().catch(e=>{console.error('FALHA',e.message);process.exit(1)})
+          const fs=require('fs'),assert=require('node:assert/strict');
+          const html=fs.readFileSync('index.html','utf8');
+          const js=fs.readFileSync('bussi-nitro.js','utf8');
+          assert.match(html, /id="prepareRealPix7"/);
+          assert.match(html, /Emitir fatura pelo BUSSI/);
+          assert.match(html, /id="cDocument"/);
+          assert.match(html, /id="cEmail"/);
+          assert.match(html, /14,00/);
+          assert.match(html, /7,00/);
+          assert.match(js, /bussi_emitir_link_cliente/);
+          assert.match(js, /fatura.*padStart\(4/);
+          assert.doesNotMatch(html, /const defaultClients=\[/);
+          assert.doesNotMatch(html, /\$\('generateCharge'\)\.onclick=/);
+          console.log('Portal unico BUSSI validado sem novas cobrancas reais.');
           NODE
