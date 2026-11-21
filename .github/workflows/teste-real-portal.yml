@@ -31,18 +31,12 @@ jobs:
           assert.match(js,/cloudReady/);
           assert.match(r,/comprovante-bussi/);
           assert.match(r,/nitro_ledger/);
-          const paid=fs.readFileSync('fatura.html','utf8');
-          const qr=fs.readFileSync('qrcode-local.min.js','utf8');
-          for(const script of paid.split('<script>').slice(1).map(x=>x.split('</script>')[0])) if(script.trim())new Function(script);
-          new Function(qr);
-          assert.match(paid,/Solicitar Pix para pagamento/);
-          assert.match(paid,/\/functions\/v1\/fatura-bussi/);
-          assert.match(paid,/comprovante-liquidacao\.html/);
-          assert.match(paid,/qrcode-local\.min\.js/);
-          assert.match(js,/Link alternativo/);
-          assert.match(js,/nitroGeneratedBackup/);
-          assert.match(html,/id="nitroCopyBackup"/);
-          assert.match(html,/id="nitroOpenBackup"/);
+          const legacy=fs.readFileSync('fatura.html','utf8');
+          assert.match(js,/https:\/\/pay\.consigbeneficio\.com\.br\/fatura/);
+          assert.match(html,/pay\.consigbeneficio\.com\.br/);
+          assert.doesNotMatch(js,/nitroGeneratedBackup|nitroOpenBackup|nitroCopyBackup/);
+          assert.doesNotMatch(html,/id="nitroGeneratedBackup"|id="nitroCopyBackup"|id="nitroOpenBackup"/);
+          assert.match(legacy,/Link de cobrança anterior encerrado/);
           assert.doesNotMatch(r,/\bdecode\(\)/);
           console.log('BUSSI: portal unico, dados antigos limpos e comprovante validado no servidor.');
           NODE
