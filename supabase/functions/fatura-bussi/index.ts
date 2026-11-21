@@ -32,6 +32,7 @@ function publico(f:any) {
   const situacao=expired && ["aberta","pendente"].includes(f.situacao) ? "expirada" : f.situacao;
   return {numero:f.numero,descricao:f.descricao,original:f.original_centavos,valor:f.valor_centavos,vence:f.vence_em,situacao,
     confirmado:f.pago_verificado_em,verificado:f.verificado_em,
+    falhaProvedor:situacao==="processando" && f.emissao_http_status>=500,
     pix:situacao==="pendente"?f.pix:null,qr:situacao==="pendente"?f.qr:null};
 }
 async function confirmar(f:any, id:string) {
@@ -113,14 +114,15 @@ export async function handle(req:Request) {
     let f=await db("ler",hash);
     if(!f || String(f.numero)!==String(body.numero))return out(404,{erro:"Fatura indisponível."});
     if(body.acao==="aceitar"){
-      const customer=payer(body.pagador);
-      if(body.aceito!==true||!customer)return out(400,{erro:"Confira os dados e confirme o aceite."});
+      const supplied=body.pagador==null ? null : payer(body.pagador);
+      if(body.aceito!==true || (body.pagador!=null && !supplied))return out(400,{erro:"Não foi possível solicitar o Pix."});
       gatewayHeaders();
-      const current=await db("aceitar",hash,customer);
+      const current=await db("aceitar",hash,supplied ?? {});
       if(!current)return out(200,publico(await db("ler",hash)));
+      const customer=payer(current.pagador) ?? supplied;
       const src="https://pay.consigbeneficio.com.br/fatura"+String(f.numero).padStart(4,"0");
       const response=await fetch(endpoint,{method:"POST",headers:gatewayHeaders(),redirect:"error",signal:AbortSignal.timeout(30000),
-        body:JSON.stringify({amount:f.valor_centavos/100,payment_method:"pix",description:f.descricao,customer,
+        body:JSON.stringify({amount:f.valor_centavos/100,payment_method:"pix",description:f.descricao,...(customer ? {customer} : {}),
           metadata:{order_id:f.id},source_url:src,source_label:"Cartão de Benefícios CONSIG",postbackUrl:base+"/functions/v1/fatura-bussi?retorno="+f.id})});
       const data=await response.json().catch(()=>null);
       if(!response.ok){
@@ -128,13 +130,13 @@ export async function handle(req:Request) {
         console.warn("nitro_emissao",f.numero,response.status,motivo);
         // Reopen only an explicit rejection; a proxy or ambiguous failure may follow a successful issuance.
         const recusada=[400,422].includes(response.status) && data?.success===false;
-        const estado=recusada ? await db("recusada",hash) : await db("ler",hash);
+        const estado=recusada ? await db("recusada",hash) : await db("falha_emissao",hash,{http:response.status});
         const mensagens:Record<string,string>={
           autorizacao:"A Nitro recusou o acesso da integração. O atendimento precisa verificar a conta.",
           valor_minimo:"A Nitro informou que o valor está abaixo do mínimo aceito.",
-          cadastro:"A Nitro recusou os dados do pagador. Confira o cadastro antes de solicitar o Pix.",
+          cadastro:"O emissor da fatura precisa conferir o cadastro com a Nitro.",
           validacao:"A Nitro recusou os dados da solicitação. Entre em contato com o atendimento.",
-          indeterminado:"A emissão ainda não foi confirmada. Acompanhe a situação nesta fatura."
+          indeterminado:response.status>=500 ? "A Nitro retornou um erro ao emitir o Pix." : "A emissão ainda não foi confirmada."
         };
         return out(502,{erro:mensagens[motivo],fatura:publico(estado || current)});
       }
