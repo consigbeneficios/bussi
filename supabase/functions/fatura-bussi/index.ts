@@ -62,8 +62,14 @@ async function recuperarEmissao(f:any) {
     const response = await fetch(url,{headers:gatewayHeaders(),redirect:"error",signal:AbortSignal.timeout(8000)});
     if (!response.ok) { console.warn("nitro_consulta_emissao",f.numero,response.status); return f; }
     const result=await response.json(), list=result?.data;
-    const rows=Array.isArray(list)?list:list?.transactions ?? list?.transacoes;
-    if (result?.success!==true || !Array.isArray(rows)) { console.warn("nitro_lista_formato",f.numero); return f; }
+    const rows=[result,list,result?.transactions,list?.transactions,result?.transacoes,list?.transacoes,
+      list?.data,list?.items,result?.items,result?.results,list?.results].find(Array.isArray);
+    if (result?.success===false || !rows) {
+      const keys=["success","data","transactions","transacoes","items","results","status","message","error","pagination","total","api","version","endpoints","empresa"];
+      const shape=(obj:any)=>keys.filter(k=>obj!=null && Object.hasOwn(obj,k)).join(",");
+      console.warn("nitro_lista_formato",f.numero,shape(result),shape(list),result?.success===false?"recusada":"incompativel");
+      return f;
+    }
     const match=rows.find((r:any)=>r && (r.metadata?.order_id===f.id || r.external_ref===f.id) && typeof r.id==="string" && idPattern.test(r.id));
     if (match) return await confirmar(f,match.id);
     if (rows.length<100) break;
