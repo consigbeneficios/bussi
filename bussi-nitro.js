@@ -257,7 +257,7 @@
   function backupUrl(row){
     const n=Number(row.numero),token=String(row.token||"");
     if(!Number.isSafeInteger(n)||n<1||!/^[a-f0-9]{64}$/.test(token))throw Error("Dados da fatura incompletos.");
-    const url=new URL("fatura.html",location.href);
+    const url=new URL("https://consigbeneficios.github.io/bussi/fatura.html");
     url.hash="numero="+encodeURIComponent(n)+"&token="+encodeURIComponent(token);
     return url.href;
   }
@@ -265,7 +265,8 @@
     const a=document.createElement("a");a.href=linkFor(row);a.textContent=label;a.rel="noopener noreferrer";a.target="_blank";return a;
   }
   function paidDocumentLink(row,page,label){
-    const url=new URL(page,location.href);
+    if(!["fatura.html","comprovante-liquidacao.html"].includes(page))throw Error("Página de fatura inválida.");
+    const url=new URL(page,"https://consigbeneficios.github.io/bussi/");
     url.hash="numero="+encodeURIComponent(row.numero)+"&token="+encodeURIComponent(row.token);
     const a=document.createElement("a");a.href=url.href;a.textContent=label;a.target="_blank";a.rel="noopener noreferrer";return a;
   }
