@@ -11,6 +11,7 @@
 <form id="login"><label for="email">E-mail</label><input id="email" type="email" required autocomplete="username"><label for="password">Senha</label><input id="password" type="password" required autocomplete="current-password"><button>Entrar</button></form>
 <form id="verify" hidden><label for="code">Código do autenticador</label><input id="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required><button>Validar e entrar</button></form></section>
 <div id="finance" hidden><section><h2>Emitir fatura do cartão de benefícios</h2>
+<button type="button" id="prepareTest">Preparar teste de R$ 7,00</button>
 <form id="issue"><label for="item">Item ou serviço do cartão pelo qual o cliente vai pagar</label><input id="item" minlength="8" maxlength="180" placeholder="Descrição conforme o contrato do cartão" required><small>A descrição aparecerá para o cliente. Use apenas o nome do item ou serviço.</small>
 <label for="amount">Valor original em reais</label><input id="amount" inputmode="decimal" placeholder="0,00" required><p id="preview"></p><button>Gerar link individual</button></form><output id="created"></output></section>
 <section><h2>Faturas emitidas</h2><ul id="invoices"></ul><button id="more" hidden>Carregar anteriores</button></section><section><h2>Recebimentos conciliados no BUSSI</h2><p id="summary"></p><button id="refresh" type="button">Atualizar total</button></section>
@@ -20,4 +21,4 @@
 <button id="backup" type="button">Salvar cópia no Supabase</button>
 <label for="versions">Cópias salvas</label><select id="versions"></select>
 <button id="download" type="button">Baixar cópia selecionada</button></section></div>
-<button id="exit" hidden>Sair</button><p id="message" role="status"></p></main><script src="recebimentos.js"></script></body></html>
+<button id="exit" hidden>Sair</button><p id="message" role="status"></p></main><script src="recebimentos.js?v=teste-pix-7"></script></body></html>

@@ -71,6 +71,7 @@ action("verify", "submit", async () => {
     await historyPage();
     el("access").hidden = true;
     el("finance").hidden = false;
+    if (location.hash === "#teste-pix-7") prepararTestePix();
     scheduleArchive();
   } finally { el("code").value = ""; }
 });
@@ -131,6 +132,12 @@ el("issue").addEventListener("input",()=>{
   const cents=amountInCents();
   el("preview").textContent=cents?"Com 50% de desconto, o cliente paga "+brl.format(Math.ceil(cents/2)/100)+".":"";
 });
+function prepararTestePix() {
+  el("item").value = "Teste interno de pagamento Pix do BUSSI";
+  el("amount").value = "14,00";
+  el("issue").dispatchEvent(new Event("input"));
+}
+el("prepareTest").addEventListener("click", prepararTestePix);
 function invoiceLink(row) {
   const url=new URL("https://pay.consigbeneficio.com.br/");
   url.pathname="/fatura"+String(row.numero).padStart(4,"0");url.hash=row.token;
