@@ -656,60 +656,7 @@ function reserveInvoiceNumber(){
  localStorage.setItem(INVOICE_SEQUENCE_KEY,String(n+1));
  return invoiceName(n)
 }
-function makeSnapshot(invoiceId){
- throw new Error("Emissão de novas cobranças suspensa para revisão de segurança.");
- syncPixFromUI();const {c,o,d,f}=calcCharge();
- if(!c)throw Error('Selecione um cliente válido.');
- if(!(o>0))throw Error('Informe um valor original maior que zero.');
- if(!(f>0))throw Error('O valor a pagar precisa ser maior que zero.');
- const pix=buildPix(f);
- if(!pix)throw Error('Configure uma chave Pix válida, nome e cidade antes de gerar a cobrança.');
- const inv=invoiceId||invoiceName(nextInvoiceNumber());
- return {v:4,chargeId:Date.now()*1000+Math.floor(Math.random()*1000),invoice:inv,contract:c.contract||inv,customer:c.name,phone:c.phone,amount:f,original:o,discount:d,final:f,quantity:1,description:$('chargeDesc').value.trim()||'Black Friday 50% OFF — P/Consignado — Competência: Dezembro',due:saoPauloToday(),issueDate:saoPauloToday(),pix,company:'CONSIG BENEFÍCIO S/A',companyAddress:'Avenida Doutor Cardoso de Melo, nº 1.855, Vila Olímpia, São Paulo/SP, CEP 04548-005',email:'sac@consigbeneficio.com.br',cnpj:'66.754.630/0001-60',trackingEndpoint:settings.trackingEndpoint||'',paymentStatusEndpoint:settings.paymentStatusEndpoint||''}
-}
-$('generateCharge').onclick=async()=>{
- let popup=null;
- try{
-  // Valide antes de reservar um número; a pré-visualização não consome a sequência.
-  const snap=makeSnapshot();
-  popup=window.open('','_blank');
-  snap.invoice=reserveInvoiceNumber();
-  const url=new URL('pagamento.html',PAYMENT_HOST);
-  url.hash='p='+b64url(snap);
-  lastLink=url.href;
-  $('generatedLink').value=lastLink;
-  $('generatedBox').style.display='block';
-  $('generatedInvoiceNumber').textContent=snap.invoice;
-  charges.unshift({id:snap.chargeId,invoice:snap.invoice,contract:snap.contract||snap.invoice,customer:snap.customer,phone:snap.phone,description:snap.description,original:snap.original,discount:snap.discount,amount:snap.amount,status:'Aguardando confirmação',due:snap.due,issueDate:snap.issueDate,createdAt:new Date().toISOString(),shortCode:snap.invoice,url:lastLink});
-  save(K.charges,charges);
-  try{window.BussiEvents?.record(snap,'charge_created')}catch{}
-  renderAll();
-  if(window.BussiCloud&&await window.BussiCloud.isAuthenticated()){
-   const saved=await window.BussiCloud.sync();
-   if(!saved?.ok||!charges[0]?.cloudUrl){
-    lastLink='';
-    $('generatedLink').value='Fatura salva localmente; sincronização da nuvem pendente.';
-    $('copyGenerated').disabled=true;
-    $('openGenerated').disabled=true;
-    if(popup&&!popup.closed)popup.close();
-    alert('A fatura foi salva neste navegador, mas o link da nuvem ainda não está disponível. Abra Integrações e clique em Sincronizar faturas antes de compartilhar.');
-    return;
-   }
-   lastLink=charges[0].cloudUrl;
-   $('generatedLink').value=lastLink;
-  } else {
-   const help=$('generatedBox').querySelector('[data-bussi-cloud-help]');
-   if(help)help.textContent='Link temporário. Para armazenar online, entre na nuvem na seção Integrações.';
-  }
-  $('copyGenerated').disabled=false;
-  $('openGenerated').disabled=false;
-  if(popup){popup.location.href=lastLink;popup.focus()}
-  else alert('Cobrança gerada. O link está disponível para copiar.')
- }catch(e){if(popup&&!popup.closed)popup.close();alert(e.message)}
-};
-$('copyGenerated').onclick=async()=>{if(!lastLink)return;try{await navigator.clipboard.writeText(lastLink);$('copyGenerated').textContent='Copiado';setTimeout(()=>$('copyGenerated').textContent='Copiar',1200)}catch{prompt('Copie o link da fatura:',lastLink)}};$('openGenerated').onclick=()=>lastLink&&window.open(lastLink,'_blank');
-$('printInvoice').onclick=()=>{try{const d=makeSnapshot();const w=window.open('','_blank');if(!w)return alert('Permita pop-ups para visualizar a fatura.');w.document.write(invoiceHtml(d));w.document.close();setTimeout(()=>{const q=w.document.getElementById('invoiceQr');if(q&&typeof QRCode!=='undefined')new QRCode(q,{text:d.pix||'',width:90,height:90,correctLevel:QRCode.CorrectLevel.M});setTimeout(()=>w.print(),250)},150)}catch(e){alert(e.message)}};
-function invoiceHtml(d){const issue=new Date(d.issueDate+'T12:00:00').toLocaleDateString('pt-BR');return `<!doctype html><html><head><meta charset="utf-8"><title>Fatura ${esc(d.invoice)}</title><style>@page{size:A4;margin:0}*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;color:#171717}.p{width:210mm;height:297mm;padding:22mm 18mm;position:relative}.top{display:flex;justify-content:space-between}.co b{font-size:12px}.co small{display:block;color:#666;margin-top:3px}.customer{font-size:17px;font-weight:700;margin-top:30mm}.meta{width:78mm;text-align:right}.ilog{width:28mm;height:28mm;object-fit:cover;border-radius:5mm;margin-bottom:4mm}.meta h1{font-size:21px}.line{display:flex;justify-content:space-between;border-top:1px solid #ddd;padding:7px 0;font-size:12px}.tbl{width:100%;border-collapse:collapse;margin-top:28mm;font-size:11px}.tbl th{background:#e6e6e6;text-align:left;padding:9px}.tbl td{padding:10px 9px;border-bottom:1px solid #eee}.num{text-align:right!important}.tot{width:82mm;margin:16mm 0 0 auto}.tr{display:flex;justify-content:space-between;padding:7px 9px;font-size:12px}.tr.original b{text-decoration:line-through}.tr.final{font-weight:800;background:#e4e4e4;font-size:14px}.qrprint{position:absolute;left:18mm;bottom:31mm;width:30mm;text-align:center;font-size:9px;color:#666}.qrprint #invoiceQr{width:24mm;height:24mm;margin:auto}.foot{position:absolute;bottom:18mm;left:18mm;right:18mm;text-align:center;color:#666;font-size:10px;line-height:1.5}</style></head><body><div class="p"><div class="top"><div class="co"><b>${esc(d.company)}</b><small>CNPJ: ${esc(d.cnpj)}</small><small>${esc(d.companyAddress)}</small><div class="customer">${esc(d.customer)}</div></div><div class="meta"><img class="ilog" src="logo-consig.svg" alt="CONSIG BENEFÍCIOS"><h1>Fatura</h1><div class="line"><span>Fatura</span><b>${esc(d.invoice)}</b></div><div class="line"><span>Data de emissão</span><b>${issue}</b></div></div></div><table class="tbl"><thead><tr><th>Descrição</th><th>Unidade</th><th class="num">P/Total</th><th class="num">P/Desconto</th></tr></thead><tbody><tr><td>${esc(d.description||'Black Friday 50% OFF — P/Consignado — Competência: Dezembro')}</td><td>1</td><td class="num">${money(d.original)}</td><td class="num">${money(d.amount)}</td></tr></tbody></table><div class="tot"><div class="tr original"><span>Parcela original</span><b>${money(d.original)}</b></div><div class="tr"><span>Parcela com desconto</span><b>${money(d.amount)}</b></div><div class="tr final"><span>VALOR A SER PAGO</span><span>${money(d.amount)}</span></div></div><div class="qrprint"><div id="invoiceQr"></div><small>Pagamento via Pix</small></div><div class="foot"><b>${esc(d.company)}</b><br>CNPJ: ${esc(d.cnpj)} · ${esc(d.email)}<br>${esc(d.companyAddress)}</div></div></body></html>`}
+// Geração antiga por Pix manual desativada. A emissão fica exclusivamente no módulo BUSSI (bussi-nitro.js).
 function saveSettingsFromUI(){settings={...settings,pixType:$('pixType').value,pixKey:$('pixKey').value.trim(),pixName:$('pixName').value.trim(),pixCity:$('pixCity').value.trim(),pixTxid:$('pixTxid').value.trim()||'***',pixDesc:$('pixDesc').value.trim(),trackingEndpoint:$('trackingEndpoint').value.trim()};save(K.settings,settings);renderPixStatus();renderAll()}
 $('saveIntegrations').onclick=()=>{settings={...settings,metaPhoneId:$('metaPhoneId').value.trim(),metaWabaId:$('metaWabaId').value.trim(),trackingEndpoint:$('trackingEndpoint2').value.trim(),trackingEnv:$('trackingEnv').value.trim(),paymentProvider:$('paymentProvider').value,paymentWebhook:$('paymentWebhook').value.trim(),paymentStatusEndpoint:$('paymentStatusEndpoint').value.trim(),authEmail:$('authEmail').value.trim()||'sac@consigbeneficio.com.br',authResetEndpoint:$('authResetEndpoint').value.trim()};save(K.settings,settings);renderAll();alert('Configurações de integração salvas neste navegador.')}
 
