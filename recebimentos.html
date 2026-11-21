@@ -1,24 +1,17 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src https://yzhjtqwpmxhigrijiuze.supabase.co; base-uri 'none'; form-action 'none'">
-<title>Recebimentos | BUSSI</title>
-<style>
-*{box-sizing:border-box}body{margin:0;background:#f4f6f8;color:#152322;font:16px/1.5 system-ui,sans-serif}main{max-width:680px;margin:6vh auto;padding:20px}header{display:flex;justify-content:space-between;align-items:center}a{color:#086047}h1{margin:18px 0;font-size:2rem}h2{font-size:1.15rem;margin:0 0 12px}section{padding:22px;background:white;border:1px solid #dce5e1;border-radius:14px;margin:14px 0}label{display:block;margin:10px 0 4px}input,button{font:inherit;border-radius:7px;padding:9px 12px}input{width:100%;border:1px solid #81958d}button{margin-top:14px;background:#09634c;color:white;border:0;cursor:pointer}button:disabled{opacity:.5}output{display:block;margin:12px 0;font-weight:600}p{margin:.5em 0}small{color:#455a53}
-</style></head><body><main><header><strong>BUSSI</strong><a href="./index.html" target="_blank" rel="noopener">Abrir portal em outra aba</a></header>
-<h1>Recebimentos</h1>
-<section id="access"><h2>Acesso administrativo</h2>
-<form id="login"><label for="email">E-mail</label><input id="email" type="email" required autocomplete="username"><label for="password">Senha</label><input id="password" type="password" required autocomplete="current-password"><button>Entrar</button></form>
-<form id="verify" hidden><label for="code">Código do autenticador</label><input id="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required><button>Validar e entrar</button></form></section>
-<div id="finance" hidden><section><h2>Emitir fatura do cartão de benefícios</h2>
-<button type="button" id="prepareTest">Preparar teste de R$ 7,00</button>
-<form id="issue"><label for="item">Item ou serviço do cartão pelo qual o cliente vai pagar</label><input id="item" minlength="8" maxlength="180" placeholder="Descrição conforme o contrato do cartão" required><small>A descrição aparecerá para o cliente. Use apenas o nome do item ou serviço.</small>
-<label for="amount">Valor original em reais</label><input id="amount" inputmode="decimal" placeholder="0,00" required><p id="preview"></p><button>Gerar link individual</button></form><output id="created"></output></section>
-<section><h2>Faturas emitidas</h2><ul id="invoices"></ul><button id="more" hidden>Carregar anteriores</button></section><section><h2>Recebimentos conciliados no BUSSI</h2><p id="summary"></p><button id="refresh" type="button">Atualizar total</button></section>
-<section><h2>Consultar Pix na Nitro</h2><form id="lookup"><label for="transaction">Identificador da transação na Nitro</label><input id="transaction" required maxlength="150" autocomplete="off" pattern="[A-Za-z0-9_\-]+"><button>Consultar</button></form><output id="result" aria-live="polite"></output><small>A consulta exibe o valor e a situação informados pela Nitro.</small></section>
-<section><h2>Arquivo privado do portal</h2>
-<p>Enquanto esta área estiver aberta após o login, as mudanças feitas no portal em outra aba deste navegador são copiadas para o Supabase.</p>
-<button id="backup" type="button">Salvar cópia no Supabase</button>
-<label for="versions">Cópias salvas</label><select id="versions"></select>
-<button id="download" type="button">Baixar cópia selecionada</button></section></div>
-<button id="exit" hidden>Sair</button><p id="message" role="status"></p></main><script src="recebimentos.js?v=teste-pix-7"></script></body></html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta http-equiv="refresh" content="0;url=./index.html#faturas">
+<title>Faturas BUSSI — Portal único</title>
+<style>body{font:16px/1.6 system-ui,sans-serif;max-width:640px;margin:12vh auto;padding:24px;color:#14272d}a{color:#0b826c;font-weight:700}</style>
+</head>
+<body>
+<h1>Emissão de faturas no BUSSI</h1>
+<p>As faturas são emitidas e administradas diretamente no portal BUSSI. A Nitro é usada somente para processar o Pix e confirmar o recebimento.</p>
+<p><a href="./index.html#faturas">Entrar no BUSSI — Faturas e Pix</a></p>
+<script>location.replace(new URL('./index.html#faturas',location.href));</script>
+</body>
+</html>
