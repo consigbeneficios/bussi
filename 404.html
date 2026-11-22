@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#f3f5f6">
+<title>Fatura | CONSIG Benefícios</title>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;padding:20px;background:#f3f5f6;color:#18303b;font:15px/1.55 system-ui,-apple-system,"Segoe UI",Arial,sans-serif;display:grid;place-items:center}
+main{width:min(100%,560px);padding:28px;background:#fff;border:1px solid #dfe8ec;border-radius:18px;box-shadow:0 12px 35px #122c3710}
+header{text-align:center;padding:4px 0 20px}header img{width:74px;height:74px;object-fit:contain;margin-bottom:8px}header h1{font-size:21px;margin:0;color:#142b38}
+#message{text-align:center;color:#52636d;margin:6px auto 18px;max-width:420px}
+#invoice[hidden],#pixResult[hidden],#error[hidden]{display:none}
+.invoice-title{text-align:center;margin:8px 0 20px}.invoice-title strong{display:block;font-size:13px;color:#5e6b74;text-transform:uppercase;letter-spacing:.03em}.invoice-title .amount{font-size:36px;font-weight:850;letter-spacing:-.04em;color:#111b23;margin-top:3px}.invoice-title .due{font-size:13px;color:#64727d}
+hr{border:0;border-top:1px solid #e5eaed;margin:18px 0}
+.row{display:flex;justify-content:space-between;gap:16px;padding:6px 0;font-size:14px}.row span:first-child{color:#65727c}.row span:last-child{text-align:right;font-weight:650}.row.original span:last-child{text-decoration:line-through;color:#77848c}.row.discount span:last-child{color:#087e67}.row.total{border-top:1px solid #e5eaed;margin-top:7px;padding-top:13px;font-size:16px;font-weight:850}
+#description{margin:0 0 4px;font-weight:700}
+button{width:100%;min-height:50px;border:0;border-radius:11px;background:#087e67;color:#fff;font-size:16px;font-weight:800;cursor:pointer;margin-top:18px}
+button:hover{background:#086a57}button:disabled{opacity:.62;cursor:wait}
+#status{min-height:22px;margin:12px 0 0;text-align:center;font-size:13px;color:#596a75}
+#pixResult{margin-top:22px;padding-top:20px;border-top:1px solid #e5eaed;text-align:center}
+#pixResult img{display:block;width:min(250px,100%);aspect-ratio:1;margin:0 auto 14px}
+.pix-label{text-align:left;font-size:12px;font-weight:800;margin-bottom:7px}
+#pixCode{padding:12px;border:1px solid #d8e0e5;border-radius:9px;background:#f8fafb;text-align:left;overflow-wrap:anywhere;font:11px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;color:#273944;max-height:120px;overflow:auto}
+#copyPix{background:#172b38;margin-top:10px}
+.note{font-size:12px;color:#667680;text-align:center;margin:14px 0 0}
+@media(max-width:420px){body{padding:12px}main{padding:22px 17px}.invoice-title .amount{font-size:32px}}
+</style>
+</head>
+<body>
+<main>
+<header><img src="/logo-consig.svg" alt="CONSIG Benefícios"><h1>CONSIG BENEFÍCIOS</h1></header>
+<p id="message">Abra o link individual da sua fatura para consultar os valores e pagar com Pix.</p>
+<section id="invoice" hidden>
+<div class="invoice-title"><strong id="invoiceNumber">Fatura</strong><div class="amount" id="amount"></div><div class="due" id="due"></div></div>
+<hr>
+<p id="description"></p>
+<div class="row original"><span>Parcela original</span><span id="original"></span></div>
+<div class="row discount"><span>Desconto aplicado</span><span id="discount"></span></div>
+<div class="row total"><span>Valor a ser pago</span><span id="total"></span></div>
+<button id="pay" type="button">Pagar com Pix</button>
+<p id="status" role="status" aria-live="polite"></p>
+<div id="pixResult" hidden><img id="qr" alt="QR Code Pix"><div class="pix-label">Código Pix</div><div id="pixCode"></div><button id="copyPix" type="button">Copiar código Pix</button></div>
+<p class="note">O pagamento é processado pela Nitro. A fatura e o comprovante são emitidos pelo BUSSI.</p>
+</section>
+<section id="error" hidden></section>
+</main>
+<script>
+"use strict";
+const API="https://yzhjtqwpmxhigrijiuze.supabase.co/functions/v1/fatura-bussi";
+const API_KEY="sb_publishable_fimYRn4YWFbiwYiADnrQvg_mACDleaU";
+const pathMatch=location.pathname.match(/^\/fatura(\d{4,})\/?$/);
+const numero=pathMatch?String(Number(pathMatch[1])):"";
+const token=location.hash.slice(1);
+const $=id=>document.getElementById(id);
+const money=value=>Number(value||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+const date=value=>{if(!value)return "";const d=new Date(value+"T12:00:00");return Number.isNaN(d.getTime())?"":"Vencimento em "+new Intl.DateTimeFormat("pt-BR",{day:"2-digit",month:"long",year:"numeric"}).format(d)};
+let invoice=null,busy=false;
+function showError(message){$("invoice").hidden=true;$("error").hidden=false;$("error").textContent=message;$("message").hidden=true}
+async function request(action){
+ const response=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json","apikey":API_KEY},cache:"no-store",redirect:"error",body:JSON.stringify({token,numero,acao:action, ...(action==="aceitar"?{aceito:true}:{})})});
+ const data=await response.json().catch(()=>null);
+ if(!response.ok)throw new Error(data?.erro||"Não foi possível consultar a fatura.");
+ return data;
+}
+function render(data){
+ invoice=data;
+ if(!data||String(data.numero)!==numero)throw new Error("Fatura indisponível.");
+ $("message").hidden=true;
+ $("error").hidden=true;
+ $("invoice").hidden=false;
+ $("invoiceNumber").textContent="Fatura nº "+String(data.numero);
+ $("amount").textContent=money(data.valor);
+ $("due").textContent=date(data.vence);
+ $("description").textContent=data.descricao||"Antecipação de parcela";
+ $("original").textContent=money(data.original);
+ $("discount").textContent="− "+money(Math.max(0,Number(data.original||0)-Number(data.valor||0)));
+ $("total").textContent=money(data.valor);
+ $("pixResult").hidden=true;
+ const status=String(data.situacao||"");
+ if(status==="pago"){
+  $("pay").disabled=true;
+  $("status").textContent="Pagamento confirmado. O comprovante de liquidação é emitido pelo BUSSI.";
+ }else if(status==="expirada"||status==="cancelado"||status==="reembolsado"){
+  $("pay").disabled=true;
+  $("status").textContent="Esta fatura foi encerrada. Solicite um novo link ao atendimento.";
+ }else{
+  $("pay").disabled=false;
+  $("status").textContent=data.falhaProvedor?"A emissão do Pix ainda não foi confirmada. Toque no botão para consultar novamente.":"";
+ }
+}
+function showPix(data){
+ if(!data?.pix)throw new Error("O Pix ainda não está disponível. Consulte novamente em instantes.");
+ $("pixCode").textContent=data.pix;
+ $("qr").src=data.qr&&/^[A-Za-z0-9+/=]+$/.test(data.qr)?"data:image/png;base64,"+data.qr:"";
+ $("qr").hidden=!$("qr").src;
+ $("pixResult").hidden=false;
+ $("status").textContent="Pix disponível. Escaneie o QR Code ou copie o código.";
+ $("pixResult").scrollIntoView({behavior:"smooth",block:"center"});
+}
+$("pay").addEventListener("click",async()=>{
+ if(busy||!invoice)return;
+ busy=true;$("pay").disabled=true;$("status").textContent="Consultando o Pix…";
+ try{
+  let current=invoice;
+  if(current.situacao==="pendente"&&current.pix){showPix(current);return}
+  if(current.situacao==="processando"||current.falhaProvedor){
+   current=await request("consultar");render(current);
+   if(current.situacao==="pendente"&&current.pix){showPix(current);return}
+   if(current.situacao!=="aberta")return;
+  }
+  if(current.situacao==="aberta"){
+   $("status").textContent="Solicitando Pix à Nitro…";
+   current=await request("aceitar");render(current);
+   if(current.situacao==="pendente"&&current.pix)showPix(current);
+  }else if(current.situacao==="pendente"&&current.pix){showPix(current)}
+ }catch(error){$("status").textContent=error?.message||"Não foi possível solicitar o Pix."}
+ finally{busy=false;if(invoice&&invoice.situacao!=="pago"&&!["expirada","cancelado","reembolsado"].includes(invoice.situacao))$("pay").disabled=false}
+});
+$("copyPix").addEventListener("click",async()=>{
+ try{await navigator.clipboard.writeText($("pixCode").textContent);$("copyPix").textContent="Código copiado"}
+ catch{$("status").textContent="Selecione e copie o código Pix."}
+});
+(async()=>{
+ if(!pathMatch||!/^[a-f0-9]{64}$/.test(token)){showError("Acesse o link individual recebido para consultar sua fatura.");return}
+ try{render(await request("consultar"))}
+ catch(error){showError(error?.message||"Não foi possível consultar a fatura. Tente novamente mais tarde.")}
+})();
+</script>
+</body>
+</html>
