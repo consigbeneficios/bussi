@@ -29,6 +29,7 @@ globalThis.fetch = async (url, options) => {
     recordedStatuses.push(body);
     return new Response(null, {status: 204});
   }
+  if (endpoint.pathname.endsWith("/bussi_testes_campanha")) return Response.json([]);
   if (endpoint.pathname.endsWith("/message_templates")) {
     return Response.json({data: [{status: "APPROVED", language: "pt_BR", components: [
       {type: "BUTTONS", buttons: endpoint.searchParams.get("name") === "fatura_bussi"
@@ -52,7 +53,7 @@ globalThis.fetch = async (url, options) => {
     }
     return Response.json([delivery]);
   }
-  if (body.atendente_em && (delivery.atendente_em || endpoint.searchParams.get("fatura_mensagem") !== "eq." + delivery.fatura_mensagem)) return Response.json([]);
+  if (body.atendente_em && (delivery.atendente_em || !endpoint.searchParams.get("or")?.includes("fatura_mensagem.eq." + delivery.fatura_mensagem) && !endpoint.searchParams.get("or")?.includes(",mensagem.eq." + delivery.mensagem))) return Response.json([]);
   Object.assign(delivery, body);
   return options.headers.get("Prefer") ? Response.json([delivery]) : new Response(null, {status: 204});
 };
@@ -109,7 +110,7 @@ for (let attempt=0; attempt<2; attempt++) {
 }
 console.log("Botão de URL, token protegido e abertura da mesma fatura verificados.");
 const handoff = "BUSSI_FATURA_ATENDENTE";
-await handle(message(row.telefone,"app","wamid.1",handoff));
+await handle(message(row.telefone,"app","wamid.0",handoff));
 assert.equal(sent.length,2);
 await handle(message(row.telefone,"app","wamid.2",handoff));
 await handle(message(row.telefone,"app","wamid.2",handoff));
