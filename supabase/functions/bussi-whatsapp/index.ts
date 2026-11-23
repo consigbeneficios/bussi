@@ -3,8 +3,10 @@ const origin = "https://consigbeneficios.github.io";
 const campaign = "blackfriday-2026";
 const table = "/rest/v1/bussi_whatsapp_entregas";
 const campaignReply = "BUSSI_BLACKFRIDAY_EU_QUERO";
+const handoffReply = "BUSSI_FATURA_ATENDENTE";
 const language = {code: "pt_BR"};
 const invoiceTemplate = "fatura_bussi";
+const paymentTemplate = "pagamento_recebido_bussi";
 const invoiceButtonUrl = origin + "/bussi/fatura-whatsapp.html#{{1}}";
 
 function api(path: string, token: string, method = "GET", body?: unknown, prefer?: string) {
@@ -37,10 +39,10 @@ function graph(path: string, body?: unknown) {
   });
 }
 
-async function send(to: string, name: string, components: unknown[]) {
+async function sendMessage(to: string, message: Record<string, unknown>) {
   try {
     const response = await graph(env("META_PHONE_NUMBER_ID") + "/messages", {
-      messaging_product: "whatsapp", to, type: "template", template: {name, language, components},
+      messaging_product: "whatsapp", to, ...message,
     });
     const data = await response.json().catch(() => null);
     const id = data?.messages?.[0]?.id;
@@ -51,12 +53,16 @@ async function send(to: string, name: string, components: unknown[]) {
   }
 }
 
+function sendTemplate(to: string, name: string, components: unknown[]) {
+  return sendMessage(to, {type: "template", template: {name, language, ...(components.length ? {components} : {})}});
+}
+
 function money(value: number) {
   return (value / 100).toLocaleString("pt-BR", {minimumFractionDigits: 2, maximumFractionDigits: 2});
 }
 
 async function approvedTemplates() {
-  const result = await Promise.all(["blackfriday", invoiceTemplate].map(async (name) => {
+  const result = await Promise.all(["blackfriday", invoiceTemplate, paymentTemplate].map(async (name) => {
     const query = new URLSearchParams({name, fields: "name,status,language,components"});
     const response = await graph(env("META_WABA_ID") + "/message_templates?" + query);
     if (!response.ok) throw new Error("Não foi possível consultar os modelos na Meta.");
@@ -64,7 +70,7 @@ async function approvedTemplates() {
     return data.data?.find((item: {language: string; status: string}) =>
       item.language === language.code && item.status === "APPROVED");
   }));
-  if (!result[0] || !result[1]) throw new Error("Os modelos blackfriday e fatura_bussi precisam estar aprovados em português do Brasil.");
+  if (!result[0] || !result[1] || !result[2]) throw new Error("Os modelos blackfriday, fatura_bussi e pagamento_recebido_bussi precisam estar aprovados em português do Brasil.");
   const invoiceButton = result[1].components?.find((component: {type: string}) => component.type === "BUTTONS")
     ?.buttons?.findIndex((button: {type: string; url: string}) =>
       button.type === "URL" && button.url === invoiceButtonUrl) ?? -1;
@@ -72,10 +78,37 @@ async function approvedTemplates() {
   const offerButton = result[0].components?.find((component: {type: string}) => component.type === "BUTTONS")
     ?.buttons?.findIndex((button: {type: string; text: string}) =>
       button.type === "QUICK_REPLY" && button.text.trim().toUpperCase() === "EU QUERO") ?? -1;
-  return {offerButton, invoiceButton};
+  const handoffButton = result[1].components?.find((component: {type: string}) => component.type === "BUTTONS")
+    ?.buttons?.findIndex((button: {type: string; text: string}) =>
+      button.type === "QUICK_REPLY" && button.text.trim().toLowerCase() === "falar com atendente") ?? -1;
+  if (handoffButton < 0) throw new Error("O modelo fatura_bussi precisa do botão Falar com atendente.");
+  return {offerButton, invoiceButton, handoffButton};
+}
+
+async function handleHandoff(message: Record<string, any>) {
+  if (typeof message.context?.id !== "string" || typeof message.id !== "string" ||
+      typeof message.from !== "string" || !/^55\d{10,11}$/.test(message.from)) return;
+  const query = new URLSearchParams({
+    campanha: "eq." + campaign, telefone: "eq." + message.from,
+    fatura_mensagem: "eq." + message.context.id, atendente_em: "is.null", encerramento_status: "is.null",
+  });
+  const [claimed] = await db("?" + query, "PATCH", {
+    atendente_em: new Date().toISOString(), atendente_resposta_id: message.id,
+    atendente_aviso_status: "reservado",
+  }, "return=representation");
+  if (!claimed) return;
+  const result = await sendMessage(message.from, {
+    type: "text", text: {body: "Estamos transferindo para um de nossos atendentes. Aguarde, por favor."},
+  });
+  query.delete("atendente_em");
+  query.set("atendente_resposta_id", "eq." + message.id);
+  await db("?" + query, "PATCH", {atendente_aviso_status: result.state});
 }
 
 async function handleReply(message: Record<string, any>) {
+  if (message.type === "button" && message.button?.payload === handoffReply) {
+    return handleHandoff(message);
+  }
   const type = message.type;
   const reply = type === "button" ? message.button : message.text;
   if (type === "button" ? reply?.payload !== campaignReply :
@@ -93,11 +126,11 @@ async function handleReply(message: Record<string, any>) {
   }
   const [row] = await db("?" + query);
   if (!row || row.resposta_id || !row.pagador) return;
-  const {invoiceButton} = await approvedTemplates();
+  const {invoiceButton, handoffButton} = await approvedTemplates();
   const token = crypto.randomUUID().replaceAll("-", "") + crypto.randomUUID().replaceAll("-", "");
   query.set("resposta_id", "is.null");
   const [claimed] = await db("?" + query, "PATCH", {
-    resposta_id: message.id, fatura_status: "reservado", fatura_acesso_hash: await hashToken(token),
+    resposta_id: message.id, resposta_em: new Date().toISOString(), fatura_status: "reservado", fatura_acesso_hash: await hashToken(token),
     fatura_expira_em: new Date(Date.now() + 24 * 3600000).toISOString(),
   }, "return=representation");
   if (!claimed) return;
@@ -105,13 +138,27 @@ async function handleReply(message: Record<string, any>) {
   const fields = {
     customer_name: row.nome, tel: row.telefone, valor: money(row.original), desconto: money(row.desconto),
   };
-  const result = await send(row.telefone, invoiceTemplate, [{
+  const result = await sendTemplate(row.telefone, invoiceTemplate, [{
     type: "body", parameters: Object.entries(fields).map(([parameter_name, text]) => ({type: "text", parameter_name, text})),
   }, {
     type: "button", sub_type: "url", index: String(invoiceButton), parameters: [{type: "text", text: token}],
+  }, {
+    type: "button", sub_type: "quick_reply", index: String(handoffButton), parameters: [{type: "payload", payload: handoffReply}],
   }]);
   query.set("resposta_id", "eq." + message.id);
-  await db("?" + query, "PATCH", {fatura_status: result.state});
+  await db("?" + query, "PATCH", {fatura_status: result.state, fatura_mensagem: result.id});
+}
+
+async function recordStatus(value: Record<string, unknown>) {
+  const {id, status, timestamp} = value;
+  if (typeof id !== "string" || !/^[A-Za-z0-9_.=+/-]{1,256}$/.test(id) ||
+      typeof status !== "string" || !["sent", "delivered", "read", "failed"].includes(status) ||
+      typeof timestamp !== "string" || !/^\d{10}$/.test(timestamp)) return;
+  const response = await api("/rest/v1/bussi_whatsapp_eventos?on_conflict=mensagem,estado",
+    env("SUPABASE_SERVICE_ROLE_KEY"), "POST", {
+      mensagem: id, estado: status, ocorrido_em: new Date(Number(timestamp) * 1000).toISOString(),
+    }, "resolution=ignore-duplicates");
+  if (!response.ok) throw Error("Não foi possível registrar o estado do WhatsApp.");
 }
 
 async function hashToken(token: string) {
@@ -162,12 +209,27 @@ export async function handle(request: Request) {
         if (entry.id !== env("META_WABA_ID")) continue;
         for (const change of entry.changes ?? []) {
           if (change.field !== "messages" || change.value?.metadata?.phone_number_id !== env("META_PHONE_NUMBER_ID")) continue;
+          for (const status of change.value.statuses ?? []) await recordStatus(status);
           for (const message of change.value.messages ?? []) await handleReply(message);
         }
       }
       return json(200, {});
     }
 
+    if (!request.headers.has("Origin") && env("SUPABASE_SERVICE_ROLE_KEY") &&
+        request.headers.get("Authorization") === "Bearer " + env("SUPABASE_SERVICE_ROLE_KEY")) {
+      const event = JSON.parse(new TextDecoder().decode(raw));
+      if (event.action !== "pagamento_verificado" || !Number.isSafeInteger(event.numero) || event.numero < 1) return json(400, {});
+      const service = env("SUPABASE_SERVICE_ROLE_KEY");
+      const reserved = await api("/rest/v1/rpc/bussi_whatsapp_reservar_encerramento", service, "POST", {p_numero: event.numero});
+      if (!reserved.ok) return json(503, {});
+      const recipient = await reserved.json();
+      if (!recipient) return json(200, {status: "sem_envio"});
+      const result = await sendTemplate(recipient, paymentTemplate, []);
+      const recorded = await api("/rest/v1/rpc/bussi_whatsapp_registrar_encerramento", service, "POST",
+        {p_numero: event.numero, p_status: result.state});
+      return json(recorded.ok ? 200 : 503, {status: result.state});
+    }
     if (request.headers.get("Origin") !== origin) return json(403, {});
     const body = JSON.parse(new TextDecoder().decode(raw));
     if (body.action === "abrir_fatura") {
@@ -182,6 +244,14 @@ export async function handle(request: Request) {
     if (!token) return json(401, {});
     const access = await api("/rest/v1/rpc/bussi_operador_ativo", token, "POST", {});
     if (!access.ok || await access.json() !== true) return json(403, {erro: "Entre com a sessão administrativa do BUSSI."});
+    if (body.action === "fluxo") {
+      const offset = body.offset ?? 0;
+      if (!Number.isSafeInteger(offset) || offset < 0 || offset > 1000000) return json(400, {});
+      const response = await api("/rest/v1/rpc/bussi_whatsapp_fluxo", env("SUPABASE_SERVICE_ROLE_KEY"),
+        "POST", {p_offset: offset});
+      if (!response.ok) return json(503, {erro: "Não foi possível carregar o acompanhamento."});
+      return json(200, {entregas: await response.json()});
+    }
     if (!["META_GRAPH_VERSION", "META_WABA_ID", "META_PHONE_NUMBER_ID", "META_WHATSAPP_TOKEN", "META_APP_SECRET",
       "META_WEBHOOK_VERIFY_TOKEN"].every((key) => env(key))) return json(503, {erro: "Conexão do WhatsApp ainda não configurada no servidor."});
 
@@ -206,7 +276,7 @@ export async function handle(request: Request) {
       .map((text) => ({type: "text", text}))}];
     if (button >= 0) components.push({type: "button", sub_type: "quick_reply", index: String(button),
       parameters: [{type: "payload", payload: campaignReply}]});
-    const result = await send(telefone, "blackfriday", components);
+    const result = await sendTemplate(telefone, "blackfriday", components);
     const filter = new URLSearchParams({campanha: "eq." + campaign, telefone: "eq." + telefone});
     await db("?" + filter, "PATCH", {oferta_status: result.state, mensagem: result.id});
     return json(200, {status: result.state});
