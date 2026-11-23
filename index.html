@@ -241,8 +241,37 @@ button:disabled{opacity:.5;cursor:not-allowed}
 
     <section class="view" id="campaigns">
       <div class="section">
-        <div class="sectionhead"><div><h2>Campanhas</h2><p>Organize campanhas agora; o envio pelo WhatsApp será habilitado quando a integração Meta estiver disponível.</p></div><button class="btn primary" id="newCampaign">Nova campanha</button></div>
-        <div class="notice"><span class="statusdot"></span><b>WhatsApp ainda não conectado.</b> O BUSSI já mantém a estrutura de campanha, mensagem e público para integrar depois.</div>
+        <div class="sectionhead"><div><h2>Campanhas</h2><p>Organize campanhas e envie a Black Friday pelo WhatsApp.</p></div><button class="btn primary" id="newCampaign">Nova campanha</button></div>
+        <div class="notice" style="margin:12px 0">
+          <b>Black Friday pelo WhatsApp</b>
+          <p>Envia o modelo blackfriday. Quando o cliente responde EU QUERO, o BUSSI envia a opção Gerar fatura com os dados do cadastro.</p>
+          <p>Selecione no CRM um cliente com cadastro completo, telefone único e valores de 50% de desconto.</p>
+          <div class="field">
+            <label for="blackFridayRecipient">Cliente da campanha</label>
+            <select id="blackFridayRecipient"><option value="">Selecione um cliente</option></select>
+          </div>
+          <label><input id="blackFridayConsent" type="checkbox"> O cliente selecionado autorizou receber mensagens pelo WhatsApp.</label>
+          <div class="toolbar" style="margin-top:10px">
+            <button class="btn ghost" id="checkWhatsApp" type="button">Verificar modelos</button>
+            <button class="btn primary" id="sendBlackFriday" type="button">Enviar ao cliente</button>
+          </div>
+          <p id="whatsappCampaignStatus" role="status" aria-live="polite"></p>
+        </div>
+        <div class="sectionhead">
+          <div><h3>Acompanhamento pelo WhatsApp</h3><p>Consulte envios, respostas e a abertura da fatura.</p></div>
+          <button class="btn ghost" id="refreshWhatsAppFlow" type="button">Atualizar acompanhamento</button>
+        </div>
+        <p id="whatsappFlowStatus" role="status" aria-live="polite"></p>
+        <div class="tablewrap">
+          <table class="table">
+            <thead><tr><th>Cliente</th><th>Envio inicial</th><th>EU QUERO</th><th>Mensagem de fatura</th><th>Abertura da fatura</th><th>Pagamento</th><th>Aviso de pagamento</th><th>Atendimento</th></tr></thead>
+            <tbody id="whatsappFlowRows"></tbody>
+          </table>
+        </div>
+        <div class="toolbar" style="margin-top:10px">
+          <button class="btn ghost" id="whatsappFlowPrevious" type="button" disabled>Anterior</button>
+          <button class="btn ghost" id="whatsappFlowNext" type="button" disabled>Próxima</button>
+        </div>
         <div class="tablewrap" style="margin-top:16px"><table class="table"><thead><tr><th>Campanha</th><th>Público</th><th>Status</th><th>Mensagem</th><th></th></tr></thead><tbody id="campaignRows"></tbody></table></div>
       </div>
     </section>
@@ -271,7 +300,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
           </select></div>
           <div class="field"><label>Vencimento (automático — dia seguinte)</label><input id="chargeDue" type="date" readonly title="O link vence ao final do dia seguinte"></div>
         </div>
-        <div class="notice" style="margin-top:12px"><b>Validade da cobrança:</b> válida até o final do dia seguinte à emissão (Brasília), ou até a confirmação do pagamento, o que ocorrer primeiro. O Pix é encerrado após a liquidação.</div><div class="toolbar" style="margin-top:16px"><button class="btn primary" id="generateCharge" disabled>Emitir fatura pelo BUSSI</button><button class="btn ghost" id="printInvoice" disabled>Visualizar fatura</button></div>
+        <div class="notice" style="margin-top:12px"><b>Validade da cobrança:</b> válida até o final do dia seguinte à emissão (Brasília), ou até a confirmação do pagamento, o que ocorrer primeiro. O Pix é encerrado após a liquidação.</div><div class="toolbar" style="margin-top:16px"><button class="btn primary" id="generateCharge" disabled>Gerar e abrir fatura</button><button class="btn ghost" id="printInvoice" disabled>Visualizar fatura</button></div>
         <div id="nitroGenerated" class="notice good" hidden style="margin-top:16px"><b>Fatura emitida: <span id="nitroGeneratedNumber"></span></b><p style="font-size:12px">Link de cobrança no domínio oficial pay.consigbeneficio.com.br:</p><div class="linkbox"><input id="nitroGeneratedLink" readonly aria-label="Link individual da fatura"><button class="btn dark" type="button" id="nitroCopyGenerated">Copiar</button><button class="btn primary" type="button" id="nitroOpenGenerated">Abrir</button></div></div>
         </div>
       </div>
@@ -292,7 +321,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
             <div class="integration-head"><div><h3>WhatsApp / Meta</h3><p>Prepare a conexão para campanhas e mensagens.</p></div><span class="statuschip" id="metaChip">Não conectado</span></div>
             <div class="field"><label>Phone Number ID</label><input id="metaPhoneId" placeholder="ID do número do WhatsApp"></div>
             <div class="field" style="margin-top:10px"><label>WhatsApp Business Account ID</label><input id="metaWabaId" placeholder="WABA ID"></div>
-            <div class="notice" style="margin-top:10px">Por segurança, token de acesso não é salvo no GitHub Pages. A autenticação real será conectada via backend quando a Meta liberar.</div>
+            <div class="notice" style="margin-top:10px">Por segurança, token de acesso não é salvo no GitHub Pages. O envio e as respostas são processados no servidor do BUSSI.</div>
           </div>
           <div class="integration-card">
             <div class="integration-head"><div><h3>Rastreamento / API</h3><p>Receba cliques, acessos e eventos.</p></div><span class="statuschip" id="trackingChip">Não conectado</span></div>
@@ -847,6 +876,6 @@ function abrirAbaFaturas(){if(location.hash==='#faturas')document.querySelector(
 window.addEventListener('hashchange',abrirAbaFaturas);abrirAbaFaturas();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.94.1/dist/umd/supabase.min.js"></script>
-<script src="bussi-nitro.js?v=20261121-dominio-pay-unico"></script>
+<script src="bussi-nitro.js?v=20261123-campanha-fatura"></script>
 </body>
 </html>

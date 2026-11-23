@@ -1,7 +1,7 @@
 import {consultarTransacao, endpoint, imagemPix} from "../_shared/nitro.ts";
 const base = Deno.env.get("SUPABASE_URL")!;
 const secret = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const allowed = new Set(["https://pay.consigbeneficio.com.br","https://consig-beneficios-faturas.zanysundae4.chatgpt.site"]);
+const allowed = new Set(["https://pay.consigbeneficio.com.br","https://consig-beneficios-faturas.zanysundae4.chatgpt.site","https://consigbeneficios.github.io"]);
 const idPattern = /^[a-zA-Z0-9_-]{1,150}$/;
 const states: Record<string,string> = {pendente:"pendente", pago:"pago", cancelado:"cancelado", expirado:"cancelado", reembolsado:"reembolsado"};
 async function db(op:string,key:string,values:Record<string,unknown>={}) {
@@ -30,7 +30,7 @@ function payer(value:Record<string,unknown>) {
 function publico(f:any) {
   const expired=Date.parse(f.vence_em)<=Date.now();
   const situacao=expired && ["aberta","pendente"].includes(f.situacao) ? "expirada" : f.situacao;
-  return {numero:f.numero,descricao:f.descricao,original:f.original_centavos,valor:f.valor_centavos,vence:f.vence_em,situacao,
+  return {numero:f.numero,descricao:f.descricao,cliente:f.pagador?.name??null,contrato:f.pagador?.contract??null,original:f.original_centavos,valor:f.valor_centavos,vence:f.vence_em,situacao,
     confirmado:f.pago_verificado_em,verificado:f.verificado_em,
     falhaProvedor:situacao==="processando" && f.emissao_http_status>=500,
     pix:situacao==="pendente"?f.pix:null,qr:situacao==="pendente"?f.qr:null};
@@ -46,7 +46,21 @@ async function confirmar(f:any, id:string) {
     if(states[d.status]==="pendente" && (typeof d.pix_code!=="string" || !d.pix_code.startsWith("000201") || d.pix_code.length>2048)) return f;
     await db("vincular",f.token_hash,{id,pix:typeof d.pix_code==="string"?d.pix_code:null,qr:imagemPix(d.pix_qr_code)});
   }
-  return await db("verificar",f.token_hash,{id,ordem:f.id,centavos:f.valor_centavos,situacao:states[d.status]}) || f;
+  const verified = await db("verificar",f.token_hash,{id,ordem:f.id,centavos:f.valor_centavos,situacao:states[d.status]}) || f;
+  if (verified.situacao === "pago" && verified.pago_verificado_em) {
+    try {
+      const notification = await fetch(base + "/functions/v1/bussi-whatsapp", {
+        method: "POST",
+        headers: {apikey: secret, Authorization: "Bearer " + secret, "Content-Type": "application/json"},
+        body: JSON.stringify({action: "pagamento_verificado", numero: verified.numero}),
+        redirect: "error", signal: AbortSignal.timeout(12000),
+      });
+      if (!notification.ok) console.warn("bussi_whatsapp_encerramento", notification.status);
+    } catch {
+      console.warn("bussi_whatsapp_encerramento_indisponivel");
+    }
+  }
+  return verified;
 }
 // A consultation can recover a timed-out creation, but never issues another charge.
 async function recuperarEmissao(f:any) {

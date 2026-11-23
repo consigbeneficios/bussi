@@ -39,6 +39,143 @@
     if(!response.ok)throw Object.assign(new Error(data?.message||data?.erro||(response.status===401||response.status===403?"Acesso negado. Verifique sua sessão BUSSI.":"Operação indisponível.")),{status:response.status,code:data?.code});
     return data;
   }
+
+  const campaignStatus = $("whatsappCampaignStatus");
+  const campaignSend = $("sendBlackFriday");
+  const campaignCheck = $("checkWhatsApp");
+
+  function campaignRecipients() {
+    const numbers = new Map();
+    for (const client of clients) {
+      const raw = digits(client.phone);
+      const telefone = raw.length === 10 || raw.length === 11 ? "55" + raw : raw;
+      if (!/^55\d{10,11}$/.test(telefone)) continue;
+      if (!numbers.has(telefone)) numbers.set(telefone, []);
+      numbers.get(telefone).push(client);
+    }
+    const eligible = [];
+    for (const [telefone, records] of numbers) {
+      if (records.length !== 1) continue;
+      const client = records[0];
+      const nome = String(client.name ?? "").trim();
+      const original = Math.round(Number(client.original) * 100);
+      const desconto = Math.round(Number(client.final) * 100);
+      const contrato = String(client.contract ?? "").trim();
+      const email = String(client.email ?? "").trim().toLowerCase();
+      const documento = digits(client.document);
+      if (nome.length < 5 || !nome.includes(" ") || contrato.length < 3 || contrato.length > 80 || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+          !((documento.length === 11 && cpfOk(documento)) || (documento.length === 14 && cnpjOk(documento)))) continue;
+      if (!/^[^\r\n\t]{2,120}$/.test(nome) || !Number.isInteger(original) || original < 200 ||
+          original > 999999999 || desconto <= 0 || desconto !== Math.ceil(original / 2)) continue;
+      eligible.push({telefone, nome, original, desconto, contrato, email, documento});
+    }
+    return eligible;
+  }
+
+  async function withCampaign(action) {
+    campaignCheck.disabled = campaignSend.disabled = true;
+    try { await action(); }
+    catch (error) { campaignStatus.textContent = error.message; }
+    finally { campaignCheck.disabled = campaignSend.disabled = false; }
+  }
+
+  campaignCheck.onclick = () => void withCampaign(async () => {
+    await api("/functions/v1/bussi-whatsapp", {action: "status"});
+    campaignStatus.textContent = "Modelos aprovados. Cadastros elegíveis neste painel: " + campaignRecipients().length + ".";
+  });
+
+  const recipientSelect = $("blackFridayRecipient");
+  const flowRefresh = $("refreshWhatsAppFlow");
+  const flowStatus = $("whatsappFlowStatus");
+  const flowRows = $("whatsappFlowRows");
+  const flowPrevious = $("whatsappFlowPrevious"), flowNext = $("whatsappFlowNext");
+  let flowOffset = 0, flowBusy = false;
+
+  function fillCampaignRecipients() {
+    const selected = recipientSelect.value;
+    recipientSelect.replaceChildren(new Option("Selecione um cliente", ""));
+    const recipients = campaignRecipients().sort((left, right) => left.nome.localeCompare(right.nome, "pt-BR"));
+    for (const {nome, telefone} of recipients) recipientSelect.add(new Option(nome + " — " + telefone, telefone));
+    if (recipients.some(({telefone}) => telefone === selected)) recipientSelect.value = selected;
+  }
+
+  recipientSelect.onchange = () => { $("blackFridayConsent").checked = false; };
+
+  const deliveryLabels = {
+    reservado: "Reservado", aceito: "Aceito pela Meta", sent: "Enviado", delivered: "Entregue",
+    read: "Lido", failed: "Falhou na entrega", recusado: "Recusado", incerto: "Retorno indeterminado",
+    ja_registrado: "Já registrado",
+  };
+  const flowDate = new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo",
+  });
+
+  async function loadWhatsAppFlow(offset = 0) {
+    if (flowBusy) return;
+    flowBusy = true;
+    flowRefresh.disabled = true;
+    flowStatus.textContent = "Carregando acompanhamento…";
+    try {
+      const {entregas} = await api("/functions/v1/bussi-whatsapp", {action: "fluxo", offset});
+      flowRows.replaceChildren();
+      for (const delivery of entregas) {
+        const row = flowRows.insertRow();
+        const event = (label, when) => when ? label + " · " + flowDate.format(new Date(when)) : label;
+        const cells = [
+          delivery.nome + " — " + delivery.telefone,
+          event(deliveryLabels[delivery.oferta_status] || "Aguardando", delivery.oferta_em),
+          event(delivery.resposta_em ? "Confirmado" : "Aguardando resposta", delivery.resposta_em),
+          event(deliveryLabels[delivery.fatura_status] || "Aguardando", delivery.fatura_em),
+          event(delivery.abertura_em ? "Aberta no navegador" : "Aguardando clique", delivery.abertura_em),
+          event(({aberta:"Aguardando pagamento", processando:"Processando", pendente:"Pix pendente",
+            pago:"Pago", reembolsado:"Reembolsado", cancelado:"Cancelado"})[delivery.pagamento] || "Aguardando fatura", delivery.pago_em),
+        ];
+        for (const value of cells) row.insertCell().textContent = value;
+        const closing = row.insertCell();
+        closing.textContent = delivery.encerramento_em ? event(deliveryLabels[delivery.encerramento_status] || "Aguardando", delivery.encerramento_em) : "Aguardando confirmação do pagamento";
+        const handoff = row.insertCell();
+        handoff.textContent = delivery.atendente_em
+          ? event("Atendimento solicitado", delivery.atendente_em) : "Sem solicitação";
+        if (delivery.atendente_em) {
+          const conversation = document.createElement("a");
+          conversation.href = "https://wa.me/" + encodeURIComponent(delivery.telefone);
+          conversation.target = "_blank";
+          conversation.rel = "noopener noreferrer";
+          conversation.textContent = "Abrir conversa manual";
+          const notice = deliveryLabels[delivery.atendente_aviso_status];
+          if (notice) handoff.append(document.createElement("br"), "Aviso: " + notice);
+          handoff.append(document.createElement("br"), conversation);
+        }
+      }
+      flowOffset = offset;
+      flowPrevious.disabled = offset === 0;
+      flowNext.disabled = entregas.length < 50;
+      flowStatus.textContent = entregas.length ? "Envios " + (offset + 1) + " a " + (offset + entregas.length) + "." : "Nenhum envio nesta página.";
+    } catch (error) {
+      flowStatus.textContent = error.message;
+    } finally {
+      flowRefresh.disabled = false;
+      flowBusy = false;
+    }
+  }
+
+  flowRefresh.onclick = () => void loadWhatsAppFlow(flowOffset);
+  flowPrevious.onclick = () => void loadWhatsAppFlow(Math.max(0, flowOffset - 50));
+  flowNext.onclick = () => void loadWhatsAppFlow(flowOffset + 50);
+  document.querySelector('button[data-view="campaigns"]').addEventListener("click", () => {
+    fillCampaignRecipients();
+    void loadWhatsAppFlow();
+  });
+  campaignSend.onclick = () => void withCampaign(async () => {
+    const recipient = campaignRecipients().find(({telefone}) => telefone === recipientSelect.value);
+    if (!recipient) throw Error("Selecione um cliente elegível no CRM.");
+    if (!$("blackFridayConsent").checked) throw Error("Confirme que o cliente autorizou mensagens pelo WhatsApp.");
+    if (!window.confirm("Enviar blackfriday para " + recipient.nome + " (" + recipient.telefone + ")?")) return;
+    $("blackFridayConsent").checked = false;
+    const {status} = await api("/functions/v1/bussi-whatsapp", {action: "enviar", consentimento: true, ...recipient});
+    campaignStatus.textContent = "Envio para " + recipient.nome + ": " + (deliveryLabels[status] || status) + ".";
+    await loadWhatsAppFlow();
+  });
   function showLogin(){jwt=null;factor=null;$("nitroLoginForm").hidden=false;$("nitroVerifyForm").hidden=true;$("nitroWorkspace").hidden=true;$("nitroLogout").hidden=true;$("generateCharge").disabled=true;$("printInvoice").disabled=true;resetRequest();if(typeof showAuth==="function")showAuth();}
   async function handle(action){
     if(busy)return;
@@ -59,6 +196,7 @@
     $("generateCharge").disabled=false;
     status(remembered?"Sessão reconhecida neste navegador. Autenticador não solicitado novamente.":"Acesso BUSSI confirmado. Sessão lembrada neste navegador.");
     try{await startCloudSync();}catch(err){syncStatus("Nuvem indisponível: alterações continuam salvas neste navegador.",true);}
+    fillCampaignRecipients();
     await history();await summary();
   }
   $("nitroLoginForm").addEventListener("submit",event=>{
@@ -311,18 +449,34 @@
       if(Number($("chargeDiscount").value)!==50)throw Error("Esta emissão usa desconto fixo de 50%.");
       const expected=Math.ceil(amount/2),given=cents($("chargeFinal").value);
       if(given!==expected)throw Error("Valor de desconto inconsistente; confira o valor original.");
+      // Abra a aba no clique para preservar a permissão do navegador durante a emissão.
+      const invoiceTab=window.open("about:blank","_blank");
+      if(invoiceTab)invoiceTab.opener=null;
       const oldDisabled=$("generateCharge").disabled;
       $("generateCharge").disabled=true;
+      let opened=false;
       try{
-        requestId??=crypto.randomUUID();
-        const row=await api("/rest/v1/rpc/bussi_emitir_link_cliente",{p_descricao:desc,p_original:amount,p_pedido:requestId,p_pagador:payer,p_contrato:payer.contract});
+        const emissionId=requestId??=crypto.randomUUID();
+        const row=await api("/rest/v1/rpc/bussi_emitir_link_cliente",{p_descricao:desc,p_original:amount,p_pedido:emissionId,p_pagador:payer,p_contrato:payer.contract});
         lastLink=linkFor(row);
         $("nitroGenerated").hidden=false;$("nitroGeneratedLink").value=lastLink;
         $("nitroGeneratedNumber").textContent="fatura"+String(row.numero).padStart(4,"0");
         $("printInvoice").disabled=false;
-        status("Fatura emitida pelo BUSSI. Nenhuma cobrança foi enviada à Nitro; o Pix será solicitado apenas quando o cliente optar por pagar.");
-        requestId=null;await history();await summary();
-      }finally{$("generateCharge").disabled=oldDisabled;}
+        if(requestId===emissionId)requestId=null;
+        if(invoiceTab&&!invoiceTab.closed){
+          try{
+            invoiceTab.location.replace(lastLink);
+            opened=true;
+          }catch{/* O link continua disponível no painel. */}
+        }
+        status(opened
+          ?"Fatura emitida e aberta em outra aba. Continue a finalização na página da fatura."
+          :"Fatura emitida. Clique em Abrir para continuar a finalização.");
+        await history();await summary();
+      }finally{
+        if(invoiceTab&&!invoiceTab.closed&&!opened)invoiceTab.close();
+        $("generateCharge").disabled=oldDisabled;
+      }
     });
   });
   for(const id of ["chargeClient","chargeOriginal","chargeDiscount","chargeDesc"]){
