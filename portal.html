@@ -171,7 +171,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 #dashboardEventRows td:first-child{white-space:nowrap;font-variant-numeric:tabular-nums}
 
 </style>
-<link rel="stylesheet" href="bussi-layout.css?v=20261123-campanhas-web">
+<link rel="stylesheet" href="bussi-layout.css?v=20261123-campanhas-teste">
 </head>
 <body>
 <div class="authgate" id="authGate"><div class="authcard"><div class="authbrand"><b>CONSIG BENEFÍCIOS</b></div><h2>Acesso seguro</h2><p>Autenticando administrador...</p></div></div>
@@ -342,6 +342,9 @@ button:disabled{opacity:.5;cursor:not-allowed}
               <span class="bussi-preview-mode">Simulação</span>
               <button id="bussiPreviewReset" type="button">Reiniciar</button>
             </div>
+            <ol class="bussi-preview-steps" aria-label="Etapas da simulação">
+              <li aria-current="step">Oferta</li><li>Interesse</li><li>Fatura</li><li>Pagamento</li>
+            </ol>
             <div id="bussiPreviewChat" class="bussi-preview-chat" role="log" aria-label="Conversa simulada" aria-live="polite"></div>
             <figcaption class="bussi-preview-footer" id="bussiPreviewCaption">Simulação com dados fictícios. Nenhuma mensagem é enviada.</figcaption>
             <div class="bussi-composer">
@@ -1017,6 +1020,6 @@ window.addEventListener('hashchange',abrirAbaFaturas);abrirAbaFaturas();
 <script src="bussi-client-stages.js?v=20261123-whatsapp-area"></script>
 <script src="bussi-desk.js?v=20261123-whatsapp-area"></script>
 <script src="bussi-nitro.js?v=20261123-whatsapp-area"></script>
-<script src="bussi-preview.js?v=20261123-previa-conversa" defer></script>
+<script src="bussi-preview.js?v=20261123-campanhas-teste" defer></script>
 </body>
 </html>
