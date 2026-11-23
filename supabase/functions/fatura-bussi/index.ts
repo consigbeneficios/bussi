@@ -1,7 +1,7 @@
 import {consultarTransacao, endpoint, imagemPix} from "../_shared/nitro.ts";
 const base = Deno.env.get("SUPABASE_URL")!;
 const secret = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const allowed = new Set(["https://pay.consigbeneficio.com.br","https://consig-beneficios-faturas.zanysundae4.chatgpt.site"]);
+const allowed = new Set(["https://pay.consigbeneficio.com.br","https://consig-beneficios-faturas.zanysundae4.chatgpt.site","https://consigbeneficios.github.io"]);
 const idPattern = /^[a-zA-Z0-9_-]{1,150}$/;
 const states: Record<string,string> = {pendente:"pendente", pago:"pago", cancelado:"cancelado", expirado:"cancelado", reembolsado:"reembolsado"};
 async function db(op:string,key:string,values:Record<string,unknown>={}) {
@@ -30,7 +30,7 @@ function payer(value:Record<string,unknown>) {
 function publico(f:any) {
   const expired=Date.parse(f.vence_em)<=Date.now();
   const situacao=expired && ["aberta","pendente"].includes(f.situacao) ? "expirada" : f.situacao;
-  return {numero:f.numero,descricao:f.descricao,original:f.original_centavos,valor:f.valor_centavos,vence:f.vence_em,situacao,
+  return {numero:f.numero,descricao:f.descricao,cliente:f.pagador?.name??null,contrato:f.pagador?.contract??null,original:f.original_centavos,valor:f.valor_centavos,vence:f.vence_em,situacao,
     confirmado:f.pago_verificado_em,verificado:f.verificado_em,
     falhaProvedor:situacao==="processando" && f.emissao_http_status>=500,
     pix:situacao==="pendente"?f.pix:null,qr:situacao==="pendente"?f.qr:null};
