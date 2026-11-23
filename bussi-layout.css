@@ -337,3 +337,43 @@ body { background: var(--bg); color: var(--ink); }
   .bussi-desk { height: min(720px,calc(100dvh - 225px)); min-height: 415px; }
   .bussi-desk-composer button { padding-inline: 10px; }
 }
+
+/* Área de atendimento com lista e histórico independentes. */
+.content:has(#inbox.active) { max-width: none; padding: 0 16px; }
+#inbox.active { display: block; }
+#inbox .bussi-desk-section {
+  display: flex; flex-direction: column; width: 100%;
+  height: calc(100dvh - 90px); min-height: 540px;
+  margin: 12px 0; padding: 14px;
+}
+#inbox .bussi-desk-toolbar { flex-shrink: 0; margin: 0 0 12px; gap: 10px; }
+#inbox .bussi-desk-toolbar h2 { font-size: 20px; }
+#inbox .bussi-desk-toolbar p { margin-top: 4px; }
+#inbox .bussi-desk { flex: 1 1 auto; height: auto; min-height: 0; grid-template-columns: clamp(228px,25vw,300px) minmax(0,1fr); }
+#inbox .bussi-desk-list { padding: 12px 9px 8px; }
+#inbox .bussi-desk-list-heading { margin: 1px 5px 11px; }
+#inbox .bussi-desk-threads { margin: 8px 0 0; flex: 1 1 auto; }
+#inbox .bussi-desk-thread { min-height: 56px; padding: 7px 8px; grid-template-columns: 34px minmax(0,1fr) auto; gap: 8px; }
+#inbox .bussi-desk-avatar { width: 34px; height: 34px; }
+#inbox .bussi-desk-contact { min-height: 62px; }
+#inbox .bussi-desk-history { padding-block: 14px; }
+#inbox .bussi-desk-bubble { max-width: min(82%,610px); }
+#inbox .bussi-desk-composer { padding: 9px 12px max(9px,env(safe-area-inset-bottom)); }
+#inbox .bussi-desk-composer .btn { min-height: 42px; }
+#inbox .bussi-desk-composer label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+#inbox .bussi-desk-compose-row textarea { min-height: 42px; line-height: 1.35; }
+#inbox .bussi-desk-empty-wrap { min-height: 0; }
+#inbox #bussiDeskEmpty { background: transparent; border: 1px solid #463745; padding: 16px 20px; }
+@media (max-width:950px) {
+  #inbox .bussi-desk-section { height: calc(100dvh - 184px); min-height: 430px; }
+}
+@media (max-width:650px) {
+  .content:has(#inbox.active) { padding-inline: 8px; }
+  #inbox .bussi-desk-section { padding: 8px; margin: 8px 0; height: calc(100dvh - 175px); min-height: 365px; }
+  #inbox .bussi-desk { grid-template-columns: minmax(0,1fr); }
+  #inbox .bussi-desk-toolbar { margin-bottom: 8px; }
+  #inbox .bussi-desk-toolbar h2 { font-size: 17px; }
+  #inbox .bussi-desk-toolbar p { display: none; }
+  #inbox .bussi-desk-contact { min-height: 56px; padding-inline: 8px; gap: 7px; }
+  #inbox .bussi-desk-bubble { max-width: 88%; }
+}
