@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>BUSSI — CRM, Campanhas e Cobranças</title>
+<link rel="icon" href="logo-bussi.svg" type="image/svg+xml">
 <meta name="description" content="BUSSI — plataforma digital de CRM, campanhas, comunicação, faturas e cobranças.">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -170,12 +171,13 @@ button:disabled{opacity:.5;cursor:not-allowed}
 #dashboardEventRows td:first-child{white-space:nowrap;font-variant-numeric:tabular-nums}
 
 </style>
+<link rel="stylesheet" href="bussi-layout.css?v=20261123">
 </head>
 <body>
 <div class="authgate" id="authGate"><div class="authcard"><div class="authbrand"><b>CONSIG BENEFÍCIOS</b></div><h2>Acesso seguro</h2><p>Autenticando administrador...</p></div></div>
 <div class="app" id="mainApp" style="display:none">
 <aside class="side">
-  <div class="brand"><div class="brandmark"><img src="logo-consig.svg" alt="CONSIG BENEFÍCIOS"></div><div><b>BUSSI</b><small>CRM · Campanhas · Cobranças</small></div></div>
+  <div class="brand"><div class="brandmark"><img src="logo-bussi.svg" alt="CONSIG BENEFÍCIOS"></div><div><b>BUSSI</b><small>CRM · Campanhas · Cobranças</small></div></div>
   <nav class="nav">
     <button class="active" data-view="dashboard">Visão geral</button>
     <button data-view="crm">CRM / Clientes</button>
@@ -242,22 +244,32 @@ button:disabled{opacity:.5;cursor:not-allowed}
     <section class="view" id="campaigns">
       <div class="section">
         <div class="sectionhead"><div><h2>Campanhas</h2><p>Organize campanhas e envie a Black Friday pelo WhatsApp.</p></div><button class="btn primary" id="newCampaign">Nova campanha</button></div>
-        <div class="notice" style="margin:12px 0">
-          <b>Black Friday pelo WhatsApp</b>
-          <p>Envia o modelo blackfriday. Quando o cliente responde EU QUERO, o BUSSI envia a opção Gerar fatura com os dados do cadastro.</p>
-          <p>Selecione no CRM um cliente com cadastro completo, telefone único e valores de 50% de desconto.</p>
-          <div class="field">
-            <label for="blackFridayRecipient">Cliente da campanha</label>
-            <select id="blackFridayRecipient"><option value="">Selecione um cliente</option></select>
+        <div class="bussi-campaign-layout">
+          <div class="bussi-campaign-send">
+            <h3>Enviar oferta Black Friday</h3>
+            <p>Selecione um cliente do CRM e confirme o envio individual.</p>
+            <div class="field">
+              <label for="blackFridayRecipient">Cliente</label>
+              <select id="blackFridayRecipient"><option value="">Selecione um cliente</option></select>
+            </div>
+            <label class="bussi-consent"><input id="blackFridayConsent" type="checkbox"> O cliente autorizou receber mensagens pelo WhatsApp.</label>
+            <div class="toolbar">
+              <button class="btn ghost" id="checkWhatsApp" type="button">Verificar modelos</button>
+              <button class="btn primary" id="sendBlackFriday" type="button">Enviar ao cliente</button>
+            </div>
+            <p id="whatsappCampaignStatus" role="status" aria-live="polite"></p>
           </div>
-          <label><input id="blackFridayConsent" type="checkbox"> O cliente selecionado autorizou receber mensagens pelo WhatsApp.</label>
-          <div class="toolbar" style="margin-top:10px">
-            <button class="btn ghost" id="checkWhatsApp" type="button">Verificar modelos</button>
-            <button class="btn primary" id="sendBlackFriday" type="button">Enviar ao cliente</button>
-          </div>
-          <p id="whatsappCampaignStatus" role="status" aria-live="polite"></p>
+          <figure class="bussi-preview" aria-labelledby="bussiPreviewTitle">
+            <div class="bussi-preview-header">
+              <img src="logo-bussi.svg" alt="" width="36" height="36">
+              <div><strong id="bussiPreviewTitle">Consig Benefícios</strong><span>Prévia da conversa no WhatsApp</span></div>
+              <button id="bussiPreviewReset" type="button">Reiniciar</button>
+            </div>
+            <div id="bussiPreviewChat" class="bussi-preview-chat" aria-live="polite"></div>
+            <figcaption class="bussi-preview-footer">Simulação com dados fictícios. Os botões da prévia não enviam mensagens.</figcaption>
+          </figure>
         </div>
-        <div class="sectionhead">
+        <div class="sectionhead bussi-flow-head">
           <div><h3>Acompanhamento pelo WhatsApp</h3><p>Consulte envios, respostas e a abertura da fatura.</p></div>
           <button class="btn ghost" id="refreshWhatsAppFlow" type="button">Atualizar acompanhamento</button>
         </div>
@@ -877,5 +889,6 @@ window.addEventListener('hashchange',abrirAbaFaturas);abrirAbaFaturas();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.94.1/dist/umd/supabase.min.js"></script>
 <script src="bussi-nitro.js?v=20261123-campanha-fatura"></script>
+<script src="bussi-preview.js?v=20261123" defer></script>
 </body>
 </html>
