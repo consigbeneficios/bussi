@@ -414,3 +414,56 @@ body { background: var(--bg); color: var(--ink); }
   .bussi-campaign-conversation .bussi-preview-chat { padding: 12px 10px; max-height: 55dvh; min-height: 280px; }
   .bussi-campaign-conversation .bussi-preview-header { padding-inline: 9px; }
 }
+
+/* A conversa é o foco da prévia. Os controles ficam abaixo do painel. */
+#campaigns .bussi-campaign-layout { gap: 12px; }
+#campaigns .bussi-campaign-conversation {
+  grid-template-columns: minmax(215px, 28%) minmax(0, 1fr);
+  min-height: 490px; border-radius: 15px; box-shadow: 0 16px 32px #0003;
+}
+#campaigns .bussi-inbox-list { padding: 12px 0; background: #19171c; }
+#campaigns .bussi-inbox-brand { margin: 0 13px 12px; gap: 9px; }
+#campaigns .bussi-inbox-brand img { border-radius: 50%; width: 32px; height: 32px; }
+#campaigns .bussi-inbox-list > label { margin-inline: 13px; }
+#campaigns #bussiChatSearch { width: calc(100% - 26px); margin-inline: 13px; min-height: 35px; }
+#campaigns .bussi-inbox-filters { margin: 9px 13px; }
+#campaigns .bussi-thread {
+  min-height: 56px; border-radius: 0; margin: 0; border: 0; border-bottom: 1px solid #302730;
+  padding: 8px 13px; background: transparent;
+}
+#campaigns .bussi-thread:hover { background: #28212a; }
+#campaigns .bussi-thread[aria-pressed="true"] { background: #38232d; box-shadow: inset 3px 0 #ec718c; }
+#campaigns .bussi-example-heading, #campaigns #bussiChatEmpty { margin-inline: 13px; }
+#campaigns .bussi-preview { grid-template-rows: auto minmax(0,1fr) auto auto; }
+#campaigns .bussi-preview-header { min-height: 59px; padding: 8px 13px; border-bottom-color: #473540; background: #211b22; }
+#campaigns .bussi-preview-header > img { width: 34px; height: 34px; }
+#campaigns .bussi-preview-mode { color: #ffe2eb; font-size: 11px; border-color: #5f3e50; }
+#campaigns .bussi-preview-chat {
+  min-height: 380px; max-height: min(64dvh,635px); padding: 18px clamp(12px,5vw,58px); gap: 9px;
+  background-color: #e9e2e5; background-image: radial-gradient(circle at 1px 1px,#a0839240 1px,transparent 1px);
+  background-size: 18px 18px;
+}
+#campaigns .bussi-preview-bubble {
+  border: 0; border-radius: 4px 11px 11px; padding: 9px 11px 7px; color: #2c2630; background: #fff;
+  box-shadow: 0 2px 6px #44334228; font-size: 14px; line-height: 1.43; max-width: min(94%,415px);
+}
+#campaigns .bussi-preview-bubble.customer { border-radius: 11px 4px 11px 11px; background: #f4dce4; }
+#campaigns .bussi-preview-bubble:has(.bussi-message-media) { padding-top: 6px; }
+#campaigns .bussi-message-media { border-radius: 7px; margin-bottom: 8px; }
+#campaigns .bussi-preview-time { margin-top: 4px; }
+#campaigns .bussi-preview-actions { margin: 7px -11px -7px; }
+#campaigns .bussi-preview-actions button { min-height: 39px; font-size: 13px; }
+#campaigns .bussi-preview-actions button:focus-visible { outline-offset: -3px; }
+#campaigns .bussi-preview-footer { padding: 6px 13px; }
+#campaigns .bussi-composer { padding: 8px 12px; }
+#campaigns .bussi-composer-controls textarea { min-height: 40px; border-radius: 18px; padding-inline: 12px; }
+#campaigns .bussi-campaign-settings { border: 1px solid var(--bussi-line); border-radius: 11px; background: #211b22; }
+#campaigns .bussi-campaign-settings summary { cursor: pointer; padding: 11px 14px; font-weight: 700; }
+#campaigns .bussi-campaign-settings .bussi-campaign-controls { padding: 0 10px 10px; }
+@media (max-width:725px) {
+  #campaigns .bussi-campaign-conversation { grid-template-columns: minmax(0,1fr); }
+  #campaigns .bussi-inbox-list { padding: 9px 0; }
+  #campaigns #bussiExampleList { max-height: 120px; }
+  #campaigns .bussi-preview-chat { min-height: 295px; padding: 12px; }
+  #campaigns .bussi-preview-mode { display: none; }
+}
