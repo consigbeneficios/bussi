@@ -3,6 +3,14 @@
   const chat = document.getElementById("bussiPreviewChat");
   if (!chat) return;
   const card = chat.closest(".bussi-preview");
+  const testSteps = [...card.querySelectorAll(".bussi-preview-steps li")];
+  function setTestStep(current) {
+    testSteps.forEach((step,index) => {
+      if (index === current) step.setAttribute("aria-current","step");
+      else step.removeAttribute("aria-current");
+      step.classList.toggle("done",index < current);
+    });
+  }
   const inbox = document.getElementById("bussiChatList");
   const demo = document.getElementById("bussiChatDemo");
   const examples = document.getElementById("bussiExampleList");
@@ -76,6 +84,7 @@
 
   function start() {
     card.dataset.mode = "preview";
+    setTestStep(0);
     active = "";
     chat.replaceChildren();
     const person = example || client || sample;
@@ -96,12 +105,15 @@
     image.src = mediaPreview || officialArtwork;
     offer.prepend(image);
     actions(offer, [["EU QUERO", () => {
+      setTestStep(1);
       bubble("EU QUERO", true);
       const invoice = bubble("Olá, " + person.nome.replaceAll("*", "") + ". Você solicitou os detalhes da antecipação de sua parcela.\nTelefone: " + person.telefone + "\nParcela original: R$ " + original + "\nValor com desconto: R$ " + discounted + "\nToque em Gerar fatura para abrir a página da Consig Benefícios e continuar.");
       actions(invoice, [
         ["Gerar fatura", () => {
+          setTestStep(2);
           const generated = bubble("Na campanha, este botão abre a página de finalização da fatura.");
           actions(generated, [["Simular pagamento confirmado", () => {
+            setTestStep(3);
             bubble("Recebemos seu pagamento. Iremos dar baixa na parcela.");
           }]]);
         }],
