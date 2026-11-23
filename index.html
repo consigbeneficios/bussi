@@ -245,13 +245,32 @@ button:disabled{opacity:.5;cursor:not-allowed}
         <div class="notice" style="margin:12px 0">
           <b>Black Friday pelo WhatsApp</b>
           <p>Envia o modelo blackfriday. Quando o cliente responde EU QUERO, o BUSSI envia a opção Gerar fatura com os dados do cadastro.</p>
-          <p>O envio usa os cadastros do CRM com cadastro completo, telefone único e valores de 50% de desconto.</p>
-          <label><input id="blackFridayConsent" type="checkbox"> Confirmo que todos os contatos elegíveis autorizaram receber mensagens pelo WhatsApp.</label>
+          <p>Selecione no CRM um cliente com cadastro completo, telefone único e valores de 50% de desconto.</p>
+          <div class="field">
+            <label for="blackFridayRecipient">Cliente da campanha</label>
+            <select id="blackFridayRecipient"><option value="">Selecione um cliente</option></select>
+          </div>
+          <label><input id="blackFridayConsent" type="checkbox"> O cliente selecionado autorizou receber mensagens pelo WhatsApp.</label>
           <div class="toolbar" style="margin-top:10px">
             <button class="btn ghost" id="checkWhatsApp" type="button">Verificar modelos</button>
-            <button class="btn primary" id="sendBlackFriday" type="button">Enviar Black Friday</button>
+            <button class="btn primary" id="sendBlackFriday" type="button">Enviar ao cliente</button>
           </div>
           <p id="whatsappCampaignStatus" role="status" aria-live="polite"></p>
+        </div>
+        <div class="sectionhead">
+          <div><h3>Acompanhamento pelo WhatsApp</h3><p>Consulte envios, respostas e a abertura da fatura.</p></div>
+          <button class="btn ghost" id="refreshWhatsAppFlow" type="button">Atualizar acompanhamento</button>
+        </div>
+        <p id="whatsappFlowStatus" role="status" aria-live="polite"></p>
+        <div class="tablewrap">
+          <table class="table">
+            <thead><tr><th>Cliente</th><th>Envio inicial</th><th>EU QUERO</th><th>Mensagem de fatura</th><th>Abertura da fatura</th><th>Pagamento</th><th>Aviso de pagamento</th><th>Atendimento</th></tr></thead>
+            <tbody id="whatsappFlowRows"></tbody>
+          </table>
+        </div>
+        <div class="toolbar" style="margin-top:10px">
+          <button class="btn ghost" id="whatsappFlowPrevious" type="button" disabled>Anterior</button>
+          <button class="btn ghost" id="whatsappFlowNext" type="button" disabled>Próxima</button>
         </div>
         <div class="tablewrap" style="margin-top:16px"><table class="table"><thead><tr><th>Campanha</th><th>Público</th><th>Status</th><th>Mensagem</th><th></th></tr></thead><tbody id="campaignRows"></tbody></table></div>
       </div>
@@ -857,6 +876,6 @@ function abrirAbaFaturas(){if(location.hash==='#faturas')document.querySelector(
 window.addEventListener('hashchange',abrirAbaFaturas);abrirAbaFaturas();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.94.1/dist/umd/supabase.min.js"></script>
-<script src="bussi-nitro.js?v=20261123-whatsapp-fatura"></script>
+<script src="bussi-nitro.js?v=20261123-acompanhar-whatsapp"></script>
 </body>
 </html>
