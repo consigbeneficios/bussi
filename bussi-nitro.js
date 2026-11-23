@@ -40,6 +40,7 @@
     return data;
   }
 
+  window.BussiDesk?.setConnection(body => api("/functions/v1/bussi-whatsapp", body));
   window.BussiClientStages?.setLoader(() => api("/functions/v1/bussi-whatsapp", {action:"etapas_clientes"}));
   const campaignStatus = $("whatsappCampaignStatus");
   const campaignCheck = $("checkWhatsApp");
