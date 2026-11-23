@@ -97,9 +97,21 @@
     const recipients = campaignRecipients().sort((left, right) => left.nome.localeCompare(right.nome, "pt-BR"));
     for (const {nome, telefone} of recipients) recipientSelect.add(new Option(nome + " — " + telefone, telefone));
     if (recipients.some(({telefone}) => telefone === selected)) recipientSelect.value = selected;
+    announceCampaignRecipient();
+    const detail = recipients.slice().sort((a,b) => a.original - b.original || a.nome.localeCompare(b.nome, "pt-BR")).slice(0,3)
+      .map(({nome,telefone,original,desconto}) => ({nome,telefone,original,desconto}));
+    document.dispatchEvent(new CustomEvent("bussi:campaign-examples", {detail}));
   }
 
-  recipientSelect.onchange = () => { $("blackFridayConsent").checked = false; };
+  function announceCampaignRecipient() {
+    const selected = campaignRecipients().find(({telefone}) => telefone === recipientSelect.value);
+    const detail = selected ? {nome:selected.nome,telefone:selected.telefone,original:selected.original,desconto:selected.desconto} : null;
+    document.dispatchEvent(new CustomEvent("bussi:campaign-recipient", {detail}));
+  }
+  recipientSelect.onchange = () => {
+    $("blackFridayConsent").checked = false;
+    announceCampaignRecipient();
+  };
 
   const deliveryLabels = {
     reservado: "Reservado", aceito: "Aceito pela Meta", sent: "Enviado", delivered: "Entregue",
@@ -117,6 +129,7 @@
     flowStatus.textContent = "Carregando acompanhamento…";
     try {
       const {entregas} = await api("/functions/v1/bussi-whatsapp", {action: "fluxo", offset});
+      document.dispatchEvent(new CustomEvent("bussi:campaign-flow", {detail: entregas}));
       flowRows.replaceChildren();
       for (const delivery of entregas) {
         const row = flowRows.insertRow();
