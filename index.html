@@ -300,7 +300,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
           </select></div>
           <div class="field"><label>Vencimento (automático — dia seguinte)</label><input id="chargeDue" type="date" readonly title="O link vence ao final do dia seguinte"></div>
         </div>
-        <div class="notice" style="margin-top:12px"><b>Validade da cobrança:</b> válida até o final do dia seguinte à emissão (Brasília), ou até a confirmação do pagamento, o que ocorrer primeiro. O Pix é encerrado após a liquidação.</div><div class="toolbar" style="margin-top:16px"><button class="btn primary" id="generateCharge" disabled>Emitir fatura pelo BUSSI</button><button class="btn ghost" id="printInvoice" disabled>Visualizar fatura</button></div>
+        <div class="notice" style="margin-top:12px"><b>Validade da cobrança:</b> válida até o final do dia seguinte à emissão (Brasília), ou até a confirmação do pagamento, o que ocorrer primeiro. O Pix é encerrado após a liquidação.</div><div class="toolbar" style="margin-top:16px"><button class="btn primary" id="generateCharge" disabled>Gerar e abrir fatura</button><button class="btn ghost" id="printInvoice" disabled>Visualizar fatura</button></div>
         <div id="nitroGenerated" class="notice good" hidden style="margin-top:16px"><b>Fatura emitida: <span id="nitroGeneratedNumber"></span></b><p style="font-size:12px">Link de cobrança no domínio oficial pay.consigbeneficio.com.br:</p><div class="linkbox"><input id="nitroGeneratedLink" readonly aria-label="Link individual da fatura"><button class="btn dark" type="button" id="nitroCopyGenerated">Copiar</button><button class="btn primary" type="button" id="nitroOpenGenerated">Abrir</button></div></div>
         </div>
       </div>
@@ -876,6 +876,6 @@ function abrirAbaFaturas(){if(location.hash==='#faturas')document.querySelector(
 window.addEventListener('hashchange',abrirAbaFaturas);abrirAbaFaturas();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.94.1/dist/umd/supabase.min.js"></script>
-<script src="bussi-nitro.js?v=20261123-acompanhar-whatsapp"></script>
+<script src="bussi-nitro.js?v=20261123-campanha-fatura"></script>
 </body>
 </html>
