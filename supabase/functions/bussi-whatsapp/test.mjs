@@ -8,7 +8,7 @@ const env = {
   META_WHATSAPP_TOKEN: "meta", META_APP_SECRET: "app", META_WEBHOOK_VERIFY_TOKEN: "verify",
 };
 globalThis.Deno = {env: {get: (name) => env[name]}};
-const row = {telefone: "5511999990000", nome: "Cliente de teste", original: 10000, desconto: 5000};
+const row = {telefone: "5511999990000", nome: "Cliente de teste", original: 10000, desconto: 5000, contrato: "A123", email: "cliente@example.com", documento: "12345678909"};
 let delivery;
 let admin = false;
 const sent = [];
@@ -16,9 +16,12 @@ globalThis.fetch = async (url, options) => {
   const endpoint = new URL(url);
   const body = options.body ? JSON.parse(options.body) : undefined;
   if (endpoint.pathname.endsWith("/bussi_operador_ativo")) return Response.json(admin);
+  if (endpoint.pathname.endsWith("/bussi_whatsapp_abrir_fatura")) return Response.json(body.p_hash === delivery.fatura_acesso_hash ? {numero: 42, token: "a".repeat(64)} : null);
   if (endpoint.pathname.endsWith("/message_templates")) {
     return Response.json({data: [{status: "APPROVED", language: "pt_BR", components: [
-      {type: "BUTTONS", buttons: [{type: "QUICK_REPLY", text: "EU QUERO"}]},
+      {type: "BUTTONS", buttons: endpoint.searchParams.get("name") === "fatura_bussi"
+        ? [{type: "URL", url: "https://consigbeneficios.github.io/bussi/fatura-whatsapp.html#{{1}}"}]
+        : [{type: "QUICK_REPLY", text: "EU QUERO"}]},
     ]}]});
   }
   if (endpoint.hostname === "graph.facebook.com") {
@@ -74,7 +77,17 @@ assert.equal((await handle(message(row.telefone, "app"))).status, 200);
 assert.equal((await handle(message(row.telefone, "app"))).status, 200);
 assert.equal(sent.length, 2);
 assert.equal(sent[1].to, row.telefone);
-assert.equal(sent[1].template.name, "fatura");
+assert.equal(sent[1].template.name, "fatura_bussi");
 assert.deepEqual(sent[1].template.components[0].parameters.map(({parameter_name, text}) =>
   [parameter_name, text]), [["customer_name", row.nome], ["tel", row.telefone], ["valor", "100,00"], ["desconto", "50,00"]]);
 console.log("Autorização, consentimento, duplicidade, assinatura e dados da fatura verificados.");
+const grant = sent[1].template.components[1].parameters[0].text;
+assert.match(grant, /^[a-f0-9]{64}$/);
+assert.notEqual(grant, delivery.fatura_acesso_hash);
+assert.equal((await handle(request({action:"abrir_fatura", token:"b".repeat(64)}))).status, 404);
+for (let attempt=0; attempt<2; attempt++) {
+  const result=await handle(request({action:"abrir_fatura", token:grant}));
+  assert.equal(result.status, 200);
+  assert.deepEqual(await result.json(), {numero:42, token:"a".repeat(64)});
+}
+console.log("Botão de URL, token protegido e abertura da mesma fatura verificados.");
