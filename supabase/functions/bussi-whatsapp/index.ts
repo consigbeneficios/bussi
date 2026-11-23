@@ -4,6 +4,8 @@ const campaign = "blackfriday-2026";
 const table = "/rest/v1/bussi_whatsapp_entregas";
 const campaignReply = "BUSSI_BLACKFRIDAY_EU_QUERO";
 const language = {code: "pt_BR"};
+const invoiceTemplate = "fatura_bussi";
+const invoiceButtonUrl = origin + "/bussi/fatura-whatsapp.html#{{1}}";
 
 function api(path: string, token: string, method = "GET", body?: unknown, prefer?: string) {
   const headers = new Headers({
@@ -54,7 +56,7 @@ function money(value: number) {
 }
 
 async function approvedTemplates() {
-  const result = await Promise.all(["blackfriday", "fatura"].map(async (name) => {
+  const result = await Promise.all(["blackfriday", invoiceTemplate].map(async (name) => {
     const query = new URLSearchParams({name, fields: "name,status,language,components"});
     const response = await graph(env("META_WABA_ID") + "/message_templates?" + query);
     if (!response.ok) throw new Error("Não foi possível consultar os modelos na Meta.");
@@ -62,10 +64,15 @@ async function approvedTemplates() {
     return data.data?.find((item: {language: string; status: string}) =>
       item.language === language.code && item.status === "APPROVED");
   }));
-  if (!result[0] || !result[1]) throw new Error("Os modelos blackfriday e fatura precisam estar aprovados em português do Brasil.");
-  return result[0].components?.find((component: {type: string}) => component.type === "BUTTONS")
+  if (!result[0] || !result[1]) throw new Error("Os modelos blackfriday e fatura_bussi precisam estar aprovados em português do Brasil.");
+  const invoiceButton = result[1].components?.find((component: {type: string}) => component.type === "BUTTONS")
+    ?.buttons?.findIndex((button: {type: string; url: string}) =>
+      button.type === "URL" && button.url === invoiceButtonUrl) ?? -1;
+  if (invoiceButton < 0) throw new Error("O modelo fatura_bussi precisa do botão de URL do BUSSI.");
+  const offerButton = result[0].components?.find((component: {type: string}) => component.type === "BUTTONS")
     ?.buttons?.findIndex((button: {type: string; text: string}) =>
       button.type === "QUICK_REPLY" && button.text.trim().toUpperCase() === "EU QUERO") ?? -1;
+  return {offerButton, invoiceButton};
 }
 
 async function handleReply(message: Record<string, any>) {
@@ -85,20 +92,40 @@ async function handleReply(message: Record<string, any>) {
     query.set("mensagem", "eq." + message.context.id);
   }
   const [row] = await db("?" + query);
-  if (!row || row.resposta_id) return;
+  if (!row || row.resposta_id || !row.pagador) return;
+  const {invoiceButton} = await approvedTemplates();
+  const token = crypto.randomUUID().replaceAll("-", "") + crypto.randomUUID().replaceAll("-", "");
   query.set("resposta_id", "is.null");
-  const [claimed] = await db("?" + query, "PATCH",
-    {resposta_id: message.id, fatura_status: "reservado"}, "return=representation");
+  const [claimed] = await db("?" + query, "PATCH", {
+    resposta_id: message.id, fatura_status: "reservado", fatura_acesso_hash: await hashToken(token),
+    fatura_expira_em: new Date(Date.now() + 24 * 3600000).toISOString(),
+  }, "return=representation");
   if (!claimed) return;
 
   const fields = {
     customer_name: row.nome, tel: row.telefone, valor: money(row.original), desconto: money(row.desconto),
   };
-  const result = await send(row.telefone, "fatura", [{
+  const result = await send(row.telefone, invoiceTemplate, [{
     type: "body", parameters: Object.entries(fields).map(([parameter_name, text]) => ({type: "text", parameter_name, text})),
+  }, {
+    type: "button", sub_type: "url", index: String(invoiceButton), parameters: [{type: "text", text: token}],
   }]);
   query.set("resposta_id", "eq." + message.id);
   await db("?" + query, "PATCH", {fatura_status: result.state});
+}
+
+async function hashToken(token: string) {
+  const data = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+  return Array.from(new Uint8Array(data), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function payerFor(body: Record<string, unknown>, nome: string, telefone: string) {
+  const contract = typeof body.contrato === "string" ? body.contrato.trim() : "";
+  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+  const document = typeof body.documento === "string" ? body.documento.replace(/\D/g, "") : "";
+  if (contract.length < 3 || contract.length > 80 || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+      !/^(\d{11}|\d{14})$/.test(document) || nome.length < 5 || !nome.includes(" ")) return null;
+  return {name: nome, contract, email, document, phone: telefone.slice(2)};
 }
 
 async function validSignature(raw: ArrayBuffer, signature: string | null) {
@@ -142,11 +169,19 @@ export async function handle(request: Request) {
     }
 
     if (request.headers.get("Origin") !== origin) return json(403, {});
+    const body = JSON.parse(new TextDecoder().decode(raw));
+    if (body.action === "abrir_fatura") {
+      if (typeof body.token !== "string" || !/^[a-f0-9]{64}$/.test(body.token)) return json(404, {});
+      const response = await api("/rest/v1/rpc/bussi_whatsapp_abrir_fatura", env("SUPABASE_SERVICE_ROLE_KEY"),
+        "POST", {p_hash: await hashToken(body.token)});
+      if (!response.ok) return json(503, {erro: "Fatura indisponível."});
+      const invoice = await response.json();
+      return invoice ? json(200, invoice) : json(404, {});
+    }
     const token = request.headers.get("Authorization")?.match(/^Bearer (\S+)$/i)?.[1];
     if (!token) return json(401, {});
     const access = await api("/rest/v1/rpc/bussi_operador_ativo", token, "POST", {});
     if (!access.ok || await access.json() !== true) return json(403, {erro: "Entre com a sessão administrativa do BUSSI."});
-    const body = JSON.parse(new TextDecoder().decode(raw));
     if (!["META_GRAPH_VERSION", "META_WABA_ID", "META_PHONE_NUMBER_ID", "META_WHATSAPP_TOKEN", "META_APP_SECRET",
       "META_WEBHOOK_VERIFY_TOKEN"].every((key) => env(key))) return json(503, {erro: "Conexão do WhatsApp ainda não configurada no servidor."});
 
@@ -158,11 +193,13 @@ export async function handle(request: Request) {
     const {telefone, nome, original, desconto} = body;
     if (typeof telefone !== "string" || !/^55\d{10,11}$/.test(telefone) ||
         typeof nome !== "string" || !/^[^\r\n\t]{2,120}$/.test(nome) ||
-        !Number.isInteger(original) || original <= 0 || original > 999999999 ||
+        !Number.isInteger(original) || original < 200 || original > 999999999 ||
         !Number.isInteger(desconto) || desconto <= 0 || desconto !== Math.ceil(original / 2)) return json(422, {erro: "Cadastro ou valores inválidos."});
-    const button = await approvedTemplates();
+    const pagador = payerFor(body, nome, telefone);
+    if (!pagador) return json(422, {erro: "Complemente o cadastro do pagador no CRM."});
+    const {offerButton: button} = await approvedTemplates();
     const [reserved] = await db("?on_conflict=campanha,telefone", "POST",
-      {campanha: campaign, telefone, nome, original, desconto}, "resolution=ignore-duplicates,return=representation");
+      {campanha: campaign, telefone, nome, original, desconto, pagador}, "resolution=ignore-duplicates,return=representation");
     if (!reserved) return json(200, {status: "ja_registrado"});
 
     const components: unknown[] = [{type: "body", parameters: [nome, money(original), money(desconto)]
