@@ -311,3 +311,29 @@ body { background: var(--bg); color: var(--ink); }
   #bussiDeskWindow { max-width: 105px; text-align: end; }
   .content .sectionhead { flex-wrap: wrap; }
 }
+
+/* Atendimento ocupa o espaço disponível sem rolar a navegação nem o compositor. */
+.bussi-desk-toolbar { align-items: center; }
+.bussi-desk-shortcuts { flex-wrap: wrap; gap: 7px; }
+.bussi-desk-list-heading { margin: 0 3px 16px; font-size: 19px; }
+.bussi-desk-empty-wrap:has(#bussiDeskEmpty[hidden]) { display: none; }
+.bussi-desk-empty-wrap { min-height: 190px; height: 100%; display: grid; place-items: center; }
+.bussi-desk-empty-wrap:has(+ #bussiDeskMessages:not(:empty)) { height: auto; }
+.bussi-desk { height: min(850px, calc(100dvh - 160px)); min-height: 420px; }
+.bussi-desk-contact { min-height: 69px; }
+.bussi-desk-list { padding: 15px 14px 10px; }
+.bussi-desk-threads { flex: 0 1 auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.bussi-desk-history { overscroll-behavior: contain; scrollbar-gutter: stable; }
+.bussi-desk-composer { padding: 12px 15px max(12px,env(safe-area-inset-bottom)); }
+#bussiDeskWindow:not(:empty) { border: 1px solid #624653; background: #382633; border-radius: 20px; padding: 5px 9px; }
+#bussiDeskWindow.is-open { border-color: #416453; background: #253c32; color: #caeada; }
+@media (max-width:950px) {
+  .bussi-desk { height: min(740px,calc(100dvh - 230px)); min-height: 430px; }
+}
+@media (max-width:650px) {
+  .content .bussi-desk-section { padding: 12px; }
+  .bussi-desk-toolbar h2 { font-size: 18px; }
+  .bussi-desk-toolbar .btn { padding: 6px 9px; }
+  .bussi-desk { height: min(720px,calc(100dvh - 225px)); min-height: 415px; }
+  .bussi-desk-composer button { padding-inline: 10px; }
+}
