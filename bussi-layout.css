@@ -77,3 +77,98 @@ body { background: #f3f5f8; }
   .bussi-campaign-layout { grid-template-columns: minmax(0, 1fr); }
   .bussi-preview-chat { min-height: 280px; }
 }
+
+/* Superfícies do painel e da caixa de conversas */
+:root {
+  color-scheme: dark;
+  --bg: #0e0d10;
+  --panel: #18171b;
+  --ink: #f6f3f4;
+  --muted: #b9b2ba;
+  --line: #393139;
+  --green: #b8243b;
+  --green2: #97192f;
+  --soft: #291820;
+  --bussi-ink: #f6f3f4;
+  --bussi-muted: #c0b8c0;
+  --bussi-line: #3b323b;
+  --bussi-red: #bc2137;
+  --bussi-accent: #ff8794;
+}
+body { background: var(--bg); color: var(--ink); }
+.side { background: #121115; border-right: 1px solid var(--line); }
+.side .brand { border-color: var(--line); }
+.side .nav button { color: #cfc8cf; }
+.side .nav button:hover, .side .nav button.active { background: #301921; color: #fff; }
+.side .nav button.active { box-shadow: inset 3px 0 #ee4860; }
+.top, .content .section, .authcard, .dialog { background: var(--panel); color: var(--ink); border-color: var(--line); }
+.top { background: #151419; }
+.content .sectionhead h2, .content .sectionhead h3 { color: var(--ink); }
+.content .sectionhead p, .dashboard-title p { color: var(--muted); }
+.content .metric, .content .event-metric, .content .finance-card, .content .notice,
+.content .tablewrap, .content .card, .content .empty { background: #201e24; color: var(--ink); border-color: var(--line); }
+.content .metric span, .content .event-metric span, .content .finance-card p,
+.content .table .empty { color: var(--muted); }
+.content .sectionhead, .content .dashboard-title { gap: 16px; }
+.content .field :is(input,select,textarea), .bussi-manual textarea, .authcard :is(input,select),
+#bussiChatSearch { background: #121116; color: var(--ink); border: 1px solid #504550; }
+.content .field label, .bussi-manual label { color: var(--bussi-muted); }
+.content .table th, #campaigns .table th { background: #211b22; color: #e1d9e1; }
+.content .table td { color: var(--ink); border-color: var(--line); }
+.content .btn.ghost { background: #28222a; color: var(--ink); border-color: #4b3c48; }
+.content .btn.ghost:hover { background: #382a34; }
+.content .btn.primary, .authcard .btn.primary { background: var(--bussi-red); color: #fff; border-color: #df4b61; }
+.content .btn.primary:hover, .authcard .btn.primary:hover { background: #9e182e; }
+:is(button, a, input, select, textarea, summary):focus-visible { outline: 2px solid var(--bussi-accent); outline-offset: 3px; }
+
+.bussi-campaign-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; margin: 20px 0 28px; }
+.bussi-campaign-send { background: #211b22; border-color: var(--line); padding: 20px; }
+.bussi-campaign-send .field { max-width: 460px; }
+.bussi-campaign-send .toolbar { gap: 10px; }
+.bussi-consent input { accent-color: #e04358; }
+.bussi-inbox { display: grid; grid-template-columns: minmax(205px, 295px) minmax(0, 1fr); min-height: 460px;
+  border: 1px solid var(--line); border-radius: 18px; background: #151318; overflow: hidden; }
+.bussi-inbox-list { min-width: 0; padding: 16px 13px; border-right: 1px solid var(--line); }
+.bussi-inbox-list h3 { margin: 2px 4px 13px; font-size: 17px; }
+.bussi-inbox-list > label { display: block; margin: 0 4px 5px; color: var(--muted); font-size: 12px; }
+#bussiChatSearch { width: 100%; min-height: 38px; padding: 7px 10px; border-radius: 8px; }
+.bussi-inbox-filters { display: flex; gap: 6px; margin: 10px 0 12px; flex-wrap: wrap; }
+.bussi-inbox-filters button { border: 1px solid #51424d; background: #252028; border-radius: 999px; padding: 5px 10px; color: var(--ink); font-size: 12px; }
+.bussi-inbox-filters button[aria-pressed="true"] { border-color: #e45c72; background: #44202b; color: #ffd7de; }
+#bussiChatList { max-height: 272px; overflow: auto; }
+.bussi-thread { display: flex; width: 100%; align-items: center; gap: 10px; min-height: 60px; padding: 8px 9px; margin-bottom: 4px;
+  border: 1px solid transparent; border-radius: 9px; background: transparent; text-align: left; color: var(--ink); }
+.bussi-thread:hover { background: #242027; }
+.bussi-thread[aria-pressed="true"] { background: #311b25; border-color: #793247; }
+.bussi-thread > span:last-child { min-width: 0; }
+.bussi-thread strong, .bussi-thread small { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.bussi-thread small, #bussiChatEmpty { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+#bussiChatEmpty { padding: 9px 5px; }
+.bussi-thread-avatar { display: grid; place-items: center; flex: 0 0 36px; height: 36px; border-radius: 10px;
+  background: #522231; color: #ffd7df; font-weight: 800; font-size: 12px; }
+.bussi-inbox .bussi-preview { display: grid; grid-template-rows: auto minmax(310px, 1fr) auto; min-width: 0;
+  border: 0; border-radius: 0; background: #19151b; box-shadow: none; }
+.bussi-preview-header { background: #241820; border-color: #4c303d; padding: 12px 18px; }
+.bussi-preview-header span { color: #e1c9d2; }
+.bussi-preview-header button { border-color: #986174; }
+.bussi-preview-chat { min-height: 310px; max-height: 475px; padding: 20px clamp(12px, 3vw, 30px);
+  background-color: #19151b; background-image: radial-gradient(circle, #88425346 1px, transparent 1px);
+  background-size: 19px 19px; }
+.bussi-preview-bubble { background: #28232b; border-color: #4d414d; color: var(--ink); }
+.bussi-preview-bubble.customer { background: #4a222e; border-color: #754254; }
+.bussi-preview-time { color: #d0bfc9; }
+.bussi-preview-actions, .bussi-preview-actions button + button { border-color: #584653; }
+.bussi-preview-actions button { color: #ff9dad; }
+.bussi-preview-actions button:hover:not(:disabled) { background: #44202c; }
+.bussi-preview-actions button:disabled { color: #bab0b8; }
+.bussi-preview-footer { background: #221b23; border-color: #4c303d; color: #dfcbd5; }
+#campaigns .tablewrap { border-color: var(--line); }
+@media (max-width: 725px) {
+  .bussi-inbox { grid-template-columns: minmax(0, 1fr); }
+  .bussi-inbox-list { border-right: 0; border-bottom: 1px solid var(--line); }
+  #bussiChatList { max-height: 174px; }
+  .bussi-campaign-layout { gap: 14px; }
+  .bussi-campaign-send { padding: 16px; }
+}
+
+.bussi-example-heading { margin: 12px 4px 5px; color: var(--muted); font-size: 12px; }
