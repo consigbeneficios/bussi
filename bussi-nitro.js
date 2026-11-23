@@ -311,18 +311,34 @@
       if(Number($("chargeDiscount").value)!==50)throw Error("Esta emissão usa desconto fixo de 50%.");
       const expected=Math.ceil(amount/2),given=cents($("chargeFinal").value);
       if(given!==expected)throw Error("Valor de desconto inconsistente; confira o valor original.");
+      // Abra a aba no clique para preservar a permissão do navegador durante a emissão.
+      const invoiceTab=window.open("about:blank","_blank");
+      if(invoiceTab)invoiceTab.opener=null;
       const oldDisabled=$("generateCharge").disabled;
       $("generateCharge").disabled=true;
+      let opened=false;
       try{
-        requestId??=crypto.randomUUID();
-        const row=await api("/rest/v1/rpc/bussi_emitir_link_cliente",{p_descricao:desc,p_original:amount,p_pedido:requestId,p_pagador:payer,p_contrato:payer.contract});
+        const emissionId=requestId??=crypto.randomUUID();
+        const row=await api("/rest/v1/rpc/bussi_emitir_link_cliente",{p_descricao:desc,p_original:amount,p_pedido:emissionId,p_pagador:payer,p_contrato:payer.contract});
         lastLink=linkFor(row);
         $("nitroGenerated").hidden=false;$("nitroGeneratedLink").value=lastLink;
         $("nitroGeneratedNumber").textContent="fatura"+String(row.numero).padStart(4,"0");
         $("printInvoice").disabled=false;
-        status("Fatura emitida pelo BUSSI. Nenhuma cobrança foi enviada à Nitro; o Pix será solicitado apenas quando o cliente optar por pagar.");
-        requestId=null;await history();await summary();
-      }finally{$("generateCharge").disabled=oldDisabled;}
+        if(requestId===emissionId)requestId=null;
+        if(invoiceTab&&!invoiceTab.closed){
+          try{
+            invoiceTab.location.replace(lastLink);
+            opened=true;
+          }catch{/* O link continua disponível no painel. */}
+        }
+        status(opened
+          ?"Fatura emitida e aberta em outra aba. Continue a finalização na página da fatura."
+          :"Fatura emitida. Clique em Abrir para continuar a finalização.");
+        await history();await summary();
+      }finally{
+        if(invoiceTab&&!invoiceTab.closed&&!opened)invoiceTab.close();
+        $("generateCharge").disabled=oldDisabled;
+      }
     });
   });
   for(const id of ["chargeClient","chargeOriginal","chargeDiscount","chargeDesc"]){
