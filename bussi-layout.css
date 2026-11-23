@@ -227,3 +227,87 @@ body { background: var(--bg); color: var(--ink); }
 #bussiTestStatus { color: var(--muted); }
 @media (max-width: 850px) { .bussi-crm-testform { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (max-width: 440px) { .bussi-crm-testform { grid-template-columns: minmax(0,1fr); } }
+
+/* Layout do painel */
+.app { grid-template-columns: 236px minmax(0,1fr); }
+.side { padding: 24px 16px; gap: 22px; background: #121115; }
+.side .brand { padding-inline: 7px; }
+.side .nav button { min-height: 44px; border: 1px solid transparent; }
+.side .nav button.active { border-color: #713144; background: #321a24; }
+.side .nav button[data-view="inbox"] { color: #ffb6c4; }
+.top { height: 66px; padding: 0 clamp(16px,3vw,40px); gap: 12px; }
+.content { width: 100%; max-width: 1650px; margin-inline: auto; padding: 0 clamp(16px,3vw,40px) 40px; }
+.content .section { padding: clamp(16px,2vw,26px); border-radius: 15px; margin-top: 20px; }
+.content .sectionhead { margin-bottom: 18px; }
+.content .sectionhead :is(h2,h3) { margin-bottom: 0; }
+.content .tablewrap { background: #19171c; border: 1px solid var(--bussi-line); border-radius: 12px; }
+.content .table td { padding-block: 12px; }
+.content .table tbody tr:hover td { background: #241d25; }
+.content .table th { padding-block: 11px; letter-spacing: .015em; }
+.content .field :is(input,select,textarea) { min-height: 40px; border-radius: 9px; }
+.content .cards { gap: 12px; }
+.content .hero { border: 1px solid #653244; background: linear-gradient(115deg,#452130,#1c1720 75%); color: #fff; }
+.content .hero p { color: #f0d7e0; }
+#dashboard .dashboard-title { margin-top: 24px; }
+#dashboard :is(.event-metric,.finance-card) { border-radius: 12px; box-shadow: none; }
+.bussi-desk-section > .sectionhead { align-items: center; }
+.bussi-desk { display: grid; grid-template-columns: minmax(245px,320px) minmax(0,1fr); height: clamp(530px,72vh,860px);
+  min-height: 0; overflow: hidden; border: 1px solid #59404d; border-radius: 15px; background: #19151b; }
+.bussi-desk-list { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: 15px 12px;
+  background: #1b171d; border-inline-end: 1px solid #4c3b47; }
+.bussi-desk-list label { margin: 0 3px 6px; color: var(--muted); font-size: 12px; }
+#bussiDeskSearch { min-height: 40px; width: 100%; padding: 9px 11px; border-radius: 9px; border: 1px solid #564653;
+  background: #131216; color: var(--ink); }
+.bussi-desk-threads { overflow: auto; min-height: 0; margin: 12px -3px 0; }
+.bussi-desk-thread { width: 100%; display: grid; grid-template-columns: 38px minmax(0,1fr) auto; align-items: center; gap: 9px;
+  min-height: 63px; padding: 9px; border: 1px solid transparent; border-radius: 9px; text-align: left; background: transparent; color: var(--ink); }
+.bussi-desk-thread + .bussi-desk-thread { margin-top: 2px; }
+.bussi-desk-thread:hover { background: #282129; }
+.bussi-desk-thread[aria-pressed="true"] { background: #3c202c; border-color: #8a4658; }
+.bussi-desk-avatar { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: #663246; color: #ffe2eb; font-size: 12px; font-weight: 800; }
+.bussi-desk-thread :is(strong,small) { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.bussi-desk-thread small { color: #c3b3c0; font-size: 12px; margin-top: 4px; }
+.bussi-desk-thread time { align-self: start; color: #c6abba; font-size: 10px; }
+#bussiDeskListStatus { color: var(--muted); font-size: 13px; padding: 0 4px; }
+#bussiDeskListStatus:empty { display: none; }
+.bussi-desk-conversation { display: grid; grid-template-rows: auto minmax(0,1fr) auto; min-width: 0; min-height: 0; }
+.bussi-desk-contact { display: flex; align-items: center; gap: 10px; min-height: 63px; padding: 10px 15px;
+  border-bottom: 1px solid #4e3b48; background: #261e26; min-width: 0; }
+.bussi-desk-contact > div { min-width: 0; }
+.bussi-desk-contact img { border-radius: 50%; object-fit: contain; background: #fff; }
+.bussi-desk-contact h3 { margin: 0; font-size: 15px; overflow-wrap: anywhere; }
+.bussi-desk-contact p { margin: 3px 0 0; color: #c9bac3; font-size: 12px; }
+#bussiDeskWindow { margin-left: auto; flex: 0 0 auto; color: #ffb8c8; font-size: 11px; }
+#bussiDeskBack { display: none; }
+.bussi-desk-history { overflow: auto; min-height: 0; padding: 15px clamp(12px,3vw,37px); background-color: #141217;
+  background-image: radial-gradient(circle at 1px 1px,#5d384a55 1px,transparent 1px); background-size: 21px 21px; }
+#bussiDeskEmpty { margin: 24px auto; max-width: 370px; padding: 13px 16px; background: #231d25; color: #d5c9d3; border-radius: 9px; text-align: center; }
+#bussiDeskMessages { display: flex; flex-direction: column; gap: 8px; }
+.bussi-desk-date { align-self: center; margin: 10px 0 1px; padding: 4px 9px; border-radius: 8px; background: #302732; color: #e3d1de; font-size: 11px; }
+.bussi-desk-bubble { align-self: start; max-width: min(86%,560px); padding: 9px 12px; border: 1px solid #4d414d; border-radius: 4px 13px 13px;
+  background: #29242c; color: #fbf5f9; box-shadow: 0 3px 8px #0004; }
+.bussi-desk-bubble.outbound { align-self: end; background: #4b2939; border-color: #774759; border-radius: 13px 4px 13px 13px; }
+.bussi-desk-bubble p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.4; }
+.bussi-desk-bubble small { display: block; margin-top: 4px; text-align: end; color: #d8c8d4; font-size: 10px; }
+.bussi-desk-composer { padding: 11px 15px; border-top: 1px solid #493844; background: #241c24; }
+.bussi-desk-composer label { display: block; margin-bottom: 5px; color: var(--muted); font-size: 12px; }
+.bussi-desk-compose-row { display: flex; align-items: flex-end; gap: 8px; }
+.bussi-desk-compose-row textarea { width: 100%; min-width: 0; resize: vertical; max-height: 120px; padding: 8px 10px;
+  border: 1px solid #614958; border-radius: 10px; background: #161318; color: var(--ink); font: inherit; }
+#bussiDeskStatus { margin: 6px 0 0; color: #ddcbd6; font-size: 12px; }
+#bussiDeskStatus:empty { display: none; }
+@media (max-width:950px) {
+  .app { grid-template-columns: minmax(0,1fr); }
+  .side { padding: 14px; gap: 12px; border-inline-end: 0; border-bottom: 1px solid var(--line); }
+  .content { padding-inline: 14px; }
+  .top { height: 60px; }
+}
+@media (max-width:650px) {
+  .bussi-desk { grid-template-columns: minmax(0,1fr); height: min(710px,75dvh); min-height: 420px; }
+  .bussi-desk-list { border-inline-end: 0; }
+  .bussi-desk:not(.has-thread) .bussi-desk-conversation,
+  .bussi-desk.has-thread .bussi-desk-list { display: none; }
+  #bussiDeskBack { display: inline-block; padding: 3px 9px; font-size: 19px; }
+  #bussiDeskWindow { max-width: 105px; text-align: end; }
+  .content .sectionhead { flex-wrap: wrap; }
+}

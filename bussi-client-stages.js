@@ -45,6 +45,10 @@
   }
 
   function openCampaign(record, test = false) {
+    if (!test && window.BussiDesk) {
+      window.BussiDesk.open(record);
+      return;
+    }
     document.querySelector('button[data-view="campaigns"]')?.click();
     document.dispatchEvent(new CustomEvent(test ? "bussi:open-test-client" : "bussi:open-real-client", {detail:record}));
     document.querySelector(".bussi-inbox")?.scrollIntoView({block:"start"});

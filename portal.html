@@ -171,7 +171,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 #dashboardEventRows td:first-child{white-space:nowrap;font-variant-numeric:tabular-nums}
 
 </style>
-<link rel="stylesheet" href="bussi-layout.css?v=20261123-etapas">
+<link rel="stylesheet" href="bussi-layout.css?v=20261123-atendimento">
 </head>
 <body>
 <div class="authgate" id="authGate"><div class="authcard"><div class="authbrand"><b>CONSIG BENEFÍCIOS</b></div><h2>Acesso seguro</h2><p>Autenticando administrador...</p></div></div>
@@ -181,6 +181,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
   <nav class="nav">
     <button class="active" data-view="dashboard">Visão geral</button>
     <button data-view="crm">CRM / Clientes</button>
+    <button data-view="inbox">Atendimento</button>
     <button data-view="campaigns">Campanhas</button>
     <button data-view="charges">Faturas e Pix</button>
     <button data-view="integrations">Integrações</button>
@@ -267,6 +268,42 @@ button:disabled{opacity:.5;cursor:not-allowed}
             <button type="button" class="btn ghost" id="bussiCrmRefresh">Atualizar etapas</button>
           </div>
           <div class="tablewrap"><table class="table"><thead><tr><th>Cliente</th><th>Telefone</th><th>Etapa</th><th>Última atualização</th><th>Ações</th></tr></thead><tbody id="bussiCrmStageRows"></tbody></table></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="inbox">
+      <div class="section bussi-desk-section">
+        <div class="sectionhead"><div><h2>Atendimento WhatsApp</h2><p>Conversas recebidas pelo número conectado.</p></div><button class="btn ghost" type="button" id="bussiDeskRefresh">Atualizar</button></div>
+        <div class="bussi-desk">
+          <aside class="bussi-desk-list">
+            <label for="bussiDeskSearch">Buscar conversa</label>
+            <input id="bussiDeskSearch" type="search" placeholder="Nome ou telefone">
+            <div id="bussiDeskThreads" class="bussi-desk-threads" aria-label="Conversas"></div>
+            <p id="bussiDeskListStatus" role="status"></p>
+            <button class="btn ghost" type="button" id="bussiDeskMore" hidden>Mais conversas</button>
+          </aside>
+          <section class="bussi-desk-conversation" aria-labelledby="bussiDeskContact">
+            <div class="bussi-desk-contact">
+              <button class="btn ghost" type="button" id="bussiDeskBack" aria-label="Voltar às conversas">‹</button>
+              <img src="logo-bussi.svg" width="36" height="36" alt="">
+              <div><h3 id="bussiDeskContact">Selecione uma conversa</h3><p id="bussiDeskPhone"></p></div>
+              <span id="bussiDeskWindow"></span>
+            </div>
+            <div class="bussi-desk-history">
+              <button class="btn ghost" type="button" id="bussiDeskOlder" hidden>Mensagens anteriores</button>
+              <p id="bussiDeskEmpty">Escolha um contato na lista para ler e responder.</p>
+              <div id="bussiDeskMessages" role="log" aria-label="Mensagens da conversa" aria-live="polite"></div>
+            </div>
+            <form id="bussiDeskComposer" class="bussi-desk-composer">
+              <label for="bussiDeskText">Mensagem</label>
+              <div class="bussi-desk-compose-row">
+                <textarea id="bussiDeskText" rows="2" maxlength="4096" placeholder="Escreva uma resposta" disabled></textarea>
+                <button class="btn primary" type="submit" id="bussiDeskSend" disabled>Enviar</button>
+              </div>
+              <p id="bussiDeskStatus" role="status"></p>
+            </form>
+          </section>
         </div>
       </div>
     </section>
@@ -964,8 +1001,9 @@ function abrirAbaFaturas(){if(location.hash==='#faturas')document.querySelector(
 window.addEventListener('hashchange',abrirAbaFaturas);abrirAbaFaturas();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.94.1/dist/umd/supabase.min.js"></script>
-<script src="bussi-client-stages.js?v=20261123-etapas"></script>
-<script src="bussi-nitro.js?v=20261123-etapas"></script>
-<script src="bussi-preview.js?v=20261123-etapas" defer></script>
+<script src="bussi-client-stages.js?v=20261123-atendimento"></script>
+<script src="bussi-desk.js?v=20261123-atendimento"></script>
+<script src="bussi-nitro.js?v=20261123-atendimento"></script>
+<script src="bussi-preview.js?v=20261123-atendimento" defer></script>
 </body>
 </html>
