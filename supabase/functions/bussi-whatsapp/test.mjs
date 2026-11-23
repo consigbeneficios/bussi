@@ -4,7 +4,7 @@ import {handle} from "./index.ts";
 
 const env = {
   SUPABASE_URL: "https://db.example", SUPABASE_SERVICE_ROLE_KEY: "service", SUPABASE_ANON_KEY: "public",
-  META_GRAPH_VERSION: "v27.0", META_WABA_ID: "123", META_PHONE_NUMBER_ID: "456",
+  BUSSI_BLACKFRIDAY_SENDING_ENABLED: "true", META_GRAPH_VERSION: "v27.0", META_WABA_ID: "123", META_PHONE_NUMBER_ID: "456",
   META_WHATSAPP_TOKEN: "meta", META_APP_SECRET: "app", META_WEBHOOK_VERIFY_TOKEN: "verify",
 };
 globalThis.Deno = {env: {get: (name) => env[name]}};
@@ -65,6 +65,10 @@ const request = (body) => new Request(endpoint, {
 const launch = {action: "enviar", consentimento: true, ...row};
 assert.equal((await handle(request(launch))).status, 403);
 admin = true;
+env.BUSSI_BLACKFRIDAY_SENDING_ENABLED = "";
+assert.equal((await handle(request(launch))).status, 409);
+assert.equal(sent.length, 0);
+env.BUSSI_BLACKFRIDAY_SENDING_ENABLED = "true";
 assert.equal((await handle(request({...launch, consentimento: false}))).status, 400);
 assert.equal((await handle(request({...launch, desconto: 4999}))).status, 422);
 assert.equal((await (await handle(request(launch))).json()).status, "aceito");
