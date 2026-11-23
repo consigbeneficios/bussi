@@ -2,6 +2,7 @@
 (() => {
   const chat = document.getElementById("bussiPreviewChat");
   if (!chat) return;
+  const card = chat.closest(".bussi-preview");
   const inbox = document.getElementById("bussiChatList");
   const demo = document.getElementById("bussiChatDemo");
   const examples = document.getElementById("bussiExampleList");
@@ -74,6 +75,7 @@
   }
 
   function start() {
+    card.dataset.mode = "preview";
     active = "";
     chat.replaceChildren();
     const person = example || client || sample;
@@ -116,6 +118,7 @@
   }
 
   function openTimeline(row) {
+    card.dataset.mode = "history";
     if (selection.value !== row.telefone && selection.querySelector('option[value="' + row.telefone + '"]')) {
       selection.value = row.telefone;
       selection.dispatchEvent(new Event("change"));
@@ -243,6 +246,7 @@
     const match = deliveries.find(item => item.telefone === detail.telefone);
     if (match) openTimeline(match);
     else {
+      card.dataset.mode = "history";
       active = detail.telefone;
       example = null;
       title.textContent = detail.nome;
