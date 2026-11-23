@@ -49,3 +49,31 @@ body { background: #f3f5f8; }
   .bussi-flow-head { align-items: flex-start; flex-wrap: wrap; }
   .bussi-preview-chat { min-height: 230px; }
 }
+
+.bussi-campaign-layout { grid-template-columns: minmax(250px, .86fr) minmax(300px, 1.14fr); }
+.bussi-preview { box-shadow: 0 12px 32px #17392b13; }
+.bussi-preview-header { padding-inline: 18px; border-bottom: 1px solid #31594b; }
+.bussi-preview-chat {
+  min-height: 410px;
+  max-height: 500px;
+  padding: 18px;
+  background-image: radial-gradient(circle, #3f77651f 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+.bussi-preview-bubble { max-width: min(92%, 405px); padding: 13px 15px; }
+.bussi-preview-bubble p { margin: 0; }
+.bussi-preview-bubble strong { font-weight: 750; }
+.bussi-preview-time { display: block; margin-top: 6px; color: #56685f; font-size: 11px; text-align: right; }
+.bussi-preview-actions { margin: 9px -8px -6px; gap: 0; }
+.bussi-preview-actions button { min-height: 38px; }
+.bussi-preview-actions button + button { border-top: 1px solid #d4e1d8; }
+.bussi-manual { margin-top: 20px; border-top: 1px solid var(--bussi-line); padding-top: 15px; }
+.bussi-manual summary { color: var(--bussi-ink); font-weight: 700; cursor: pointer; }
+.bussi-manual label { display: block; margin: 12px 0 5px; color: var(--bussi-muted); font-size: 13px; }
+.bussi-manual textarea { display: block; width: 100%; padding: 9px; border: 1px solid var(--bussi-line); border-radius: 8px; resize: vertical; }
+.bussi-manual button { margin-top: 10px; }
+.bussi-manual p:not(:empty) { color: var(--bussi-muted); font-size: 13px; }
+@media (max-width: 725px) {
+  .bussi-campaign-layout { grid-template-columns: minmax(0, 1fr); }
+  .bussi-preview-chat { min-height: 280px; }
+}
