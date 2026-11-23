@@ -41,7 +41,6 @@
   }
 
   const campaignStatus = $("whatsappCampaignStatus");
-  const campaignSend = $("sendBlackFriday");
   const campaignCheck = $("checkWhatsApp");
 
   function campaignRecipients() {
@@ -73,10 +72,10 @@
   }
 
   async function withCampaign(action) {
-    campaignCheck.disabled = campaignSend.disabled = true;
+    campaignCheck.disabled = true;
     try { await action(); }
     catch (error) { campaignStatus.textContent = error.message; }
-    finally { campaignCheck.disabled = campaignSend.disabled = false; }
+    finally { campaignCheck.disabled = false; }
   }
 
   campaignCheck.onclick = () => void withCampaign(async () => {
@@ -109,7 +108,6 @@
     document.dispatchEvent(new CustomEvent("bussi:campaign-recipient", {detail}));
   }
   recipientSelect.onchange = () => {
-    $("blackFridayConsent").checked = false;
     announceCampaignRecipient();
   };
 
@@ -178,16 +176,6 @@
   document.querySelector('button[data-view="campaigns"]').addEventListener("click", () => {
     fillCampaignRecipients();
     void loadWhatsAppFlow();
-  });
-  campaignSend.onclick = () => void withCampaign(async () => {
-    const recipient = campaignRecipients().find(({telefone}) => telefone === recipientSelect.value);
-    if (!recipient) throw Error("Selecione um cliente elegível no CRM.");
-    if (!$("blackFridayConsent").checked) throw Error("Confirme que o cliente autorizou mensagens pelo WhatsApp.");
-    if (!window.confirm("Enviar blackfriday para " + recipient.nome + " (" + recipient.telefone + ")?")) return;
-    $("blackFridayConsent").checked = false;
-    const {status} = await api("/functions/v1/bussi-whatsapp", {action: "enviar", consentimento: true, ...recipient});
-    campaignStatus.textContent = "Envio para " + recipient.nome + ": " + (deliveryLabels[status] || status) + ".";
-    await loadWhatsAppFlow();
   });
   function showLogin(){jwt=null;factor=null;$("nitroLoginForm").hidden=false;$("nitroVerifyForm").hidden=true;$("nitroWorkspace").hidden=true;$("nitroLogout").hidden=true;$("generateCharge").disabled=true;$("printInvoice").disabled=true;resetRequest();if(typeof showAuth==="function")showAuth();}
   async function handle(action){
