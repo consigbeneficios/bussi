@@ -1,6 +1,7 @@
 const env = (key: string) => Deno.env.get(key) || "";
 const origin = "https://consigbeneficios.github.io";
 const campaign = "blackfriday-2026";
+const offerTemplate = "blackfriday_amortizacao";
 const table = "/rest/v1/bussi_whatsapp_entregas";
 const campaignReply = "BUSSI_BLACKFRIDAY_EU_QUERO";
 const handoffReply = "BUSSI_FATURA_ATENDENTE";
@@ -62,7 +63,7 @@ function money(value: number) {
 }
 
 async function approvedTemplates() {
-  const result = await Promise.all(["blackfriday", invoiceTemplate, paymentTemplate].map(async (name) => {
+  const result = await Promise.all([offerTemplate, invoiceTemplate, paymentTemplate].map(async (name) => {
     const query = new URLSearchParams({name, fields: "name,status,language,components"});
     const account = env("META_MESSAGING_ACCOUNT_ID") || env("META_WABA_ID");
     const response = await graph(account + "/message_templates?" + query);
@@ -76,7 +77,7 @@ async function approvedTemplates() {
     return data?.data?.find((item: {language: string; status: string}) =>
       item.language === language.code && item.status === "APPROVED");
   }));
-  if (!result[0] || !result[1] || !result[2]) throw new Error("Os modelos blackfriday, fatura_bussi e pagamento_recebido_bussi precisam estar aprovados em português do Brasil.");
+  if (!result[0] || !result[1] || !result[2]) throw new Error("Os modelos blackfriday_amortizacao, fatura_bussi e pagamento_recebido_bussi precisam estar aprovados em português do Brasil.");
   const invoiceButton = result[1].components?.find((component: {type: string}) => component.type === "BUTTONS")
     ?.buttons?.findIndex((button: {type: string; url: string}) =>
       button.type === "URL" && button.url === invoiceButtonUrl) ?? -1;
@@ -89,17 +90,21 @@ async function approvedTemplates() {
       button.type === "QUICK_REPLY" && button.text.trim().toLowerCase() === "falar com atendente") ?? -1;
   if (handoffButton < 0) throw new Error("O modelo fatura_bussi precisa do botão Falar com atendente.");
   const offerComponents = result[0].components ?? [];
+  const offerHandoff = offerComponents.find((part: {type: string}) => part.type === "BUTTONS")
+    ?.buttons?.findIndex((button: {type: string; text: string}) =>
+      button.type === "QUICK_REPLY" && button.text.trim().toLowerCase() === "falar com atendente") ?? -1;
   const offerImage = offerComponents.some((part: {type: string; format?: string}) => part.type === "HEADER" && part.format === "IMAGE");
   const offerText = offerComponents.find((part: {type: string}) => part.type === "BODY")?.text ?? "";
-  return {offerButton, invoiceButton, handoffButton, offerImage, offerText};
+  return {offerButton, invoiceButton, handoffButton, offerImage, offerText, offerHandoff};
 }
 
 async function handleHandoff(message: Record<string, any>) {
-  if (typeof message.context?.id !== "string" || typeof message.id !== "string" ||
+  if (!deskId(message.context?.id) || !deskId(message.id) ||
       typeof message.from !== "string" || !/^55\d{10,11}$/.test(message.from)) return;
   const query = new URLSearchParams({
     campanha: "eq." + campaign, telefone: "eq." + message.from,
-    fatura_mensagem: "eq." + message.context.id, atendente_em: "is.null", encerramento_status: "is.null",
+    or: "(fatura_mensagem.eq." + message.context.id + ",mensagem.eq." + message.context.id + ")",
+    atendente_em: "is.null", encerramento_status: "is.null",
   });
   const [claimed] = await db("?" + query, "PATCH", {
     atendente_em: new Date().toISOString(), atendente_resposta_id: message.id,
@@ -134,10 +139,11 @@ async function handleReply(message: Record<string, any>) {
     query.set("mensagem", "eq." + message.context.id);
   }
   const [row] = await db("?" + query);
-  if (!row || row.resposta_id || !row.pagador) return;
+  if (!row || row.resposta_id || row.atendente_em || !row.pagador) return;
   const {invoiceButton, handoffButton} = await approvedTemplates();
   const token = crypto.randomUUID().replaceAll("-", "") + crypto.randomUUID().replaceAll("-", "");
   query.set("resposta_id", "is.null");
+  query.set("atendente_em", "is.null");
   const [claimed] = await db("?" + query, "PATCH", {
     resposta_id: message.id, resposta_em: new Date().toISOString(), fatura_status: "reservado", fatura_acesso_hash: await hashToken(token),
     fatura_expira_em: new Date(Date.now() + 24 * 3600000).toISOString(),
@@ -274,6 +280,27 @@ async function deskRequest(body: Record<string, any>, json: (status:number, body
   return json(200,{status:result.state});
 }
 
+async function offerArtwork() {
+  try {
+    const source = await fetch(origin + "/bussi/blackfriday-consig.svg", {
+      redirect:"error",signal:AbortSignal.timeout(5000),
+    });
+    if (!source.ok) return new Response(null,{status:404});
+    const svg = await source.text();
+    if (svg.length > 500000) return new Response(null,{status:502});
+    const encoded = svg.match(/href="data:image\/jpeg;base64,([A-Za-z0-9+/=]+)"/)?.[1];
+    if (!encoded) return new Response(null,{status:502});
+    const bytes = Uint8Array.from(atob(encoded), char => char.charCodeAt(0));
+    if (bytes[0] !== 255 || bytes[1] !== 216 || bytes[bytes.length-2] !== 255 || bytes[bytes.length-1] !== 217) {
+      return new Response(null,{status:502});
+    }
+    return new Response(bytes,{headers:{"Content-Type":"image/jpeg","Cache-Control":"public, max-age=3600",
+      "X-Content-Type-Options":"nosniff"}});
+  } catch {
+    return new Response(null,{status:502});
+  }
+}
+
 export async function handle(request: Request) {
   const url = new URL(request.url);
   const headers = {
@@ -283,6 +310,7 @@ export async function handle(request: Request) {
   const json = (status: number, body: object) => new Response(JSON.stringify(body), {status, headers});
   if (request.method === "OPTIONS") return new Response(null, {status: 204, headers});
   if (request.method === "GET") {
+    if (url.searchParams.get("imagem") === "blackfriday") return await offerArtwork();
     const token = env("META_WEBHOOK_VERIFY_TOKEN");
     const challenge = url.searchParams.get("hub.challenge");
     return token && challenge && url.searchParams.get("hub.mode") === "subscribe" &&
@@ -341,6 +369,12 @@ export async function handle(request: Request) {
     if (["atendimento_lista","atendimento_historico","atendimento_enviar"].includes(body.action)) {
       return await deskRequest(body,json);
     }
+    if (body.action === "clientes_teste") {
+      const fixtures = await api("/rest/v1/bussi_testes_campanha?select=id,contrato,nome,telefone,original,desconto&order=nome.asc",
+        env("SUPABASE_SERVICE_ROLE_KEY"));
+      if (!fixtures.ok) return json(503,{erro:"Não foi possível carregar os clientes de teste."});
+      return json(200,{clientes:await fixtures.json()});
+    }
     if (body.action === "etapas_clientes") {
       const response = await api("/rest/v1/rpc/bussi_clientes_etapas", env("SUPABASE_SERVICE_ROLE_KEY"), "POST", {});
       if (!response.ok) return json(503, {erro: "Não foi possível carregar as etapas dos clientes."});
@@ -372,23 +406,30 @@ export async function handle(request: Request) {
         !Number.isInteger(desconto) || desconto <= 0 || desconto !== Math.ceil(original / 2)) return json(422, {erro: "Cadastro ou valores inválidos."});
     const pagador = payerFor(body, nome, telefone);
     if (!pagador) return json(422, {erro: "Complemente o cadastro do pagador no CRM."});
-    const {offerButton: button, offerImage, offerText} = await approvedTemplates();
+    const fixtureFilter = new URLSearchParams({contrato:"eq."+pagador.contract.toUpperCase(),select:"id",limit:"1"});
+    const fixture = await api("/rest/v1/bussi_testes_campanha?"+fixtureFilter,env("SUPABASE_SERVICE_ROLE_KEY"));
+    if (!fixture.ok) return json(503,{erro:"Não foi possível conferir a classificação do cliente."});
+    if ((await fixture.json()).length) return json(409,{erro:"Use este cadastro somente na simulação."});
+    const {offerButton: button, offerImage, offerText, offerHandoff} = await approvedTemplates();
     const normalized = offerText.normalize("NFD").replace(/\p{Diacritic}/gu, "").toUpperCase();
     if (/SUA\s+CONTA\s+SERA\s+BLOQUEADA/.test(normalized)) {
       return json(409, {erro: "Revise a abertura do modelo Black Friday antes do disparo."});
     }
     const mediaId = env("META_BLACKFRIDAY_IMAGE_ID");
-    if (offerImage && !/^\d+$/.test(mediaId)) return json(409, {erro: "Cadastre a imagem original do modelo antes do disparo."});
+    const image = /^\d+$/.test(mediaId) ? {id:mediaId} : {link:env("SUPABASE_URL") + "/functions/v1/bussi-whatsapp?imagem=blackfriday"};
     const [reserved] = await db("?on_conflict=campanha,telefone", "POST",
       {campanha: campaign, telefone, nome, original, desconto, pagador}, "resolution=ignore-duplicates,return=representation");
     if (!reserved) return json(200, {status: "ja_registrado"});
 
-    const components: unknown[] = [{type: "body", parameters: [nome, money(original), money(desconto)]
-      .map((text) => ({type: "text", text}))}];
-    if (offerImage) components.unshift({type: "header", parameters: [{type: "image", image: {id: mediaId}}]});
+    const offerFields = {customer_name:nome,tel:telefone,valor:money(original),desconto:money(desconto)};
+    const components: unknown[] = [{type:"body", parameters:Object.entries(offerFields)
+      .map(([parameter_name,text]) => ({type:"text",parameter_name,text}))}];
+    if (offerImage) components.unshift({type: "header", parameters: [{type: "image", image}]});
     if (button >= 0) components.push({type: "button", sub_type: "quick_reply", index: String(button),
       parameters: [{type: "payload", payload: campaignReply}]});
-    const result = await sendTemplate(telefone, "blackfriday", components);
+    if (offerHandoff >= 0) components.push({type:"button",sub_type:"quick_reply",index:String(offerHandoff),
+      parameters:[{type:"payload",payload:handoffReply}]});
+    const result = await sendTemplate(telefone, offerTemplate, components);
     const filter = new URLSearchParams({campanha: "eq." + campaign, telefone: "eq." + telefone});
     await db("?" + filter, "PATCH", {oferta_status: result.state, mensagem: result.id});
     return json(200, {status: result.state});

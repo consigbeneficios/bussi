@@ -41,6 +41,7 @@
   }
 
   window.BussiDesk?.setConnection(body => api("/functions/v1/bussi-whatsapp", body));
+  window.BussiClientStages?.setFixturesLoader(() => api("/functions/v1/bussi-whatsapp",{action:"clientes_teste"}));
   window.BussiClientStages?.setLoader(() => api("/functions/v1/bussi-whatsapp", {action:"etapas_clientes"}));
   const campaignStatus = $("whatsappCampaignStatus");
   const campaignCheck = $("checkWhatsApp");
@@ -48,6 +49,7 @@
   function campaignRecipients() {
     const numbers = new Map();
     for (const client of clients) {
+      if (window.BussiClientStages?.isTestRecord(client)) continue;
       const raw = digits(client.phone);
       const telefone = raw.length === 10 || raw.length === 11 ? "55" + raw : raw;
       if (!/^55\d{10,11}$/.test(telefone)) continue;
@@ -192,6 +194,7 @@
     if(assuranceError || assurance?.currentLevel!=="aal2")throw Error("É necessária uma verificação do autenticador para esta sessão.");
     // A validação da função SQL confirma também a condição de administrador.
     await api("/rest/v1/rpc/bussi_dashboard_faturas",{});
+    await window.BussiClientStages?.refreshFixtures();
     if(typeof enterApp==="function")enterApp();
     $("nitroLoginForm").hidden=true;$("nitroVerifyForm").hidden=true;
     $("nitroWorkspace").hidden=false;$("nitroLogout").hidden=false;

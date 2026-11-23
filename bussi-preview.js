@@ -9,6 +9,7 @@
   const mediaInput = document.getElementById("bussiCampaignImage");
   const mediaStatus = document.getElementById("bussiCampaignImageStatus");
   let mediaPreview = "";
+  const officialArtwork = "blackfriday-consig.svg";
   const all = document.getElementById("bussiChatAll");
   const handoff = document.getElementById("bussiChatHandoff");
   const title = document.getElementById("bussiPreviewTitle");
@@ -84,14 +85,14 @@
       client ? "Prévia com o cadastro selecionado. Nenhuma mensagem é enviada." : "Simulação com dados fictícios. Nenhuma mensagem é enviada.";
     reset.hidden = false;
     renderList();
-    const offer = bubble("⚠️ Ola *" + person.nome.replaceAll("*", "") + "*!, SUA CONTA SERA BLOQUEADA⚠️\nSÓ SE VOCÊ DEIXAR PASSAR ESSA OPORTUNIDADE, NÉ😂\n\n*BLACK FRIDAY | 50% DE DESCONTO, ANTECIPANDO SUA PARCELA DO MÊS DE 12/Dezembro*\n\nParcela original: R$" + original + "\nParcela com desconto: R$" + discounted + "\n💰 Economize e tenha mais dinheiro para o final do ano!\n\n👉 Responda *\"EU QUERO\"* e daremos continuidade ao seu atendimento!");
+    const offer = bubble("*Black Friday 50%OFF - P/Referente ao Mês - 12/Dezembro*\nConfirme os dados, a baixo!\n\nNome: " +
+      person.nome.replaceAll("*","") + "\nTelefone:" + person.telefone + "\nParcela original: *R$" + original +
+      "*\nValor com desconto: *R$" + discounted + "*\n\nDados incorretos? Selecione *\"Falar com Atendente\"*");
     const image = document.createElement("img");
     image.className = "bussi-message-media";
     image.alt = "Imagem da campanha Black Friday";
-    if (mediaPreview) {
-      image.src = mediaPreview;
-      offer.prepend(image);
-    }
+    image.src = mediaPreview || officialArtwork;
+    offer.prepend(image);
     actions(offer, [["EU QUERO", () => {
       bubble("EU QUERO", true);
       const invoice = bubble("Olá, " + person.nome.replaceAll("*", "") + ". Você solicitou os detalhes da antecipação de sua parcela.\nTelefone: " + person.telefone + "\nParcela original: R$ " + original + "\nValor com desconto: R$ " + discounted + "\nToque em Gerar fatura para abrir a página da Consig Benefícios e continuar.");
@@ -107,6 +108,9 @@
           bubble("Estamos transferindo para um de nossos atendentes. Aguarde, por favor.");
         }],
       ]);
+    }],["Falar com atendente", () => {
+      bubble("Falar com atendente",true);
+      bubble("Estamos transferindo para um de nossos atendentes. Aguarde, por favor.");
     }]]);
     chat.scrollTop = 0;
   }
