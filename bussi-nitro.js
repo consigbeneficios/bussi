@@ -60,9 +60,14 @@
       const nome = String(client.name ?? "").trim();
       const original = Math.round(Number(client.original) * 100);
       const desconto = Math.round(Number(client.final) * 100);
-      if (!/^[^\r\n\t]{2,120}$/.test(nome) || !Number.isInteger(original) || original <= 0 ||
+      const contrato = String(client.contract ?? "").trim();
+      const email = String(client.email ?? "").trim().toLowerCase();
+      const documento = digits(client.document);
+      if (nome.length < 5 || !nome.includes(" ") || contrato.length < 3 || contrato.length > 80 || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+          !((documento.length === 11 && cpfOk(documento)) || (documento.length === 14 && cnpjOk(documento)))) continue;
+      if (!/^[^\r\n\t]{2,120}$/.test(nome) || !Number.isInteger(original) || original < 200 ||
           original > 999999999 || desconto <= 0 || desconto !== Math.ceil(original / 2)) continue;
-      eligible.push({telefone, nome, original, desconto});
+      eligible.push({telefone, nome, original, desconto, contrato, email, documento});
     }
     return eligible;
   }
