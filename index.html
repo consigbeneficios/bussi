@@ -244,8 +244,8 @@ button:disabled{opacity:.5;cursor:not-allowed}
         <div class="sectionhead"><div><h2>Campanhas</h2><p>Organize campanhas e envie a Black Friday pelo WhatsApp.</p></div><button class="btn primary" id="newCampaign">Nova campanha</button></div>
         <div class="notice" style="margin:12px 0">
           <b>Black Friday pelo WhatsApp</b>
-          <p>Envia o modelo blackfriday. Quando o cliente responde EU QUERO, o BUSSI envia fatura com os dados do cadastro.</p>
-          <p>O envio usa os cadastros do CRM com telefone único e valores de 50% de desconto.</p>
+          <p>Envia o modelo blackfriday. Quando o cliente responde EU QUERO, o BUSSI envia a opção Gerar fatura com os dados do cadastro.</p>
+          <p>O envio usa os cadastros do CRM com cadastro completo, telefone único e valores de 50% de desconto.</p>
           <label><input id="blackFridayConsent" type="checkbox"> Confirmo que todos os contatos elegíveis autorizaram receber mensagens pelo WhatsApp.</label>
           <div class="toolbar" style="margin-top:10px">
             <button class="btn ghost" id="checkWhatsApp" type="button">Verificar modelos</button>
@@ -857,6 +857,6 @@ function abrirAbaFaturas(){if(location.hash==='#faturas')document.querySelector(
 window.addEventListener('hashchange',abrirAbaFaturas);abrirAbaFaturas();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.94.1/dist/umd/supabase.min.js"></script>
-<script src="bussi-nitro.js?v=20261123-whatsapp"></script>
+<script src="bussi-nitro.js?v=20261123-whatsapp-fatura"></script>
 </body>
 </html>
