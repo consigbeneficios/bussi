@@ -194,4 +194,7 @@
   document.querySelector('button[data-view="crm"]')?.addEventListener("click",() => void refreshStages());
   window.BussiClientStages = {setLoader(value){loader=value},refreshRows:renderRows,refreshStages,getTests:() => records.slice()};
   renderTests();
+  window.setInterval(() => {
+    if (!document.hidden && crm.classList.contains("active")) void refreshStages();
+  }, 30000);
 })();
