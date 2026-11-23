@@ -172,3 +172,42 @@ body { background: var(--bg); color: var(--ink); }
 }
 
 .bussi-example-heading { margin: 12px 4px 5px; color: var(--muted); font-size: 12px; }
+
+.bussi-campaign-heading { margin-bottom: 18px; }
+.bussi-campaign-layout { gap: 18px; }
+.bussi-inbox { grid-template-columns: minmax(230px, 300px) minmax(0, 1fr); min-height: 590px; }
+.bussi-inbox-brand { display: flex; align-items: center; gap: 10px; margin: 0 3px 15px; }
+.bussi-inbox-brand img { background: #fff; border-radius: 10px; }
+.bussi-inbox-brand h3 { margin: 0; font-size: 18px; }
+.bussi-inbox .bussi-preview { grid-template-rows: auto minmax(360px, 1fr) auto auto; }
+.bussi-preview-header { min-height: 70px; background: #20191e; }
+.bussi-preview-chat {
+  min-height: 360px; max-height: 570px; padding: 24px clamp(14px, 4vw, 55px);
+  background-color: #151317;
+  background-image: radial-gradient(ellipse at 1px 1px, #80546740 1px, transparent 1px);
+  background-size: 21px 21px;
+}
+.bussi-preview-bubble { max-width: min(94%, 398px); padding: 10px 13px; border-radius: 5px 15px 15px; }
+.bussi-preview-bubble.customer { border-radius: 15px 5px 15px 15px; }
+.bussi-message-media { display: block; width: 100%; max-height: 300px; object-fit: contain; margin: 0 0 9px;
+  border-radius: 8px; background: #141317; }
+.bussi-preview-actions button { min-height: 42px; }
+.bussi-preview-footer { border-top-color: #44343e; font-size: 11px; }
+.bussi-composer { padding: 12px 16px 14px; background: #211a21; border-top: 1px solid #493440; }
+.bussi-composer label { display: block; margin-bottom: 5px; color: var(--muted); font-size: 12px; }
+.bussi-composer-controls { display: flex; align-items: center; gap: 9px; }
+.bussi-composer-controls textarea { min-width: 0; width: 100%; resize: vertical; padding: 8px 10px; border-radius: 11px;
+  border: 1px solid #594452; background: #171318; color: var(--ink); }
+.bussi-composer-controls button { flex: 0 0 auto; }
+.bussi-composer p:empty, .bussi-batch p:empty { display: none; }
+.bussi-composer p { color: var(--muted); margin: 7px 0 0; font-size: 12px; }
+.bussi-campaign-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.bussi-campaign-controls > section { min-width: 0; }
+.bussi-campaign-send .field { max-width: 100%; }
+.bussi-batch progress { display: block; width: 100%; margin-top: 14px; accent-color: #ec5369; }
+@media (max-width: 725px) {
+  .bussi-inbox { grid-template-columns: minmax(0, 1fr); }
+  .bussi-campaign-controls { grid-template-columns: minmax(0, 1fr); }
+  .bussi-preview-chat { min-height: 300px; }
+  .bussi-composer-controls { flex-wrap: wrap; justify-content: flex-end; }
+}

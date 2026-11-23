@@ -88,7 +88,10 @@ async function approvedTemplates() {
     ?.buttons?.findIndex((button: {type: string; text: string}) =>
       button.type === "QUICK_REPLY" && button.text.trim().toLowerCase() === "falar com atendente") ?? -1;
   if (handoffButton < 0) throw new Error("O modelo fatura_bussi precisa do botão Falar com atendente.");
-  return {offerButton, invoiceButton, handoffButton};
+  const offerComponents = result[0].components ?? [];
+  const offerImage = offerComponents.some((part: {type: string; format?: string}) => part.type === "HEADER" && part.format === "IMAGE");
+  const offerText = offerComponents.find((part: {type: string}) => part.type === "BODY")?.text ?? "";
+  return {offerButton, invoiceButton, handoffButton, offerImage, offerText};
 }
 
 async function handleHandoff(message: Record<string, any>) {
@@ -265,6 +268,9 @@ export async function handle(request: Request) {
       await approvedTemplates();
       return json(200, {status: "pronto"});
     }
+    if (body.action === "enviar" && env("BUSSI_BLACKFRIDAY_SENDING_ENABLED") !== "true") {
+      return json(409, {erro: "Envio Black Friday pausado até a revisão do modelo."});
+    }
     if (body.action !== "enviar" || body.consentimento !== true) return json(400, {});
     const {telefone, nome, original, desconto} = body;
     if (typeof telefone !== "string" || !/^55\d{10,11}$/.test(telefone) ||
@@ -273,13 +279,20 @@ export async function handle(request: Request) {
         !Number.isInteger(desconto) || desconto <= 0 || desconto !== Math.ceil(original / 2)) return json(422, {erro: "Cadastro ou valores inválidos."});
     const pagador = payerFor(body, nome, telefone);
     if (!pagador) return json(422, {erro: "Complemente o cadastro do pagador no CRM."});
-    const {offerButton: button} = await approvedTemplates();
+    const {offerButton: button, offerImage, offerText} = await approvedTemplates();
+    const normalized = offerText.normalize("NFD").replace(/\p{Diacritic}/gu, "").toUpperCase();
+    if (/SUA\s+CONTA\s+SERA\s+BLOQUEADA/.test(normalized)) {
+      return json(409, {erro: "Revise a abertura do modelo Black Friday antes do disparo."});
+    }
+    const mediaId = env("META_BLACKFRIDAY_IMAGE_ID");
+    if (offerImage && !/^\d+$/.test(mediaId)) return json(409, {erro: "Cadastre a imagem original do modelo antes do disparo."});
     const [reserved] = await db("?on_conflict=campanha,telefone", "POST",
       {campanha: campaign, telefone, nome, original, desconto, pagador}, "resolution=ignore-duplicates,return=representation");
     if (!reserved) return json(200, {status: "ja_registrado"});
 
     const components: unknown[] = [{type: "body", parameters: [nome, money(original), money(desconto)]
       .map((text) => ({type: "text", text}))}];
+    if (offerImage) components.unshift({type: "header", parameters: [{type: "image", image: {id: mediaId}}]});
     if (button >= 0) components.push({type: "button", sub_type: "quick_reply", index: String(button),
       parameters: [{type: "payload", payload: campaignReply}]});
     const result = await sendTemplate(telefone, "blackfriday", components);
