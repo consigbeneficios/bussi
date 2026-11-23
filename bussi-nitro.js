@@ -39,6 +39,71 @@
     if(!response.ok)throw Object.assign(new Error(data?.message||data?.erro||(response.status===401||response.status===403?"Acesso negado. Verifique sua sessão BUSSI.":"Operação indisponível.")),{status:response.status,code:data?.code});
     return data;
   }
+
+  const campaignStatus = $("whatsappCampaignStatus");
+  const campaignSend = $("sendBlackFriday");
+  const campaignCheck = $("checkWhatsApp");
+
+  function campaignRecipients() {
+    const numbers = new Map();
+    for (const client of clients) {
+      const raw = digits(client.phone);
+      const telefone = raw.length === 10 || raw.length === 11 ? "55" + raw : raw;
+      if (!/^55\d{10,11}$/.test(telefone)) continue;
+      if (!numbers.has(telefone)) numbers.set(telefone, []);
+      numbers.get(telefone).push(client);
+    }
+    const eligible = [];
+    for (const [telefone, records] of numbers) {
+      if (records.length !== 1) continue;
+      const client = records[0];
+      const nome = String(client.name ?? "").trim();
+      const original = Math.round(Number(client.original) * 100);
+      const desconto = Math.round(Number(client.final) * 100);
+      if (!/^[^\r\n\t]{2,120}$/.test(nome) || !Number.isInteger(original) || original <= 0 ||
+          original > 999999999 || desconto <= 0 || desconto !== Math.ceil(original / 2)) continue;
+      eligible.push({telefone, nome, original, desconto});
+    }
+    return eligible;
+  }
+
+  async function withCampaign(action) {
+    campaignCheck.disabled = campaignSend.disabled = true;
+    try { await action(); }
+    catch (error) { campaignStatus.textContent = error.message; }
+    finally { campaignCheck.disabled = campaignSend.disabled = false; }
+  }
+
+  campaignCheck.onclick = () => void withCampaign(async () => {
+    await api("/functions/v1/bussi-whatsapp", {action: "status"});
+    campaignStatus.textContent = "Modelos aprovados. Cadastros elegíveis neste painel: " + campaignRecipients().length + ".";
+  });
+
+  campaignSend.onclick = () => void withCampaign(async () => {
+    const recipients = campaignRecipients();
+    if (!recipients.length) throw Error("Importe ou sincronize os clientes no CRM. Para esta campanha, cada número deve ter um único cadastro e valores com 50% de desconto.");
+    if (!$("blackFridayConsent").checked) throw Error("Confirme que os contatos da campanha autorizaram mensagens pelo WhatsApp.");
+    if (!window.confirm("Enviar blackfriday a " + recipients.length + " contato(s) elegível(is) do CRM?")) return;
+    await api("/functions/v1/bussi-whatsapp", {action: "status"});
+    const results = {aceito: 0, ja_registrado: 0, recusado: 0, incerto: 0};
+    let processed = 0;
+    const summary = () => processed + "/" + recipients.length + " processados. Aceitos pela Meta: " + results.aceito +
+      ". Já registrados: " + results.ja_registrado + ". Recusados: " + results.recusado + ". Indeterminados: " + results.incerto + ".";
+    for (const recipient of recipients) {
+      campaignStatus.textContent = summary();
+      try {
+        const {status} = await api("/functions/v1/bussi-whatsapp", {action: "enviar", consentimento: true, ...recipient});
+        if (!Object.hasOwn(results, status)) throw Error("Status inesperado.");
+        results[status]++;
+        processed++;
+      } catch (error) {
+        throw Error(summary() + " Envio interrompido. " + error.message);
+      }
+    }
+    campaignStatus.textContent = summary();
+    $("blackFridayConsent").checked = false;
+  });
+
   function showLogin(){jwt=null;factor=null;$("nitroLoginForm").hidden=false;$("nitroVerifyForm").hidden=true;$("nitroWorkspace").hidden=true;$("nitroLogout").hidden=true;$("generateCharge").disabled=true;$("printInvoice").disabled=true;resetRequest();if(typeof showAuth==="function")showAuth();}
   async function handle(action){
     if(busy)return;
