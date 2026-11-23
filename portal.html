@@ -171,7 +171,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 #dashboardEventRows td:first-child{white-space:nowrap;font-variant-numeric:tabular-nums}
 
 </style>
-<link rel="stylesheet" href="bussi-layout.css?v=20261123-2">
+<link rel="stylesheet" href="bussi-layout.css?v=20261123-conversas">
 </head>
 <body>
 <div class="authgate" id="authGate"><div class="authcard"><div class="authbrand"><b>CONSIG BENEFÍCIOS</b></div><h2>Acesso seguro</h2><p>Autenticando administrador...</p></div></div>
@@ -266,15 +266,30 @@ button:disabled{opacity:.5;cursor:not-allowed}
               <p id="bussiManualStatus" role="status"></p>
             </details>
           </div>
+          <div class="bussi-inbox" aria-label="Conversas da campanha">
+          <aside class="bussi-inbox-list">
+            <h3>Conversas</h3>
+            <label for="bussiChatSearch">Buscar cliente</label>
+            <input id="bussiChatSearch" type="search" placeholder="Nome ou telefone">
+            <div class="bussi-inbox-filters" role="group" aria-label="Filtrar conversas">
+              <button id="bussiChatAll" type="button" aria-pressed="true">Todos</button>
+              <button id="bussiChatHandoff" type="button" aria-pressed="false">Atendimento</button>
+            </div>
+            <button id="bussiChatDemo" class="bussi-thread" type="button" aria-pressed="true"><span class="bussi-thread-avatar">CB</span><span><strong>Prévia do modelo</strong><small>Simular o fluxo do WhatsApp</small></span></button>
+            <div id="bussiExampleList"></div>
+            <div id="bussiChatList"></div>
+            <p id="bussiChatEmpty">Nenhuma conversa registrada.</p>
+          </aside>
           <figure class="bussi-preview" aria-labelledby="bussiPreviewTitle">
             <div class="bussi-preview-header">
               <img src="logo-bussi.svg" alt="" width="36" height="36">
-              <div><strong id="bussiPreviewTitle">Consig Benefícios</strong><span>Prévia da conversa no WhatsApp</span></div>
+              <div><strong id="bussiPreviewTitle">Consig Benefícios</strong><span id="bussiPreviewSubtitle">Simulação no WhatsApp</span></div>
               <button id="bussiPreviewReset" type="button">Reiniciar</button>
             </div>
             <div id="bussiPreviewChat" class="bussi-preview-chat" role="log" aria-label="Conversa simulada" aria-live="polite"></div>
-            <figcaption class="bussi-preview-footer">Simulação com dados fictícios. Os botões da prévia não enviam mensagens.</figcaption>
+            <figcaption class="bussi-preview-footer" id="bussiPreviewCaption">Simulação com dados fictícios. Nenhuma mensagem é enviada.</figcaption>
           </figure>
+        </div>
         </div>
         <div class="sectionhead bussi-flow-head">
           <div><h3>Acompanhamento pelo WhatsApp</h3><p>Consulte envios, respostas e a abertura da fatura.</p></div>
@@ -895,7 +910,7 @@ function abrirAbaFaturas(){if(location.hash==='#faturas')document.querySelector(
 window.addEventListener('hashchange',abrirAbaFaturas);abrirAbaFaturas();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.94.1/dist/umd/supabase.min.js"></script>
-<script src="bussi-nitro.js?v=20261123-campanha-fatura"></script>
-<script src="bussi-preview.js?v=20261123-2" defer></script>
+<script src="bussi-nitro.js?v=20261123-conversas"></script>
+<script src="bussi-preview.js?v=20261123-conversas" defer></script>
 </body>
 </html>
