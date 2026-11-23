@@ -74,6 +74,7 @@
   function setComposer() {
     input.disabled = !selected || !canReply;
     send.disabled = sending || input.disabled || !input.value.trim();
+    $("bussiDeskWindow").classList.toggle("is-open", canReply);
     $("bussiDeskWindow").textContent = selected ? (canReply ? "Atendimento aberto" : "Aguardando nova mensagem") : "";
     if (selected && !canReply && !note.textContent) note.textContent = "A resposta livre fica disponível por 24 horas após a última mensagem do cliente.";
   }
@@ -164,6 +165,13 @@
   $("bussiDeskRefresh").onclick = () => {void loadContacts(); void loadHistory();};
   $("bussiDeskBack").onclick = () => {desk.classList.remove("has-thread"); search.focus();};
   nav.addEventListener("click",() => {void loadContacts(); void loadHistory();});
+  pane.querySelectorAll("[data-desk-view]").forEach(button => {
+    button.addEventListener("click",() => {
+      const destination = [...document.querySelectorAll(".nav button[data-view]")]
+        .find(item => item.dataset.view === button.dataset.deskView);
+      destination?.click();
+    });
+  });
   input.addEventListener("input",() => {
     if (selected) drafts.set(selected.telefone,{text:input.value,pedido:crypto.randomUUID()});
     setComposer();

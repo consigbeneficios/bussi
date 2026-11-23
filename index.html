@@ -171,7 +171,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 #dashboardEventRows td:first-child{white-space:nowrap;font-variant-numeric:tabular-nums}
 
 </style>
-<link rel="stylesheet" href="bussi-layout.css?v=20261123-blackfriday-real">
+<link rel="stylesheet" href="bussi-layout.css?v=20261123-whatsapp-area">
 </head>
 <body>
 <div class="authgate" id="authGate"><div class="authcard"><div class="authbrand"><b>CONSIG BENEFÍCIOS</b></div><h2>Acesso seguro</h2><p>Autenticando administrador...</p></div></div>
@@ -274,10 +274,19 @@ button:disabled{opacity:.5;cursor:not-allowed}
 
     <section class="view" id="inbox">
       <div class="section bussi-desk-section">
-        <div class="sectionhead"><div><h2>Atendimento WhatsApp</h2><p>Conversas recebidas pelo número conectado.</p></div><button class="btn ghost" type="button" id="bussiDeskRefresh">Atualizar</button></div>
+        <div class="sectionhead bussi-desk-toolbar">
+          <div><h2>Atendimento WhatsApp</h2><p>Leia e responda às conversas do número conectado.</p></div>
+          <div class="toolbar bussi-desk-shortcuts" aria-label="Atalhos do Bussi">
+            <button class="btn ghost" type="button" data-desk-view="crm">Clientes</button>
+            <button class="btn ghost" type="button" data-desk-view="campaigns">Campanhas</button>
+            <button class="btn ghost" type="button" data-desk-view="charges">Faturas e Pix</button>
+            <button class="btn ghost" type="button" id="bussiDeskRefresh">Atualizar</button>
+          </div>
+        </div>
         <div class="bussi-desk">
           <aside class="bussi-desk-list">
-            <label for="bussiDeskSearch">Buscar conversa</label>
+            <h3 class="bussi-desk-list-heading">Conversas</h3>
+            <label class="bussi-desk-search-label" for="bussiDeskSearch">Buscar conversa</label>
             <input id="bussiDeskSearch" type="search" placeholder="Nome ou telefone">
             <div id="bussiDeskThreads" class="bussi-desk-threads" aria-label="Conversas"></div>
             <p id="bussiDeskListStatus" role="status"></p>
@@ -292,7 +301,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
             </div>
             <div class="bussi-desk-history">
               <button class="btn ghost" type="button" id="bussiDeskOlder" hidden>Mensagens anteriores</button>
-              <p id="bussiDeskEmpty">Escolha um contato na lista para ler e responder.</p>
+              <div class="bussi-desk-empty-wrap"><p id="bussiDeskEmpty">Escolha um contato na lista para ler e responder.</p></div>
               <div id="bussiDeskMessages" role="log" aria-label="Mensagens da conversa" aria-live="polite"></div>
             </div>
             <form id="bussiDeskComposer" class="bussi-desk-composer">
@@ -1002,9 +1011,9 @@ function abrirAbaFaturas(){if(location.hash==='#faturas')document.querySelector(
 window.addEventListener('hashchange',abrirAbaFaturas);abrirAbaFaturas();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.94.1/dist/umd/supabase.min.js"></script>
-<script src="bussi-client-stages.js?v=20261123-blackfriday-real"></script>
-<script src="bussi-desk.js?v=20261123-blackfriday-real"></script>
-<script src="bussi-nitro.js?v=20261123-blackfriday-real"></script>
-<script src="bussi-preview.js?v=20261123-blackfriday-real" defer></script>
+<script src="bussi-client-stages.js?v=20261123-whatsapp-area"></script>
+<script src="bussi-desk.js?v=20261123-whatsapp-area"></script>
+<script src="bussi-nitro.js?v=20261123-whatsapp-area"></script>
+<script src="bussi-preview.js?v=20261123-whatsapp-area" defer></script>
 </body>
 </html>
