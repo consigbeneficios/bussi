@@ -6,6 +6,9 @@
   const demo = document.getElementById("bussiChatDemo");
   const examples = document.getElementById("bussiExampleList");
   const search = document.getElementById("bussiChatSearch");
+  const mediaInput = document.getElementById("bussiCampaignImage");
+  const mediaStatus = document.getElementById("bussiCampaignImageStatus");
+  let mediaPreview = "";
   const all = document.getElementById("bussiChatAll");
   const handoff = document.getElementById("bussiChatHandoff");
   const title = document.getElementById("bussiPreviewTitle");
@@ -81,6 +84,13 @@
     reset.hidden = false;
     renderList();
     const offer = bubble("⚠️ Ola *" + person.nome.replaceAll("*", "") + "*!, SUA CONTA SERA BLOQUEADA⚠️\nSÓ SE VOCÊ DEIXAR PASSAR ESSA OPORTUNIDADE, NÉ😂\n\n*BLACK FRIDAY | 50% DE DESCONTO, ANTECIPANDO SUA PARCELA DO MÊS DE 12/Dezembro*\n\nParcela original: R$" + original + "\nParcela com desconto: R$" + discounted + "\n💰 Economize e tenha mais dinheiro para o final do ano!\n\n👉 Responda *\"EU QUERO\"* e daremos continuidade ao seu atendimento!");
+    const image = document.createElement("img");
+    image.className = "bussi-message-media";
+    image.alt = "Imagem da campanha Black Friday";
+    if (mediaPreview) {
+      image.src = mediaPreview;
+      offer.prepend(image);
+    }
     actions(offer, [["EU QUERO", () => {
       bubble("EU QUERO", true);
       const invoice = bubble("Olá, " + person.nome.replaceAll("*", "") + ". Você solicitou os detalhes da antecipação de sua parcela.\nTelefone: " + person.telefone + "\nParcela original: R$ " + original + "\nValor com desconto: R$ " + discounted + "\nToque em Gerar fatura para abrir a página da Consig Benefícios e continuar.");
@@ -156,6 +166,21 @@
     }
   }
 
+  mediaInput.addEventListener("change", () => {
+    const file = mediaInput.files[0];
+    if (mediaPreview) URL.revokeObjectURL(mediaPreview);
+    mediaPreview = "";
+    if (file && ["image/jpeg","image/png"].includes(file.type) && file.size <= 5 * 1024 * 1024) {
+      mediaPreview = URL.createObjectURL(file);
+      mediaStatus.textContent = "Imagem exibida na prévia nesta sessão.";
+    } else {
+      mediaInput.value = "";
+      mediaStatus.textContent = file ? "Selecione um JPG ou PNG de até 5 MB." : "Selecione o JPG ou PNG do modelo.";
+    }
+    example = null;
+    start();
+  });
+
   search.addEventListener("input",renderList);
   function filter(waiting) {
     onlyHandoff = waiting;
@@ -212,6 +237,45 @@
     else renderList();
   });
   start();
+
+  const batchStart = document.getElementById("bussiBatchStart");
+  const batchStop = document.getElementById("bussiBatchStop");
+  const progress = document.getElementById("bussiBatchProgress");
+  const batchStatus = document.getElementById("bussiBatchStatus");
+  let timer;
+  function finishBatch() {
+    clearTimeout(timer);
+    batchStart.disabled = false;
+    batchStop.disabled = true;
+  }
+  batchStart.addEventListener("click", () => {
+    const total = Number(document.getElementById("bussiBatchCount").value);
+    const seconds = Number(document.getElementById("bussiBatchPause").value);
+    if (!Number.isInteger(total) || total < 1 || total > 150 ||
+        !Number.isInteger(seconds) || seconds < 5 || seconds > 120) {
+      batchStatus.textContent = "Informe 1 a 150 contatos e uma pausa de 5 a 120 segundos.";
+      return;
+    }
+    progress.max = total;
+    progress.value = 0;
+    batchStart.disabled = true;
+    batchStop.disabled = false;
+    function next() {
+      progress.value = Math.min(total, progress.value + 15);
+      if (progress.value === total) {
+        batchStatus.textContent = "Simulação concluída. Nenhuma mensagem enviada.";
+        finishBatch();
+        return;
+      }
+      batchStatus.textContent = progress.value + " de " + total + " simulados. Próxima rodada em " + seconds + " segundos.";
+      timer = setTimeout(next, seconds * 1000);
+    }
+    next();
+  });
+  batchStop.addEventListener("click", () => {
+    finishBatch();
+    batchStatus.textContent = "Simulação pausada após " + progress.value + " contato(s).";
+  });
 
   document.getElementById("bussiManualOpen").addEventListener("click", () => {
     const phone = document.getElementById("blackFridayRecipient").value;
