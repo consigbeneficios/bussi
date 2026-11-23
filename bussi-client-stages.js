@@ -9,7 +9,8 @@
   const labels = {em_acao:"Clientes em ação",fatura:"Fatura gerada",pago:"Pagamento confirmado",finalizado:"Finalizados"};
   const date = new Intl.DateTimeFormat("pt-BR",{dateStyle:"short",timeStyle:"short",timeZone:"America/Sao_Paulo"});
   const money = new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"});
-  let current = "reais", byPhone = new Map(), loader, busy = false, stageError = "", editing = "";
+  let current = "reais", byPhone = new Map(), loader, fixturesLoader, busy = false, stageError = "", editing = "";
+  let fixtures = [];
   let records = [];
   try {
     const saved = JSON.parse(localStorage.getItem(storage) || "[]");
@@ -87,7 +88,7 @@
     renderStages();
     try {
       const {etapas} = await loader();
-      byPhone = new Map(etapas.filter(row => labels[row.etapa] && phoneOf(row.telefone)).map(row => [row.telefone,row]));
+      byPhone = new Map(etapas.filter(row => labels[row.etapa] && phoneOf(row.telefone) && !isTestStage(row)).map(row => [row.telefone,row]));
     } catch (error) {
       stageError = error.message;
     } finally {
@@ -97,17 +98,31 @@
     }
   }
 
+  function allTests() { return [...fixtures,...records]; }
+
+  function isTestRecord(row) {
+    const contract = String(row?.contract ?? "").trim().toUpperCase();
+    return !!contract && fixtures.some(item => item.contrato === contract);
+  }
+
+  function isTestStage(row) {
+    return fixtures.some(item => phoneOf(item.telefone) === row.telefone &&
+      item.nome.normalize("NFC").toLowerCase() === String(row.nome).normalize("NFC").toLowerCase());
+  }
+
   function renderTests() {
     const body = $("bussiTestRows");
     body.replaceChildren();
-    if (!records.length) {
+    if (!allTests().length) {
       cells(body,["Nenhum cliente de teste. Adicione um cadastro para simular."]).cells[0].colSpan = 5;
       return;
     }
-    for (const record of records) {
+    for (const record of allTests()) {
       const actions = cells(body,[record.nome,record.telefone,money.format(record.original/100),money.format(record.desconto/100)]).insertCell();
       actions.className = "bussi-crm-row-actions";
-      actions.append(button("Simular", () => openCampaign(record,true)), button("Editar", () => editTest(record)),
+      actions.append(button("Simular", () => openCampaign(record,true)));
+      if (record.contrato) continue;
+      actions.append(button("Editar", () => editTest(record)),
         button("Remover", () => {
           if (!window.confirm("Remover o cadastro de teste de " + record.nome + "?")) return;
           if (saveTests(records.filter(item => item.id !== record.id)) && editing === record.id) resetTest();
@@ -123,7 +138,7 @@
     }
     records = next;
     renderTests();
-    document.dispatchEvent(new CustomEvent("bussi:campaign-examples",{detail:records}));
+    document.dispatchEvent(new CustomEvent("bussi:campaign-examples",{detail:allTests()}));
     $("bussiTestStatus").textContent = "Base de teste salva neste navegador.";
     return true;
   }
@@ -196,7 +211,20 @@
     if (telefone) openCampaign(byPhone.get(telefone) || {nome:target.closest("tr").cells[0].textContent.trim(),telefone});
   });
   document.querySelector('button[data-view="crm"]')?.addEventListener("click",() => void refreshStages());
-  window.BussiClientStages = {setLoader(value){loader=value},refreshRows:renderRows,refreshStages,getTests:() => records.slice()};
+  async function refreshFixtures() {
+    if (!fixturesLoader) return;
+    try {
+      const {clientes} = await fixturesLoader();
+      fixtures = clientes;
+      renderTests();
+      renderAll();
+      document.dispatchEvent(new CustomEvent("bussi:campaign-examples",{detail:allTests()}));
+    } catch {
+      $("bussiTestStatus").textContent = "Não foi possível carregar a base de testes compartilhada.";
+    }
+  }
+  window.BussiClientStages = {setLoader(value){loader=value},setFixturesLoader(value){fixturesLoader=value},
+    refreshRows:renderRows,refreshStages,refreshFixtures,isTestRecord,getTests:allTests};
   renderTests();
   window.setInterval(() => {
     if (!document.hidden && crm.classList.contains("active")) void refreshStages();
