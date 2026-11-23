@@ -11,16 +11,28 @@ globalThis.Deno = {env: {get: (name) => env[name]}};
 const row = {telefone: "5511999990000", nome: "Cliente de teste", original: 10000, desconto: 5000, contrato: "A123", email: "cliente@example.com", documento: "12345678909"};
 let delivery;
 let admin = false;
+let verifiedReceipt = false, paymentReserved = false;
+const recordedStatuses = [];
 const sent = [];
 globalThis.fetch = async (url, options) => {
   const endpoint = new URL(url);
   const body = options.body ? JSON.parse(options.body) : undefined;
   if (endpoint.pathname.endsWith("/bussi_operador_ativo")) return Response.json(admin);
   if (endpoint.pathname.endsWith("/bussi_whatsapp_abrir_fatura")) return Response.json(body.p_hash === delivery.fatura_acesso_hash ? {numero: 42, token: "a".repeat(64)} : null);
+  if (endpoint.pathname.endsWith("/bussi_whatsapp_reservar_encerramento")) {
+    if (!verifiedReceipt || paymentReserved) return Response.json(null);
+    paymentReserved = true;
+    return Response.json(delivery.telefone);
+  }
+  if (endpoint.pathname.endsWith("/bussi_whatsapp_registrar_encerramento")) return new Response(null, {status: 204});
+  if (endpoint.pathname.endsWith("/bussi_whatsapp_eventos")) {
+    recordedStatuses.push(body);
+    return new Response(null, {status: 204});
+  }
   if (endpoint.pathname.endsWith("/message_templates")) {
     return Response.json({data: [{status: "APPROVED", language: "pt_BR", components: [
       {type: "BUTTONS", buttons: endpoint.searchParams.get("name") === "fatura_bussi"
-        ? [{type: "URL", url: "https://consigbeneficios.github.io/bussi/fatura-whatsapp.html#{{1}}"}]
+        ? [{type: "URL", url: "https://consigbeneficios.github.io/bussi/fatura-whatsapp.html#{{1}}"}, {type:"QUICK_REPLY", text:"Falar com atendente"}]
         : [{type: "QUICK_REPLY", text: "EU QUERO"}]},
     ]}]});
   }
@@ -40,6 +52,7 @@ globalThis.fetch = async (url, options) => {
     }
     return Response.json([delivery]);
   }
+  if (body.atendente_em && (delivery.atendente_em || endpoint.searchParams.get("fatura_mensagem") !== "eq." + delivery.fatura_mensagem)) return Response.json([]);
   Object.assign(delivery, body);
   return options.headers.get("Prefer") ? Response.json([delivery]) : new Response(null, {status: 204});
 };
@@ -59,10 +72,10 @@ assert.equal((await (await handle(request(launch))).json()).status, "ja_registra
 assert.equal(sent.length, 1);
 assert.equal(sent[0].template.components[1].parameters[0].payload, "BUSSI_BLACKFRIDAY_EU_QUERO");
 
-function message(from, signature, original = "wamid.1") {
+function message(from, signature, original = "wamid.1", payload = "BUSSI_BLACKFRIDAY_EU_QUERO") {
   const body = JSON.stringify({object: "whatsapp_business_account", entry: [{id: "123", changes: [
     {field: "messages", value: {metadata: {phone_number_id: "456"}, messages: [
-      {type: "button", id: "reply", from, context: {id: original}, button: {payload: "BUSSI_BLACKFRIDAY_EU_QUERO"}},
+      {type: "button", id: payload, from, context: {id: original}, button: {payload}},
     ]}},
   ]}]});
   const hash = createHmac("sha256", signature).update(body).digest("hex");
@@ -91,3 +104,30 @@ for (let attempt=0; attempt<2; attempt++) {
   assert.deepEqual(await result.json(), {numero:42, token:"a".repeat(64)});
 }
 console.log("Botão de URL, token protegido e abertura da mesma fatura verificados.");
+const handoff = "BUSSI_FATURA_ATENDENTE";
+await handle(message(row.telefone,"app","wamid.1",handoff));
+assert.equal(sent.length,2);
+await handle(message(row.telefone,"app","wamid.2",handoff));
+await handle(message(row.telefone,"app","wamid.2",handoff));
+assert.equal(sent.length,3);
+assert.equal(sent[2].text.body,"Estamos transferindo para um de nossos atendentes. Aguarde, por favor.");
+assert.equal(delivery.atendente_aviso_status,"aceito");
+
+const statusPayload = JSON.stringify({object:"whatsapp_business_account",entry:[{id:"123",changes:[{
+  field:"messages",value:{metadata:{phone_number_id:"456"},statuses:[{id:"wamid.1",status:"delivered",timestamp:"1795430000"}]},
+}]}]});
+const signature = createHmac("sha256","app").update(statusPayload).digest("hex");
+assert.equal((await handle(new Request(endpoint,{method:"POST",headers:{"x-hub-signature-256":"sha256="+signature},body:statusPayload}))).status,200);
+assert.deepEqual(recordedStatuses.map(({mensagem,estado})=>[mensagem,estado]),[["wamid.1","delivered"]]);
+
+const notify = (key) => new Request(endpoint,{method:"POST",headers:{Authorization:"Bearer "+key},
+  body:JSON.stringify({action:"pagamento_verificado",numero:42})});
+assert.equal((await handle(notify("wrong"))).status,403);
+await handle(notify("service"));
+assert.equal(sent.length,3);
+verifiedReceipt=true;
+await handle(notify("service"));
+await handle(notify("service"));
+assert.equal(sent.length,4);
+assert.equal(sent[3].template.name,"pagamento_recebido_bussi");
+console.log("Atendimento manual, eventos de entrega e encerramento após comprovante verificados.");
