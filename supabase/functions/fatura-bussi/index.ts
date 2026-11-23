@@ -46,7 +46,21 @@ async function confirmar(f:any, id:string) {
     if(states[d.status]==="pendente" && (typeof d.pix_code!=="string" || !d.pix_code.startsWith("000201") || d.pix_code.length>2048)) return f;
     await db("vincular",f.token_hash,{id,pix:typeof d.pix_code==="string"?d.pix_code:null,qr:imagemPix(d.pix_qr_code)});
   }
-  return await db("verificar",f.token_hash,{id,ordem:f.id,centavos:f.valor_centavos,situacao:states[d.status]}) || f;
+  const verified = await db("verificar",f.token_hash,{id,ordem:f.id,centavos:f.valor_centavos,situacao:states[d.status]}) || f;
+  if (verified.situacao === "pago" && verified.pago_verificado_em) {
+    try {
+      const notification = await fetch(base + "/functions/v1/bussi-whatsapp", {
+        method: "POST",
+        headers: {apikey: secret, Authorization: "Bearer " + secret, "Content-Type": "application/json"},
+        body: JSON.stringify({action: "pagamento_verificado", numero: verified.numero}),
+        redirect: "error", signal: AbortSignal.timeout(12000),
+      });
+      if (!notification.ok) console.warn("bussi_whatsapp_encerramento", notification.status);
+    } catch {
+      console.warn("bussi_whatsapp_encerramento_indisponivel");
+    }
+  }
+  return verified;
 }
 // A consultation can recover a timed-out creation, but never issues another charge.
 async function recuperarEmissao(f:any) {
