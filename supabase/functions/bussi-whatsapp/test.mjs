@@ -1,0 +1,80 @@
+import assert from "node:assert/strict";
+import {createHmac} from "node:crypto";
+import {handle} from "./index.ts";
+
+const env = {
+  SUPABASE_URL: "https://db.example", SUPABASE_SERVICE_ROLE_KEY: "service", SUPABASE_ANON_KEY: "public",
+  META_GRAPH_VERSION: "v27.0", META_WABA_ID: "123", META_PHONE_NUMBER_ID: "456",
+  META_WHATSAPP_TOKEN: "meta", META_APP_SECRET: "app", META_WEBHOOK_VERIFY_TOKEN: "verify",
+};
+globalThis.Deno = {env: {get: (name) => env[name]}};
+const row = {telefone: "5511999990000", nome: "Cliente de teste", original: 10000, desconto: 5000};
+let delivery;
+let admin = false;
+const sent = [];
+globalThis.fetch = async (url, options) => {
+  const endpoint = new URL(url);
+  const body = options.body ? JSON.parse(options.body) : undefined;
+  if (endpoint.pathname.endsWith("/bussi_operador_ativo")) return Response.json(admin);
+  if (endpoint.pathname.endsWith("/message_templates")) {
+    return Response.json({data: [{status: "APPROVED", language: "pt_BR", components: [
+      {type: "BUTTONS", buttons: [{type: "QUICK_REPLY", text: "EU QUERO"}]},
+    ]}]});
+  }
+  if (endpoint.hostname === "graph.facebook.com") {
+    sent.push(body);
+    return Response.json({messages: [{id: "wamid." + sent.length}]});
+  }
+  if (options.method === "POST") {
+    if (delivery) return Response.json([]);
+    delivery = {...body};
+    return Response.json([delivery]);
+  }
+  if (options.method === "GET") {
+    if (endpoint.searchParams.get("telefone") !== "eq." + delivery.telefone ||
+        endpoint.searchParams.has("mensagem") && endpoint.searchParams.get("mensagem") !== "eq." + delivery.mensagem) {
+      return Response.json([]);
+    }
+    return Response.json([delivery]);
+  }
+  Object.assign(delivery, body);
+  return options.headers.get("Prefer") ? Response.json([delivery]) : new Response(null, {status: 204});
+};
+
+const endpoint = "https://db.example/functions/v1/bussi-whatsapp";
+const request = (body) => new Request(endpoint, {
+  method: "POST", headers: {Origin: "https://consigbeneficios.github.io", Authorization: "Bearer user"},
+  body: JSON.stringify(body),
+});
+const launch = {action: "enviar", consentimento: true, ...row};
+assert.equal((await handle(request(launch))).status, 403);
+admin = true;
+assert.equal((await handle(request({...launch, consentimento: false}))).status, 400);
+assert.equal((await handle(request({...launch, desconto: 4999}))).status, 422);
+assert.equal((await (await handle(request(launch))).json()).status, "aceito");
+assert.equal((await (await handle(request(launch))).json()).status, "ja_registrado");
+assert.equal(sent.length, 1);
+assert.equal(sent[0].template.components[1].parameters[0].payload, "BUSSI_BLACKFRIDAY_EU_QUERO");
+
+function message(from, signature, original = "wamid.1") {
+  const body = JSON.stringify({object: "whatsapp_business_account", entry: [{id: "123", changes: [
+    {field: "messages", value: {metadata: {phone_number_id: "456"}, messages: [
+      {type: "button", id: "reply", from, context: {id: original}, button: {payload: "BUSSI_BLACKFRIDAY_EU_QUERO"}},
+    ]}},
+  ]}]});
+  const hash = createHmac("sha256", signature).update(body).digest("hex");
+  return new Request(endpoint, {method: "POST", headers: {"x-hub-signature-256": "sha256=" + hash}, body});
+}
+
+assert.equal((await handle(message(row.telefone, "wrong"))).status, 403);
+assert.equal((await handle(message("5511999990001", "app"))).status, 200);
+assert.equal((await handle(message(row.telefone, "app", "wamid.other"))).status, 200);
+assert.equal(sent.length, 1);
+assert.equal((await handle(message(row.telefone, "app"))).status, 200);
+assert.equal((await handle(message(row.telefone, "app"))).status, 200);
+assert.equal(sent.length, 2);
+assert.equal(sent[1].to, row.telefone);
+assert.equal(sent[1].template.name, "fatura");
+assert.deepEqual(sent[1].template.components[0].parameters.map(({parameter_name, text}) =>
+  [parameter_name, text]), [["customer_name", row.nome], ["tel", row.telefone], ["valor", "100,00"], ["desconto", "50,00"]]);
+console.log("Autorização, consentimento, duplicidade, assinatura e dados da fatura verificados.");
