@@ -192,6 +192,88 @@ async function validSignature(raw: ArrayBuffer, signature: string | null) {
   return crypto.subtle.verify("HMAC", key, bytes, raw);
 }
 
+
+const deskTable = "/rest/v1/bussi_atendimento_mensagens";
+const deskPhone = (value: unknown): value is string => typeof value === "string" && /^[1-9][0-9]{7,14}$/.test(value);
+const deskId = (value: unknown): value is string => typeof value === "string" && /^[A-Za-z0-9_.=+/-]{1,256}$/.test(value);
+const deskText = (value: unknown, limit = 4096) => typeof value === "string"
+  ? Array.from(value.replaceAll("\u0000","").trim()).slice(0,limit).join("") : "";
+
+async function recordIncoming(message: Record<string, any>, contacts: Array<Record<string, any>>) {
+  if (!deskPhone(message.from) || !deskId(message.id) || typeof message.timestamp !== "string" ||
+      !/^\d{10}$/.test(message.timestamp)) return;
+  const time = Number(message.timestamp) * 1000;
+  if (time > Date.now() + 60000) return;
+  const kinds: Record<string,string> = {
+    image:"Imagem", audio:"Áudio", video:"Vídeo", document:"Documento", sticker:"Figurinha",
+    location:"Localização", contacts:"Contato", reaction:"Reação",
+  };
+  const type = typeof message.type === "string" ? message.type : "outro";
+  const text = type === "text" ? deskText(message.text?.body) :
+    type === "button" ? deskText(message.button?.text) :
+    type === "interactive" ? deskText(message.interactive?.button_reply?.title ?? message.interactive?.list_reply?.title) :
+    Object.hasOwn(kinds,type) ? deskText(message[type]?.caption) || kinds[type] : "";
+  if (!text || type === "reaction") return;
+  const contact = contacts.find(item => item.wa_id === message.from)?.profile?.name;
+  const response = await api(deskTable + "?on_conflict=meta_id", env("SUPABASE_SERVICE_ROLE_KEY"), "POST", {
+    telefone:message.from, contato:deskText(contact,120) || null, direcao:"entrada",
+    tipo:type, texto:text, meta_id:message.id, estado:"recebido", ocorrido_em:new Date(time).toISOString(),
+  }, "resolution=ignore-duplicates");
+  if (!response.ok) throw Error("Não foi possível registrar a mensagem recebida.");
+}
+
+async function deskRequest(body: Record<string, any>, json: (status:number, body:object) => Response) {
+  const service = env("SUPABASE_SERVICE_ROLE_KEY");
+  if (body.action === "atendimento_lista") {
+    const offset = body.offset ?? 0;
+    if (!Number.isSafeInteger(offset) || offset < 0 || offset > 1000000) return json(400,{erro:"Página inválida."});
+    const response = await api("/rest/v1/rpc/bussi_atendimento_conversas",service,"POST",
+      {p_busca:deskText(body.busca,120),p_offset:offset});
+    if (!response.ok) return json(503,{erro:"Não foi possível carregar suas conversas."});
+    const rows = await response.json();
+    return json(200,{conversas:rows.slice(0,50),mais:rows.length>50});
+  }
+
+  if (!deskPhone(body.telefone)) return json(400,{erro:"Selecione um contato válido."});
+  const telefone = body.telefone;
+  const incoming = new URLSearchParams({telefone:"eq."+telefone,direcao:"eq.entrada",
+    select:"ocorrido_em",order:"ocorrido_em.desc",limit:"1"});
+  const inbound = await api(deskTable+"?"+incoming,service);
+  if (!inbound.ok) return json(503,{erro:"Não foi possível conferir a janela de atendimento."});
+  const [last] = await inbound.json();
+  const canReply = !!last && Date.parse(last.ocorrido_em) > Date.now()-24*60*60*1000;
+  if (body.action === "atendimento_historico") {
+    const before = body.antes ?? null;
+    if (before !== null && (!Number.isSafeInteger(before) || before < 1)) return json(400,{erro:"Histórico inválido."});
+    const response = await api("/rest/v1/rpc/bussi_atendimento_historico",service,"POST",{p_tel:telefone,p_antes:before});
+    if (!response.ok) return json(503,{erro:"Não foi possível carregar o histórico."});
+    const rows = await response.json();
+    return json(200,{mensagens:rows.slice(0,60),mais:rows.length>60,pode_responder:canReply});
+  }
+
+  const message = deskText(body.texto);
+  const requestId = body.pedido;
+  if (!message || typeof requestId !== "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(requestId)) {
+    return json(400,{erro:"Escreva uma mensagem válida."});
+  }
+  if (!canReply) return json(409,{erro:"A janela de 24 horas está fechada. Aguarde uma nova mensagem do cliente."});
+  if (!env("META_WHATSAPP_TOKEN") || !env("META_PHONE_NUMBER_ID")) {
+    return json(503,{erro:"A conexão com o WhatsApp ainda não está disponível."});
+  }
+  const reserve = await api(deskTable+"?on_conflict=pedido",service,"POST",{
+    telefone,direcao:"saida",tipo:"text",texto:message,estado:"reservado",pedido:requestId,
+  },"resolution=ignore-duplicates,return=representation");
+  if (!reserve.ok) return json(503,{erro:"Não foi possível registrar a resposta."});
+  const [claimed] = await reserve.json();
+  if (!claimed) return json(200,{status:"ja_registrado"});
+
+  const result = await sendMessage(telefone,{type:"text",text:{body:message}});
+  const saved = await api(deskTable+"?pedido=eq."+requestId,service,"PATCH",{estado:result.state,meta_id:result.id});
+  if (!saved.ok) return json(503,{erro:"Resultado indeterminado. Atualize o histórico antes de tentar novamente."});
+  return json(200,{status:result.state});
+}
+
 export async function handle(request: Request) {
   const url = new URL(request.url);
   const headers = {
@@ -219,7 +301,10 @@ export async function handle(request: Request) {
         for (const change of entry.changes ?? []) {
           if (change.field !== "messages" || change.value?.metadata?.phone_number_id !== env("META_PHONE_NUMBER_ID")) continue;
           for (const status of change.value.statuses ?? []) await recordStatus(status);
-          for (const message of change.value.messages ?? []) await handleReply(message);
+          for (const message of change.value.messages ?? []) {
+            await recordIncoming(message, Array.isArray(change.value.contacts) ? change.value.contacts : []);
+            await handleReply(message);
+          }
         }
       }
       return json(200, {});
@@ -253,6 +338,9 @@ export async function handle(request: Request) {
     if (!token) return json(401, {});
     const access = await api("/rest/v1/rpc/bussi_operador_ativo", token, "POST", {});
     if (!access.ok || await access.json() !== true) return json(403, {erro: "Entre com a sessão administrativa do BUSSI."});
+    if (["atendimento_lista","atendimento_historico","atendimento_enviar"].includes(body.action)) {
+      return await deskRequest(body,json);
+    }
     if (body.action === "etapas_clientes") {
       const response = await api("/rest/v1/rpc/bussi_clientes_etapas", env("SUPABASE_SERVICE_ROLE_KEY"), "POST", {});
       if (!response.ok) return json(503, {erro: "Não foi possível carregar as etapas dos clientes."});
