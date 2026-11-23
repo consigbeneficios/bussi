@@ -211,3 +211,19 @@ body { background: var(--bg); color: var(--ink); }
   .bussi-preview-chat { min-height: 300px; }
   .bussi-composer-controls { flex-wrap: wrap; justify-content: flex-end; }
 }
+
+.bussi-crm-tabs { display: flex; gap: 8px; overflow: auto; padding: 4px 2px 12px; margin: 12px 0 18px; border-bottom: 1px solid var(--bussi-line); }
+.bussi-crm-tabs button { flex: 0 0 auto; white-space: nowrap; padding: 9px 13px; border-radius: 9px; border: 1px solid #4c3b48; background: #241e26; color: #e6dce5; font-weight: 700; }
+.bussi-crm-tabs button[aria-selected="true"] { background: #502333; border-color: #e85b71; color: #fff; }
+.bussi-crm-actions { margin-bottom: 16px; gap: 8px; flex-wrap: wrap; }
+.bussi-crm-testform { display: grid; grid-template-columns: minmax(145px,1.4fr) repeat(3,minmax(110px,1fr)) auto; align-items: end; gap: 10px; margin-bottom: 12px; }
+.bussi-crm-stage-head { align-items: center; flex-wrap: wrap; }
+.bussi-crm-stage-head h3 { margin: 0; }
+.bussi-crm-row-actions { display: flex; flex-wrap: wrap; gap: 5px; }
+#crm .tablewrap { margin-top: 12px; }
+#crm .bussi-crm-sent td { background: #1b191d; color: #a9a1a8; }
+#crm .bussi-crm-sent td:first-child { border-inline-start: 3px solid #a44a5b; }
+#crm .bussi-crm-sent td[data-crm-stage-cell] { color: #ffc3cd; }
+#bussiTestStatus { color: var(--muted); }
+@media (max-width: 850px) { .bussi-crm-testform { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width: 440px) { .bussi-crm-testform { grid-template-columns: minmax(0,1fr); } }
