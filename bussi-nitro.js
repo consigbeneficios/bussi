@@ -84,31 +84,98 @@
     campaignStatus.textContent = "Modelos aprovados. Cadastros elegíveis neste painel: " + campaignRecipients().length + ".";
   });
 
-  campaignSend.onclick = () => void withCampaign(async () => {
-    const recipients = campaignRecipients();
-    if (!recipients.length) throw Error("Importe ou sincronize os clientes no CRM. Para esta campanha, cada número deve ter um único cadastro e valores com 50% de desconto.");
-    if (!$("blackFridayConsent").checked) throw Error("Confirme que os contatos da campanha autorizaram mensagens pelo WhatsApp.");
-    if (!window.confirm("Enviar blackfriday a " + recipients.length + " contato(s) elegível(is) do CRM?")) return;
-    await api("/functions/v1/bussi-whatsapp", {action: "status"});
-    const results = {aceito: 0, ja_registrado: 0, recusado: 0, incerto: 0};
-    let processed = 0;
-    const summary = () => processed + "/" + recipients.length + " processados. Aceitos pela Meta: " + results.aceito +
-      ". Já registrados: " + results.ja_registrado + ". Recusados: " + results.recusado + ". Indeterminados: " + results.incerto + ".";
-    for (const recipient of recipients) {
-      campaignStatus.textContent = summary();
-      try {
-        const {status} = await api("/functions/v1/bussi-whatsapp", {action: "enviar", consentimento: true, ...recipient});
-        if (!Object.hasOwn(results, status)) throw Error("Status inesperado.");
-        results[status]++;
-        processed++;
-      } catch (error) {
-        throw Error(summary() + " Envio interrompido. " + error.message);
-      }
-    }
-    campaignStatus.textContent = summary();
-    $("blackFridayConsent").checked = false;
+  const recipientSelect = $("blackFridayRecipient");
+  const flowRefresh = $("refreshWhatsAppFlow");
+  const flowStatus = $("whatsappFlowStatus");
+  const flowRows = $("whatsappFlowRows");
+  const flowPrevious = $("whatsappFlowPrevious"), flowNext = $("whatsappFlowNext");
+  let flowOffset = 0, flowBusy = false;
+
+  function fillCampaignRecipients() {
+    const selected = recipientSelect.value;
+    recipientSelect.replaceChildren(new Option("Selecione um cliente", ""));
+    const recipients = campaignRecipients().sort((left, right) => left.nome.localeCompare(right.nome, "pt-BR"));
+    for (const {nome, telefone} of recipients) recipientSelect.add(new Option(nome + " — " + telefone, telefone));
+    if (recipients.some(({telefone}) => telefone === selected)) recipientSelect.value = selected;
+  }
+
+  recipientSelect.onchange = () => { $("blackFridayConsent").checked = false; };
+
+  const deliveryLabels = {
+    reservado: "Reservado", aceito: "Aceito pela Meta", sent: "Enviado", delivered: "Entregue",
+    read: "Lido", failed: "Falhou na entrega", recusado: "Recusado", incerto: "Retorno indeterminado",
+    ja_registrado: "Já registrado",
+  };
+  const flowDate = new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo",
   });
 
+  async function loadWhatsAppFlow(offset = 0) {
+    if (flowBusy) return;
+    flowBusy = true;
+    flowRefresh.disabled = true;
+    flowStatus.textContent = "Carregando acompanhamento…";
+    try {
+      const {entregas} = await api("/functions/v1/bussi-whatsapp", {action: "fluxo", offset});
+      flowRows.replaceChildren();
+      for (const delivery of entregas) {
+        const row = flowRows.insertRow();
+        const event = (label, when) => when ? label + " · " + flowDate.format(new Date(when)) : label;
+        const cells = [
+          delivery.nome + " — " + delivery.telefone,
+          event(deliveryLabels[delivery.oferta_status] || "Aguardando", delivery.oferta_em),
+          event(delivery.resposta_em ? "Confirmado" : "Aguardando resposta", delivery.resposta_em),
+          event(deliveryLabels[delivery.fatura_status] || "Aguardando", delivery.fatura_em),
+          event(delivery.abertura_em ? "Aberta no navegador" : "Aguardando clique", delivery.abertura_em),
+          event(({aberta:"Aguardando pagamento", processando:"Processando", pendente:"Pix pendente",
+            pago:"Pago", reembolsado:"Reembolsado", cancelado:"Cancelado"})[delivery.pagamento] || "Aguardando fatura", delivery.pago_em),
+        ];
+        for (const value of cells) row.insertCell().textContent = value;
+        const closing = row.insertCell();
+        closing.textContent = delivery.encerramento_em ? event(deliveryLabels[delivery.encerramento_status] || "Aguardando", delivery.encerramento_em) : "Aguardando confirmação do pagamento";
+        const handoff = row.insertCell();
+        handoff.textContent = delivery.atendente_em
+          ? event("Atendimento solicitado", delivery.atendente_em) : "Sem solicitação";
+        if (delivery.atendente_em) {
+          const conversation = document.createElement("a");
+          conversation.href = "https://wa.me/" + encodeURIComponent(delivery.telefone);
+          conversation.target = "_blank";
+          conversation.rel = "noopener noreferrer";
+          conversation.textContent = "Abrir conversa manual";
+          const notice = deliveryLabels[delivery.atendente_aviso_status];
+          if (notice) handoff.append(document.createElement("br"), "Aviso: " + notice);
+          handoff.append(document.createElement("br"), conversation);
+        }
+      }
+      flowOffset = offset;
+      flowPrevious.disabled = offset === 0;
+      flowNext.disabled = entregas.length < 50;
+      flowStatus.textContent = entregas.length ? "Envios " + (offset + 1) + " a " + (offset + entregas.length) + "." : "Nenhum envio nesta página.";
+    } catch (error) {
+      flowStatus.textContent = error.message;
+    } finally {
+      flowRefresh.disabled = false;
+      flowBusy = false;
+    }
+  }
+
+  flowRefresh.onclick = () => void loadWhatsAppFlow(flowOffset);
+  flowPrevious.onclick = () => void loadWhatsAppFlow(Math.max(0, flowOffset - 50));
+  flowNext.onclick = () => void loadWhatsAppFlow(flowOffset + 50);
+  document.querySelector('button[data-view="campaigns"]').addEventListener("click", () => {
+    fillCampaignRecipients();
+    void loadWhatsAppFlow();
+  });
+  campaignSend.onclick = () => void withCampaign(async () => {
+    const recipient = campaignRecipients().find(({telefone}) => telefone === recipientSelect.value);
+    if (!recipient) throw Error("Selecione um cliente elegível no CRM.");
+    if (!$("blackFridayConsent").checked) throw Error("Confirme que o cliente autorizou mensagens pelo WhatsApp.");
+    if (!window.confirm("Enviar blackfriday para " + recipient.nome + " (" + recipient.telefone + ")?")) return;
+    $("blackFridayConsent").checked = false;
+    const {status} = await api("/functions/v1/bussi-whatsapp", {action: "enviar", consentimento: true, ...recipient});
+    campaignStatus.textContent = "Envio para " + recipient.nome + ": " + (deliveryLabels[status] || status) + ".";
+    await loadWhatsAppFlow();
+  });
   function showLogin(){jwt=null;factor=null;$("nitroLoginForm").hidden=false;$("nitroVerifyForm").hidden=true;$("nitroWorkspace").hidden=true;$("nitroLogout").hidden=true;$("generateCharge").disabled=true;$("printInvoice").disabled=true;resetRequest();if(typeof showAuth==="function")showAuth();}
   async function handle(action){
     if(busy)return;
@@ -129,6 +196,7 @@
     $("generateCharge").disabled=false;
     status(remembered?"Sessão reconhecida neste navegador. Autenticador não solicitado novamente.":"Acesso BUSSI confirmado. Sessão lembrada neste navegador.");
     try{await startCloudSync();}catch(err){syncStatus("Nuvem indisponível: alterações continuam salvas neste navegador.",true);}
+    fillCampaignRecipients();
     await history();await summary();
   }
   $("nitroLoginForm").addEventListener("submit",event=>{
