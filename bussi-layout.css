@@ -377,3 +377,40 @@ body { background: var(--bg); color: var(--ink); }
   #inbox .bussi-desk-contact { min-height: 56px; padding-inline: 8px; gap: 7px; }
   #inbox .bussi-desk-bubble { max-width: 88%; }
 }
+
+/* Prévia da campanha com contraste entre os cartões e a identidade do BUSSI. */
+.bussi-campaign-conversation { grid-template-columns: clamp(230px,25vw,286px) minmax(0,1fr); min-height: 0; }
+.bussi-campaign-conversation .bussi-inbox-list { padding: 15px 11px; background: #19151b; }
+.bussi-campaign-conversation .bussi-inbox-brand { margin-bottom: 13px; }
+.bussi-campaign-conversation .bussi-thread { min-height: 54px; margin-bottom: 2px; padding: 7px 9px; }
+.bussi-campaign-conversation .bussi-thread-avatar { border-radius: 50%; }
+.bussi-campaign-conversation .bussi-preview-header { min-height: 63px; padding-inline: 14px; gap: 9px; }
+.bussi-campaign-conversation .bussi-preview-header > div { min-width: 0; flex: 1; }
+.bussi-campaign-conversation .bussi-preview-header > div span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bussi-campaign-conversation .bussi-preview-header button { margin-left: 0; }
+.bussi-campaign-conversation .bussi-preview-mode { border-radius: 20px; border: 1px solid #744652; padding: 4px 8px; white-space: nowrap; }
+.bussi-campaign-conversation .bussi-preview[data-mode="history"] .bussi-preview-mode { display: none; }
+.bussi-campaign-conversation .bussi-preview-chat {
+  min-height: 335px; max-height: min(58dvh,620px); padding: 15px clamp(12px,5vw,64px);
+  background-color: #181419;
+  background-image: radial-gradient(ellipse at 1px 1px,#7046554d 1px,transparent 1px);
+  background-size: 20px 20px; overscroll-behavior: contain;
+}
+.bussi-campaign-conversation .bussi-preview-bubble {
+  max-width: min(91%,405px); padding: 9px 11px; border-radius: 5px 14px 14px;
+  background: #fbf7f7; color: #271c24; border-color: #cdb8c0; font-size: 13px; box-shadow: 0 2px 7px #0006;
+}
+.bussi-campaign-conversation .bussi-preview-bubble.customer { background: #f5d9e0; color: #321e28; border-color: #c99ca9; border-radius: 14px 5px 14px 14px; }
+.bussi-campaign-conversation .bussi-preview-time { color: #6d5b64; }
+.bussi-campaign-conversation .bussi-message-media { aspect-ratio: 3 / 2; max-height: none; object-fit: contain; margin-bottom: 10px; }
+.bussi-campaign-conversation .bussi-preview-actions { margin: 8px -11px -9px; padding: 0; gap: 0; border-color: #e5d2d9; }
+.bussi-campaign-conversation .bussi-preview-actions button { min-height: 42px; color: #8b2948; border-radius: 0; }
+.bussi-campaign-conversation .bussi-preview-actions button + button { border-color: #e5d2d9; }
+.bussi-campaign-conversation .bussi-preview-actions button:hover:not(:disabled) { background: #f3e0e7; }
+.bussi-campaign-conversation .bussi-preview-actions button:disabled { color: #76656f; }
+@media (max-width:725px) {
+  .bussi-campaign-conversation { grid-template-columns: minmax(0,1fr); }
+  .bussi-campaign-conversation #bussiExampleList { max-height: 170px; overflow-y: auto; }
+  .bussi-campaign-conversation .bussi-preview-chat { padding: 12px 10px; max-height: 55dvh; min-height: 280px; }
+  .bussi-campaign-conversation .bussi-preview-header { padding-inline: 9px; }
+}

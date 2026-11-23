@@ -171,7 +171,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 #dashboardEventRows td:first-child{white-space:nowrap;font-variant-numeric:tabular-nums}
 
 </style>
-<link rel="stylesheet" href="bussi-layout.css?v=20261123-atendimento-compacto">
+<link rel="stylesheet" href="bussi-layout.css?v=20261123-previa-conversa">
 </head>
 <body>
 <div class="authgate" id="authGate"><div class="authcard"><div class="authbrand"><b>CONSIG BENEFÍCIOS</b></div><h2>Acesso seguro</h2><p>Autenticando administrador...</p></div></div>
@@ -321,7 +321,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
       <div class="section">
         <div class="sectionhead bussi-campaign-heading"><div><h2>Campanhas do WhatsApp</h2><p>Prévia, envio e acompanhamento das conversas.</p></div><button class="btn ghost" id="newCampaign">Nova campanha</button></div>
         <div class="bussi-campaign-layout">
-          <div class="bussi-inbox" aria-label="Conversas da campanha">
+          <div class="bussi-inbox bussi-campaign-conversation" aria-label="Conversas da campanha">
           <aside class="bussi-inbox-list">
             <div class="bussi-inbox-brand"><img src="logo-bussi.svg" alt="" width="38" height="38"><h3>Conversas</h3></div>
             <label for="bussiChatSearch">Buscar cliente</label>
@@ -335,10 +335,11 @@ button:disabled{opacity:.5;cursor:not-allowed}
             <div id="bussiChatList"></div>
             <p id="bussiChatEmpty">Nenhuma conversa registrada.</p>
           </aside>
-          <figure class="bussi-preview" aria-labelledby="bussiPreviewTitle">
+          <figure class="bussi-preview" data-mode="preview" aria-labelledby="bussiPreviewTitle">
             <div class="bussi-preview-header">
               <img src="logo-bussi.svg" alt="" width="36" height="36">
               <div><strong id="bussiPreviewTitle">Consig Benefícios</strong><span id="bussiPreviewSubtitle">Simulação no WhatsApp</span></div>
+              <span class="bussi-preview-mode">Simulação</span>
               <button id="bussiPreviewReset" type="button">Reiniciar</button>
             </div>
             <div id="bussiPreviewChat" class="bussi-preview-chat" role="log" aria-label="Conversa simulada" aria-live="polite"></div>
@@ -1014,6 +1015,6 @@ window.addEventListener('hashchange',abrirAbaFaturas);abrirAbaFaturas();
 <script src="bussi-client-stages.js?v=20261123-whatsapp-area"></script>
 <script src="bussi-desk.js?v=20261123-whatsapp-area"></script>
 <script src="bussi-nitro.js?v=20261123-whatsapp-area"></script>
-<script src="bussi-preview.js?v=20261123-whatsapp-area" defer></script>
+<script src="bussi-preview.js?v=20261123-previa-conversa" defer></script>
 </body>
 </html>
