@@ -171,7 +171,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 #dashboardEventRows td:first-child{white-space:nowrap;font-variant-numeric:tabular-nums}
 
 </style>
-<link rel="stylesheet" href="bussi-layout.css?v=20261123">
+<link rel="stylesheet" href="bussi-layout.css?v=20261123-2">
 </head>
 <body>
 <div class="authgate" id="authGate"><div class="authcard"><div class="authbrand"><b>CONSIG BENEFÍCIOS</b></div><h2>Acesso seguro</h2><p>Autenticando administrador...</p></div></div>
@@ -255,9 +255,16 @@ button:disabled{opacity:.5;cursor:not-allowed}
             <label class="bussi-consent"><input id="blackFridayConsent" type="checkbox"> O cliente autorizou receber mensagens pelo WhatsApp.</label>
             <div class="toolbar">
               <button class="btn ghost" id="checkWhatsApp" type="button">Verificar modelos</button>
-              <button class="btn primary" id="sendBlackFriday" type="button">Enviar ao cliente</button>
+              <button class="btn primary" id="sendBlackFriday" type="button">Enviar modelo ao cliente</button>
             </div>
             <p id="whatsappCampaignStatus" role="status" aria-live="polite"></p>
+            <details class="bussi-manual">
+              <summary>Escrever mensagem manual</summary>
+              <label for="bussiManualBody">Mensagem para o cliente selecionado</label>
+              <textarea id="bussiManualBody" maxlength="1500" rows="4"></textarea>
+              <button class="btn ghost" type="button" id="bussiManualOpen">Abrir no WhatsApp</button>
+              <p id="bussiManualStatus" role="status"></p>
+            </details>
           </div>
           <figure class="bussi-preview" aria-labelledby="bussiPreviewTitle">
             <div class="bussi-preview-header">
@@ -265,7 +272,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
               <div><strong id="bussiPreviewTitle">Consig Benefícios</strong><span>Prévia da conversa no WhatsApp</span></div>
               <button id="bussiPreviewReset" type="button">Reiniciar</button>
             </div>
-            <div id="bussiPreviewChat" class="bussi-preview-chat" aria-live="polite"></div>
+            <div id="bussiPreviewChat" class="bussi-preview-chat" role="log" aria-label="Conversa simulada" aria-live="polite"></div>
             <figcaption class="bussi-preview-footer">Simulação com dados fictícios. Os botões da prévia não enviam mensagens.</figcaption>
           </figure>
         </div>
@@ -889,6 +896,6 @@ window.addEventListener('hashchange',abrirAbaFaturas);abrirAbaFaturas();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.94.1/dist/umd/supabase.min.js"></script>
 <script src="bussi-nitro.js?v=20261123-campanha-fatura"></script>
-<script src="bussi-preview.js?v=20261123" defer></script>
+<script src="bussi-preview.js?v=20261123-2" defer></script>
 </body>
 </html>
