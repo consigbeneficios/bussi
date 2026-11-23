@@ -25,6 +25,7 @@
     cancelado:"Cancelado",reembolsado:"Reembolsado"};
   let client = null;
   let example = null;
+  let manualPhone = "";
   let deliveries = [];
   let active = "";
   let onlyHandoff = false;
@@ -79,7 +80,7 @@
     const discounted = money.format(person.desconto / 100);
     title.textContent = "Consig Benefícios";
     subtitle.textContent = example ? "Exemplo para " + example.nome : client ? "Prévia para " + client.nome : "Prévia de conversa no WhatsApp";
-    caption.textContent = example ? "Simulação para o número de teste final 2028. Nenhuma mensagem é enviada." :
+    caption.textContent = example ? "Cadastro de teste. Nenhuma mensagem é enviada." :
       client ? "Prévia com o cadastro selecionado. Nenhuma mensagem é enviada." : "Simulação com dados fictícios. Nenhuma mensagem é enviada.";
     reset.hidden = false;
     renderList();
@@ -116,6 +117,7 @@
       selection.dispatchEvent(new Event("change"));
     }
     example = null;
+    manualPhone = row.telefone;
     active = row.telefone;
     title.textContent = row.nome;
     subtitle.textContent = row.telefone;
@@ -190,19 +192,19 @@
   }
   all.addEventListener("click",() => filter(false));
   handoff.addEventListener("click",() => filter(true));
-  demo.addEventListener("click", () => { example = null; start(); });
+  demo.addEventListener("click", () => { manualPhone = ""; example = null; start(); });
   document.addEventListener("bussi:campaign-examples", ({detail}) => {
     examples.replaceChildren();
     if (!detail.length) return;
     const heading = document.createElement("p");
     heading.className = "bussi-example-heading";
-    heading.textContent = "Exemplos · menores parcelas";
+    heading.textContent = "Clientes de teste";
     examples.append(heading);
     for (const person of detail) {
       const button = document.createElement("button");
       button.className = "bussi-thread";
       button.type = "button";
-      button.dataset.example = person.telefone;
+      button.dataset.example = person.id;
       button.setAttribute("aria-pressed", "false");
       const avatar = document.createElement("span");
       avatar.className = "bussi-thread-avatar";
@@ -214,13 +216,43 @@
       value.textContent = "Parcela original: R$ " + money.format(person.original / 100);
       info.append(name, value);
       button.append(avatar, info);
-      button.addEventListener("click", () => { example = {...person, key:person.telefone, telefone:testPhone}; start(); });
+      button.addEventListener("click", () => { example = {...person, key:person.id}; start(); });
       examples.append(button);
     }
     renderList();
   });
   reset.addEventListener("click", start);
+  document.addEventListener("bussi:open-test-client", ({detail}) => {
+    manualPhone = "";
+    example = {...detail,key:detail.id};
+    document.getElementById("bussiManualBody").value = "";
+    start();
+  });
+  document.addEventListener("bussi:open-real-client", ({detail}) => {
+    if (selection.value !== detail.telefone && [...selection.options].some(option => option.value === detail.telefone)) {
+      selection.value = detail.telefone;
+      selection.dispatchEvent(new Event("change"));
+    }
+    manualPhone = detail.telefone;
+    document.getElementById("bussiManualBody").value = "";
+    document.getElementById("bussiManualStatus").textContent = "Conversa com " + detail.nome + ".";
+    const match = deliveries.find(item => item.telefone === detail.telefone);
+    if (match) openTimeline(match);
+    else {
+      active = detail.telefone;
+      example = null;
+      title.textContent = detail.nome;
+      subtitle.textContent = detail.telefone;
+      caption.textContent = "Use o campo de mensagem para abrir esta conversa no WhatsApp.";
+      reset.hidden = true;
+      chat.replaceChildren();
+      bubble("Nenhum evento desta campanha para este cliente.");
+      renderList();
+    }
+    document.getElementById("bussiManualBody").focus();
+  });
   document.addEventListener("bussi:campaign-recipient", event => {
+    manualPhone = "";
     if (client?.telefone !== event.detail?.telefone) {
       document.getElementById("bussiManualBody").value = "";
       document.getElementById("bussiManualStatus").textContent = "";
@@ -233,7 +265,6 @@
     deliveries = event.detail;
     const selected = deliveries.find(row => row.telefone === active);
     if (selected) openTimeline(selected);
-    else if (active) start();
     else renderList();
   });
   start();
@@ -278,9 +309,13 @@
   });
 
   document.getElementById("bussiManualOpen").addEventListener("click", () => {
-    const phone = document.getElementById("blackFridayRecipient").value;
+    const phone = example ? "" : manualPhone || selection.value;
     const text = document.getElementById("bussiManualBody").value.trim();
     const status = document.getElementById("bussiManualStatus");
+    if (example) {
+      status.textContent = "Este cadastro é de teste. Selecione um cliente real para abrir o WhatsApp.";
+      return;
+    }
     if (!/^55\d{10,11}$/.test(phone) || !text) {
       status.textContent = "Selecione um cliente e escreva a mensagem.";
       return;

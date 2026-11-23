@@ -253,6 +253,11 @@ export async function handle(request: Request) {
     if (!token) return json(401, {});
     const access = await api("/rest/v1/rpc/bussi_operador_ativo", token, "POST", {});
     if (!access.ok || await access.json() !== true) return json(403, {erro: "Entre com a sessão administrativa do BUSSI."});
+    if (body.action === "etapas_clientes") {
+      const response = await api("/rest/v1/rpc/bussi_clientes_etapas", env("SUPABASE_SERVICE_ROLE_KEY"), "POST", {});
+      if (!response.ok) return json(503, {erro: "Não foi possível carregar as etapas dos clientes."});
+      return json(200, {etapas: await response.json()});
+    }
     if (body.action === "fluxo") {
       const offset = body.offset ?? 0;
       if (!Number.isSafeInteger(offset) || offset < 0 || offset > 1000000) return json(400, {});

@@ -40,6 +40,7 @@
     return data;
   }
 
+  window.BussiClientStages?.setLoader(() => api("/functions/v1/bussi-whatsapp", {action:"etapas_clientes"}));
   const campaignStatus = $("whatsappCampaignStatus");
   const campaignCheck = $("checkWhatsApp");
 
@@ -97,9 +98,7 @@
     for (const {nome, telefone} of recipients) recipientSelect.add(new Option(nome + " — " + telefone, telefone));
     if (recipients.some(({telefone}) => telefone === selected)) recipientSelect.value = selected;
     announceCampaignRecipient();
-    const detail = recipients.slice().sort((a,b) => a.original - b.original || a.nome.localeCompare(b.nome, "pt-BR")).slice(0,3)
-      .map(({nome,telefone,original,desconto}) => ({nome,telefone,original,desconto}));
-    document.dispatchEvent(new CustomEvent("bussi:campaign-examples", {detail}));
+    document.dispatchEvent(new CustomEvent("bussi:campaign-examples", {detail:window.BussiClientStages?.getTests() || []}));
   }
 
   function announceCampaignRecipient() {
@@ -128,6 +127,7 @@
     try {
       const {entregas} = await api("/functions/v1/bussi-whatsapp", {action: "fluxo", offset});
       document.dispatchEvent(new CustomEvent("bussi:campaign-flow", {detail: entregas}));
+      void window.BussiClientStages?.refreshStages();
       flowRows.replaceChildren();
       for (const delivery of entregas) {
         const row = flowRows.insertRow();
