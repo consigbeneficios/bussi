@@ -467,3 +467,16 @@ body { background: var(--bg); color: var(--ink); }
   #campaigns .bussi-preview-chat { min-height: 295px; padding: 12px; }
   #campaigns .bussi-preview-mode { display: none; }
 }
+
+#campaigns .bussi-campaign-conversation .bussi-preview { grid-template-rows: auto auto minmax(0,1fr) auto auto; }
+#campaigns .bussi-campaign-conversation .bussi-preview[data-mode="history"] { grid-template-rows: auto minmax(0,1fr) auto auto; }
+.bussi-preview-steps { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); margin: 0; padding: 8px 12px; gap: 6px; list-style: none; background: #282028; border-block-end: 1px solid #473540; }
+.bussi-preview-steps li { padding: 6px 4px 7px; text-align: center; font-size: 11px; color: #cfbfc9; border-block-end: 2px solid #5e4b59; }
+.bussi-preview-steps li.done { color: #f0d9e4; border-color: #ad5c77; }
+.bussi-preview-steps li[aria-current="step"] { color: #fff; border-color: #ff8aa8; font-weight: 800; }
+.bussi-preview[data-mode="history"] .bussi-preview-steps { display: none; }
+#campaigns .bussi-preview-chat { scroll-padding-block: 12px; }
+#campaigns .bussi-preview-bubble { width: fit-content; }
+#campaigns .bussi-preview-bubble:has(.bussi-message-media) { width: min(94%,415px); }
+#campaigns .bussi-message-media { display: block; width: 100%; }
+@media (max-width:460px) { .bussi-preview-steps { gap: 4px; padding-inline: 6px; } #campaigns .bussi-preview-bubble { font-size: 13px; } }
