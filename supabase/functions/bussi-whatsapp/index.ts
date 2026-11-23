@@ -280,6 +280,27 @@ async function deskRequest(body: Record<string, any>, json: (status:number, body
   return json(200,{status:result.state});
 }
 
+async function offerArtwork() {
+  try {
+    const source = await fetch(origin + "/bussi/blackfriday-consig.svg", {
+      redirect:"error",signal:AbortSignal.timeout(5000),
+    });
+    if (!source.ok) return new Response(null,{status:404});
+    const svg = await source.text();
+    if (svg.length > 500000) return new Response(null,{status:502});
+    const encoded = svg.match(/href="data:image\/jpeg;base64,([A-Za-z0-9+/=]+)"/)?.[1];
+    if (!encoded) return new Response(null,{status:502});
+    const bytes = Uint8Array.from(atob(encoded), char => char.charCodeAt(0));
+    if (bytes[0] !== 255 || bytes[1] !== 216 || bytes[bytes.length-2] !== 255 || bytes[bytes.length-1] !== 217) {
+      return new Response(null,{status:502});
+    }
+    return new Response(bytes,{headers:{"Content-Type":"image/jpeg","Cache-Control":"public, max-age=3600",
+      "X-Content-Type-Options":"nosniff"}});
+  } catch {
+    return new Response(null,{status:502});
+  }
+}
+
 export async function handle(request: Request) {
   const url = new URL(request.url);
   const headers = {
@@ -289,6 +310,7 @@ export async function handle(request: Request) {
   const json = (status: number, body: object) => new Response(JSON.stringify(body), {status, headers});
   if (request.method === "OPTIONS") return new Response(null, {status: 204, headers});
   if (request.method === "GET") {
+    if (url.searchParams.get("imagem") === "blackfriday") return await offerArtwork();
     const token = env("META_WEBHOOK_VERIFY_TOKEN");
     const challenge = url.searchParams.get("hub.challenge");
     return token && challenge && url.searchParams.get("hub.mode") === "subscribe" &&
@@ -394,7 +416,7 @@ export async function handle(request: Request) {
       return json(409, {erro: "Revise a abertura do modelo Black Friday antes do disparo."});
     }
     const mediaId = env("META_BLACKFRIDAY_IMAGE_ID");
-    if (offerImage && !/^\d+$/.test(mediaId)) return json(409, {erro: "Cadastre a imagem original do modelo antes do disparo."});
+    const image = /^\d+$/.test(mediaId) ? {id:mediaId} : {link:env("SUPABASE_URL") + "/functions/v1/bussi-whatsapp?imagem=blackfriday"};
     const [reserved] = await db("?on_conflict=campanha,telefone", "POST",
       {campanha: campaign, telefone, nome, original, desconto, pagador}, "resolution=ignore-duplicates,return=representation");
     if (!reserved) return json(200, {status: "ja_registrado"});
@@ -402,7 +424,7 @@ export async function handle(request: Request) {
     const offerFields = {customer_name:nome,tel:telefone,valor:money(original),desconto:money(desconto)};
     const components: unknown[] = [{type:"body", parameters:Object.entries(offerFields)
       .map(([parameter_name,text]) => ({type:"text",parameter_name,text}))}];
-    if (offerImage) components.unshift({type: "header", parameters: [{type: "image", image: {id: mediaId}}]});
+    if (offerImage) components.unshift({type: "header", parameters: [{type: "image", image}]});
     if (button >= 0) components.push({type: "button", sub_type: "quick_reply", index: String(button),
       parameters: [{type: "payload", payload: campaignReply}]});
     if (offerHandoff >= 0) components.push({type:"button",sub_type:"quick_reply",index:String(offerHandoff),
