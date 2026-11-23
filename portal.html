@@ -171,7 +171,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 #dashboardEventRows td:first-child{white-space:nowrap;font-variant-numeric:tabular-nums}
 
 </style>
-<link rel="stylesheet" href="bussi-layout.css?v=20261123-conversas">
+<link rel="stylesheet" href="bussi-layout.css?v=20261123-midia">
 </head>
 <body>
 <div class="authgate" id="authGate"><div class="authcard"><div class="authbrand"><b>CONSIG BENEFÍCIOS</b></div><h2>Acesso seguro</h2><p>Autenticando administrador...</p></div></div>
@@ -243,32 +243,11 @@ button:disabled{opacity:.5;cursor:not-allowed}
 
     <section class="view" id="campaigns">
       <div class="section">
-        <div class="sectionhead"><div><h2>Campanhas</h2><p>Organize campanhas e envie a Black Friday pelo WhatsApp.</p></div><button class="btn primary" id="newCampaign">Nova campanha</button></div>
+        <div class="sectionhead bussi-campaign-heading"><div><h2>Campanhas do WhatsApp</h2><p>Prévia, envio e acompanhamento das conversas.</p></div><button class="btn ghost" id="newCampaign">Nova campanha</button></div>
         <div class="bussi-campaign-layout">
-          <div class="bussi-campaign-send">
-            <h3>Enviar oferta Black Friday</h3>
-            <p>Selecione um cliente do CRM e confirme o envio individual.</p>
-            <div class="field">
-              <label for="blackFridayRecipient">Cliente</label>
-              <select id="blackFridayRecipient"><option value="">Selecione um cliente</option></select>
-            </div>
-            <label class="bussi-consent"><input id="blackFridayConsent" type="checkbox"> O cliente autorizou receber mensagens pelo WhatsApp.</label>
-            <div class="toolbar">
-              <button class="btn ghost" id="checkWhatsApp" type="button">Verificar modelos</button>
-              <button class="btn primary" id="sendBlackFriday" type="button">Enviar modelo ao cliente</button>
-            </div>
-            <p id="whatsappCampaignStatus" role="status" aria-live="polite"></p>
-            <details class="bussi-manual">
-              <summary>Escrever mensagem manual</summary>
-              <label for="bussiManualBody">Mensagem para o cliente selecionado</label>
-              <textarea id="bussiManualBody" maxlength="1500" rows="4"></textarea>
-              <button class="btn ghost" type="button" id="bussiManualOpen">Abrir no WhatsApp</button>
-              <p id="bussiManualStatus" role="status"></p>
-            </details>
-          </div>
           <div class="bussi-inbox" aria-label="Conversas da campanha">
           <aside class="bussi-inbox-list">
-            <h3>Conversas</h3>
+            <div class="bussi-inbox-brand"><img src="logo-bussi.svg" alt="" width="38" height="38"><h3>Conversas</h3></div>
             <label for="bussiChatSearch">Buscar cliente</label>
             <input id="bussiChatSearch" type="search" placeholder="Nome ou telefone">
             <div class="bussi-inbox-filters" role="group" aria-label="Filtrar conversas">
@@ -288,8 +267,53 @@ button:disabled{opacity:.5;cursor:not-allowed}
             </div>
             <div id="bussiPreviewChat" class="bussi-preview-chat" role="log" aria-label="Conversa simulada" aria-live="polite"></div>
             <figcaption class="bussi-preview-footer" id="bussiPreviewCaption">Simulação com dados fictícios. Nenhuma mensagem é enviada.</figcaption>
+            <div class="bussi-composer">
+              <label for="bussiManualBody">Mensagem manual</label>
+              <div class="bussi-composer-controls">
+                <textarea id="bussiManualBody" maxlength="1500" rows="2" placeholder="Escreva para o cliente selecionado"></textarea>
+                <button class="btn primary" type="button" id="bussiManualOpen">Abrir no WhatsApp</button>
+              </div>
+              <p id="bussiManualStatus" role="status"></p>
+            </div>
           </figure>
         </div>
+          <div class="bussi-campaign-controls">
+            <section class="bussi-campaign-send" aria-labelledby="bussiCampaignSendTitle">
+              <h3 id="bussiCampaignSendTitle">Modelo Black Friday</h3>
+              <div class="field">
+                <label for="blackFridayRecipient">Cliente</label>
+                <select id="blackFridayRecipient"><option value="">Selecione um cliente</option></select>
+              </div>
+              <div class="field">
+                <label for="bussiCampaignImage">Imagem original do modelo</label>
+                <input id="bussiCampaignImage" type="file" accept="image/jpeg,image/png">
+              </div>
+              <p id="bussiCampaignImageStatus" role="status">Selecione o JPG ou PNG para visualizar no cartão de mensagem.</p>
+              <div class="toolbar">
+                <button class="btn ghost" id="checkWhatsApp" type="button">Verificar modelos</button>
+                <button class="btn primary" id="sendBlackFriday" type="button" disabled>Envio pausado</button>
+              </div>
+              <p id="whatsappCampaignStatus" role="status" aria-live="polite">Revise a abertura do modelo Black Friday antes do disparo.</p>
+            </section>
+            <section class="bussi-campaign-send bussi-batch" aria-labelledby="bussiBatchTitle">
+              <h3 id="bussiBatchTitle">Simular rodadas de envio</h3>
+              <p>Até 15 por rodada. A simulação não contata clientes.</p>
+              <div class="field">
+                <label for="bussiBatchCount">Quantidade de contatos fictícios</label>
+                <input id="bussiBatchCount" type="number" min="1" max="150" value="30">
+              </div>
+              <div class="field">
+                <label for="bussiBatchPause">Intervalo entre rodadas (segundos)</label>
+                <input id="bussiBatchPause" type="number" min="5" max="120" value="15">
+              </div>
+              <div class="toolbar">
+                <button class="btn ghost" id="bussiBatchStart" type="button">Simular rodadas</button>
+                <button class="btn ghost" id="bussiBatchStop" type="button" disabled>Pausar</button>
+              </div>
+              <progress id="bussiBatchProgress" value="0" max="30" aria-label="Contatos simulados"></progress>
+              <p id="bussiBatchStatus" role="status"></p>
+            </section>
+          </div>
         </div>
         <div class="sectionhead bussi-flow-head">
           <div><h3>Acompanhamento pelo WhatsApp</h3><p>Consulte envios, respostas e a abertura da fatura.</p></div>
@@ -910,7 +934,7 @@ function abrirAbaFaturas(){if(location.hash==='#faturas')document.querySelector(
 window.addEventListener('hashchange',abrirAbaFaturas);abrirAbaFaturas();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.94.1/dist/umd/supabase.min.js"></script>
-<script src="bussi-nitro.js?v=20261123-conversas"></script>
-<script src="bussi-preview.js?v=20261123-conversas" defer></script>
+<script src="bussi-nitro.js?v=20261123-midia"></script>
+<script src="bussi-preview.js?v=20261123-midia" defer></script>
 </body>
 </html>
