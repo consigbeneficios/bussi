@@ -64,10 +64,16 @@ function money(value: number) {
 async function approvedTemplates() {
   const result = await Promise.all(["blackfriday", invoiceTemplate, paymentTemplate].map(async (name) => {
     const query = new URLSearchParams({name, fields: "name,status,language,components"});
-    const response = await graph(env("META_WABA_ID") + "/message_templates?" + query);
-    if (!response.ok) throw new Error("Não foi possível consultar os modelos na Meta.");
-    const data = await response.json();
-    return data.data?.find((item: {language: string; status: string}) =>
+    const account = env("META_MESSAGING_ACCOUNT_ID") || env("META_WABA_ID");
+    const response = await graph(account + "/message_templates?" + query);
+    const data = await response.json().catch(() => null);
+    if (!response.ok) {
+      const code = data?.error?.code;
+      const subcode = data?.error?.error_subcode;
+      const ref = [code, subcode].filter(Number.isInteger).join("/");
+      throw new Error("Não foi possível consultar os modelos na Meta (HTTP " + response.status + (ref ? ", código " + ref : "") + ").");
+    }
+    return data?.data?.find((item: {language: string; status: string}) =>
       item.language === language.code && item.status === "APPROVED");
   }));
   if (!result[0] || !result[1] || !result[2]) throw new Error("Os modelos blackfriday, fatura_bussi e pagamento_recebido_bussi precisam estar aprovados em português do Brasil.");
@@ -206,7 +212,7 @@ export async function handle(request: Request) {
       const event = JSON.parse(new TextDecoder().decode(raw));
       if (event.object !== "whatsapp_business_account") return json(200, {});
       for (const entry of event.entry ?? []) {
-        if (entry.id !== env("META_WABA_ID")) continue;
+        if (![env("META_WABA_ID"), env("META_MESSAGING_ACCOUNT_ID")].filter(Boolean).includes(entry.id)) continue;
         for (const change of entry.changes ?? []) {
           if (change.field !== "messages" || change.value?.metadata?.phone_number_id !== env("META_PHONE_NUMBER_ID")) continue;
           for (const status of change.value.statuses ?? []) await recordStatus(status);
