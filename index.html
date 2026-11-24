@@ -464,6 +464,14 @@ button:disabled{opacity:.5;cursor:not-allowed}
             <div class="notice" style="margin-top:10px">Por segurança, token de acesso não é salvo no GitHub Pages. O envio e as respostas são processados no servidor do BUSSI.</div>
           </div>
           <div class="integration-card">
+            <div class="integration-head"><div><h3>Novus CRM</h3><p>Verifique a conexão da conta usada no atendimento WhatsApp.</p></div></div>
+            <div class="toolbar">
+              <button class="btn ghost" type="button" id="checkNovus">Verificar conexão</button>
+              <a class="btn ghost" href="https://app.novuscrm.com.br/fluxos/dca7fe86-5d37-460f-97bd-ed1fdb5088e5" target="_blank" rel="noopener noreferrer">Abrir fluxo no Novus</a>
+            </div>
+            <p id="novusStatus" role="status"></p>
+          </div>
+          <div class="integration-card">
             <div class="integration-head"><div><h3>Rastreamento / API</h3><p>Receba cliques, acessos e eventos.</p></div><span class="statuschip" id="trackingChip">Não conectado</span></div>
             <div class="field"><label>Endpoint de eventos</label><input id="trackingEndpoint2" placeholder="https://api.seudominio.com/events"></div>
             <div class="field" style="margin-top:10px"><label>ID do ambiente</label><input id="trackingEnv" placeholder="produção"></div>
@@ -1019,7 +1027,7 @@ window.addEventListener('hashchange',abrirAbaFaturas);abrirAbaFaturas();
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.94.1/dist/umd/supabase.min.js"></script>
 <script src="bussi-client-stages.js?v=20261123-whatsapp-area"></script>
 <script src="bussi-desk.js?v=20261123-whatsapp-area"></script>
-<script src="bussi-nitro.js?v=20261123-whatsapp-area"></script>
+<script src="bussi-nitro.js?v=20261124-novus"></script>
 <script src="bussi-preview.js?v=20261123-campanhas-teste" defer></script>
 </body>
 </html>

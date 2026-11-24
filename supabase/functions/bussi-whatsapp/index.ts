@@ -1,14 +1,22 @@
 const env = (key: string) => Deno.env.get(key) || "";
 const origin = "https://consigbeneficios.github.io";
 const campaign = "blackfriday-2026";
-const offerTemplate = "blackfriday_amortizacao";
+const offerTemplate = "blackconsig";
 const table = "/rest/v1/bussi_whatsapp_entregas";
 const campaignReply = "BUSSI_BLACKFRIDAY_EU_QUERO";
 const handoffReply = "BUSSI_FATURA_ATENDENTE";
 const language = {code: "pt_BR"};
-const invoiceTemplate = "fatura_bussi";
-const paymentTemplate = "pagamento_recebido_bussi";
-const invoiceButtonUrl = origin + "/bussi/fatura-whatsapp.html#{{1}}";
+const invoiceTemplate = "blackconsigconfe";
+const invoiceButtonUrl = origin + "/bussi/fatura-whatsapp.html#";
+const invoiceReply = "BUSSI_GERAR_FATURA";
+const handoffTemplate = "blackdireatendente";
+function bodyParameters(template: any, values: string[]) {
+  const text = template.components?.find((part: any) => part.type === "BODY")?.text ?? "";
+  const names: string[] = [...new Set<string>(Array.from(text.matchAll(/\{\{([a-zA-Z0-9_]+)\}\}/g), (m: any) => m[1]))];
+  if (names.length !== values.length || (names.some(name => /^\d+$/.test(name)) &&
+      names.some((name, i) => name !== String(i+1)))) throw Error("Confira as variáveis dos modelos na Meta.");
+  return names.map((name, i) => ({type:"text", text:values[i], ...(/^\d+$/.test(name) ? {} : {parameter_name:name})}));
+}
 
 function api(path: string, token: string, method = "GET", body?: unknown, prefer?: string) {
   const headers = new Headers({
@@ -63,7 +71,7 @@ function money(value: number) {
 }
 
 async function approvedTemplates() {
-  const result = await Promise.all([offerTemplate, invoiceTemplate, paymentTemplate].map(async (name) => {
+  const result = await Promise.all([offerTemplate, invoiceTemplate, handoffTemplate].map(async (name) => {
     const query = new URLSearchParams({name, fields: "name,status,language,components"});
     const account = env("META_MESSAGING_ACCOUNT_ID") || env("META_WABA_ID");
     const response = await graph(account + "/message_templates?" + query);
@@ -77,11 +85,10 @@ async function approvedTemplates() {
     return data?.data?.find((item: {language: string; status: string}) =>
       item.language === language.code && item.status === "APPROVED");
   }));
-  if (!result[0] || !result[1] || !result[2]) throw new Error("Os modelos blackfriday_amortizacao, fatura_bussi e pagamento_recebido_bussi precisam estar aprovados em português do Brasil.");
-  const invoiceButton = result[1].components?.find((component: {type: string}) => component.type === "BUTTONS")
-    ?.buttons?.findIndex((button: {type: string; url: string}) =>
-      button.type === "URL" && button.url === invoiceButtonUrl) ?? -1;
-  if (invoiceButton < 0) throw new Error("O modelo fatura_bussi precisa do botão de URL do BUSSI.");
+  if (result.some(item => !item)) throw Error("Os modelos exigidos precisam estar aprovados em português do Brasil.");
+  const invoiceButton = result[1].components?.find((part: any) => part.type === "BUTTONS")
+    ?.buttons?.findIndex((button: any) => button.type === "QUICK_REPLY" && button.text.trim().toUpperCase() === "GERAR FATURA") ?? -1;
+  if (invoiceButton < 0) throw Error("Confira o botão GERAR FATURA nos modelos da Meta.");
   const offerButton = result[0].components?.find((component: {type: string}) => component.type === "BUTTONS")
     ?.buttons?.findIndex((button: {type: string; text: string}) =>
       button.type === "QUICK_REPLY" && button.text.trim().toUpperCase() === "EU QUERO") ?? -1;
@@ -95,7 +102,8 @@ async function approvedTemplates() {
       button.type === "QUICK_REPLY" && button.text.trim().toLowerCase() === "falar com atendente") ?? -1;
   const offerImage = offerComponents.some((part: {type: string; format?: string}) => part.type === "HEADER" && part.format === "IMAGE");
   const offerText = offerComponents.find((part: {type: string}) => part.type === "BODY")?.text ?? "";
-  return {offerButton, invoiceButton, handoffButton, offerImage, offerText, offerHandoff};
+  if (offerButton < 0) throw Error("Confira o botão EU QUERO nos modelos da Meta.");
+  return {offerButton, invoiceButton, handoffButton, offerImage, offerText, offerHandoff, offer: result[0], confirmation: result[1]};
 }
 
 async function handleHandoff(message: Record<string, any>) {
@@ -111,18 +119,34 @@ async function handleHandoff(message: Record<string, any>) {
     atendente_aviso_status: "reservado",
   }, "return=representation");
   if (!claimed) return;
-  const result = await sendMessage(message.from, {
-    type: "text", text: {body: "Estamos transferindo para um de nossos atendentes. Aguarde, por favor."},
-  });
+  const result = await sendTemplate(message.from, handoffTemplate, []);
   query.delete("atendente_em");
   query.set("atendente_resposta_id", "eq." + message.id);
   await db("?" + query, "PATCH", {atendente_aviso_status: result.state});
+}
+
+async function sendInvoiceLink(message: Record<string, any>) {
+  if (!deskId(message.context?.id) || !deskId(message.id) || !deskPhone(message.from)) return;
+  const query = new URLSearchParams({campanha:"eq."+campaign, telefone:"eq."+message.from,
+    fatura_mensagem:"eq."+message.context.id, fatura_status:"eq.aceito",
+    fatura_acesso_hash:"is.null", atendente_em:"is.null"});
+  const token = crypto.randomUUID().replaceAll("-", "") + crypto.randomUUID().replaceAll("-", "");
+  const hash = await hashToken(token);
+  const [claimed] = await db("?"+query,"PATCH",{fatura_acesso_hash:hash,
+    fatura_expira_em:new Date(Date.now()+24*3600000).toISOString()},"return=representation");
+  if (!claimed) return;
+  const result = await sendMessage(message.from,{type:"text",text:{body:"Sua fatura BUSSI: "+invoiceButtonUrl+token,preview_url:false}});
+  if (result.state === "recusado") {
+    query.set("fatura_acesso_hash","eq."+hash);
+    await db("?"+query,"PATCH",{fatura_acesso_hash:null,fatura_expira_em:null});
+  }
 }
 
 async function handleReply(message: Record<string, any>) {
   if (message.type === "button" && message.button?.payload === handoffReply) {
     return handleHandoff(message);
   }
+  if (message.type === "button" && message.button?.payload === invoiceReply) return sendInvoiceLink(message);
   const type = message.type;
   const reply = type === "button" ? message.button : message.text;
   if (type === "button" ? reply?.payload !== campaignReply :
@@ -140,26 +164,19 @@ async function handleReply(message: Record<string, any>) {
   }
   const [row] = await db("?" + query);
   if (!row || row.resposta_id || row.atendente_em || !row.pagador) return;
-  const {invoiceButton, handoffButton} = await approvedTemplates();
-  const token = crypto.randomUUID().replaceAll("-", "") + crypto.randomUUID().replaceAll("-", "");
+  const {invoiceButton, handoffButton, confirmation} = await approvedTemplates();
+  const parameters = bodyParameters(confirmation, [row.nome, row.telefone, money(row.original), money(row.desconto)]);
   query.set("resposta_id", "is.null");
   query.set("atendente_em", "is.null");
   const [claimed] = await db("?" + query, "PATCH", {
-    resposta_id: message.id, resposta_em: new Date().toISOString(), fatura_status: "reservado", fatura_acesso_hash: await hashToken(token),
-    fatura_expira_em: new Date(Date.now() + 24 * 3600000).toISOString(),
+    resposta_id: message.id, resposta_em: new Date().toISOString(), fatura_status: "reservado",
   }, "return=representation");
   if (!claimed) return;
-
-  const fields = {
-    customer_name: row.nome, tel: row.telefone, valor: money(row.original), desconto: money(row.desconto),
-  };
-  const result = await sendTemplate(row.telefone, invoiceTemplate, [{
-    type: "body", parameters: Object.entries(fields).map(([parameter_name, text]) => ({type: "text", parameter_name, text})),
-  }, {
-    type: "button", sub_type: "url", index: String(invoiceButton), parameters: [{type: "text", text: token}],
-  }, {
-    type: "button", sub_type: "quick_reply", index: String(handoffButton), parameters: [{type: "payload", payload: handoffReply}],
-  }]);
+  const result = await sendTemplate(row.telefone, invoiceTemplate, [
+    {type:"body",parameters},
+    {type:"button",sub_type:"quick_reply",index:String(invoiceButton),parameters:[{type:"payload",payload:invoiceReply}]},
+    {type:"button",sub_type:"quick_reply",index:String(handoffButton),parameters:[{type:"payload",payload:handoffReply}]},
+  ]);
   query.set("resposta_id", "eq." + message.id);
   await db("?" + query, "PATCH", {fatura_status: result.state, fatura_mensagem: result.id});
 }
@@ -342,15 +359,8 @@ export async function handle(request: Request) {
         request.headers.get("Authorization") === "Bearer " + env("SUPABASE_SERVICE_ROLE_KEY")) {
       const event = JSON.parse(new TextDecoder().decode(raw));
       if (event.action !== "pagamento_verificado" || !Number.isSafeInteger(event.numero) || event.numero < 1) return json(400, {});
-      const service = env("SUPABASE_SERVICE_ROLE_KEY");
-      const reserved = await api("/rest/v1/rpc/bussi_whatsapp_reservar_encerramento", service, "POST", {p_numero: event.numero});
-      if (!reserved.ok) return json(503, {});
-      const recipient = await reserved.json();
-      if (!recipient) return json(200, {status: "sem_envio"});
-      const result = await sendTemplate(recipient, paymentTemplate, []);
-      const recorded = await api("/rest/v1/rpc/bussi_whatsapp_registrar_encerramento", service, "POST",
-        {p_numero: event.numero, p_status: result.state});
-      return json(recorded.ok ? 200 : 503, {status: result.state});
+      return json(200, {status: "confirmacao_whatsapp_manual"});
+
     }
     if (request.headers.get("Origin") !== origin) return json(403, {});
     const body = JSON.parse(new TextDecoder().decode(raw));
@@ -368,6 +378,23 @@ export async function handle(request: Request) {
     if (!access.ok || await access.json() !== true) return json(403, {erro: "Entre com a sessão administrativa do BUSSI."});
     if (["atendimento_lista","atendimento_historico","atendimento_enviar"].includes(body.action)) {
       return await deskRequest(body,json);
+    }
+    if (body.action === "novus_status") {
+      const account = env("NOVUS_ACCOUNT_ID");
+      const key = env("NOVUS_API_KEY");
+      if (!/^\d+$/.test(account) || !key) {
+        return json(503, {erro:"A conta Novus ainda precisa ser configurada no servidor BUSSI."});
+      }
+      const novus = await fetch("https://api.novuscrm.com.br/v1/etiquetas", {
+        headers: {"X-Ambiente": account, "X-Authorization": "X-Chave-Api " + key},
+        redirect: "error",
+        signal: AbortSignal.timeout(5000),
+      }).catch(() => null);
+      if (novus?.status === 401 || novus?.status === 403) {
+        return json(503, {erro:"O Novus recusou a autenticação. Confira a conta e a chave no servidor BUSSI."});
+      }
+      if (!novus?.ok) return json(503, {erro:"Não foi possível consultar o Novus agora."});
+      return json(200, {status:"conectado"});
     }
     if (body.action === "clientes_teste") {
       const fixtures = await api("/rest/v1/bussi_testes_campanha?select=id,contrato,nome,telefone,original,desconto&order=nome.asc",
@@ -410,20 +437,19 @@ export async function handle(request: Request) {
     const fixture = await api("/rest/v1/bussi_testes_campanha?"+fixtureFilter,env("SUPABASE_SERVICE_ROLE_KEY"));
     if (!fixture.ok) return json(503,{erro:"Não foi possível conferir a classificação do cliente."});
     if ((await fixture.json()).length) return json(409,{erro:"Use este cadastro somente na simulação."});
-    const {offerButton: button, offerImage, offerText, offerHandoff} = await approvedTemplates();
+    const {offerButton: button, offerImage, offerText, offerHandoff, offer} = await approvedTemplates();
     const normalized = offerText.normalize("NFD").replace(/\p{Diacritic}/gu, "").toUpperCase();
     if (/SUA\s+CONTA\s+SERA\s+BLOQUEADA/.test(normalized)) {
       return json(409, {erro: "Revise a abertura do modelo Black Friday antes do disparo."});
     }
     const mediaId = env("META_BLACKFRIDAY_IMAGE_ID");
     const image = /^\d+$/.test(mediaId) ? {id:mediaId} : {link:env("SUPABASE_URL") + "/functions/v1/bussi-whatsapp?imagem=blackfriday"};
+    const parameters = bodyParameters(offer, [nome, money(original), money(desconto)]);
     const [reserved] = await db("?on_conflict=campanha,telefone", "POST",
       {campanha: campaign, telefone, nome, original, desconto, pagador}, "resolution=ignore-duplicates,return=representation");
     if (!reserved) return json(200, {status: "ja_registrado"});
 
-    const offerFields = {customer_name:nome,tel:telefone,valor:money(original),desconto:money(desconto)};
-    const components: unknown[] = [{type:"body", parameters:Object.entries(offerFields)
-      .map(([parameter_name,text]) => ({type:"text",parameter_name,text}))}];
+    const components: unknown[] = [{type:"body", parameters}];
     if (offerImage) components.unshift({type: "header", parameters: [{type: "image", image}]});
     if (button >= 0) components.push({type: "button", sub_type: "quick_reply", index: String(button),
       parameters: [{type: "payload", payload: campaignReply}]});

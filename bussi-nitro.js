@@ -43,6 +43,21 @@
   window.BussiDesk?.setConnection(body => api("/functions/v1/bussi-whatsapp", body));
   window.BussiClientStages?.setFixturesLoader(() => api("/functions/v1/bussi-whatsapp",{action:"clientes_teste"}));
   window.BussiClientStages?.setLoader(() => api("/functions/v1/bussi-whatsapp", {action:"etapas_clientes"}));
+  const novusCheck = $("checkNovus");
+  if (novusCheck) novusCheck.onclick = async () => {
+    const result = $("novusStatus");
+    novusCheck.disabled = true;
+    result.textContent = "Verificando a conexão com o Novus…";
+    try {
+      await api("/functions/v1/bussi-whatsapp", {action:"novus_status"});
+      result.textContent = "Conta Novus autenticada.";
+    } catch (error) {
+      result.textContent = error.message;
+    } finally {
+      novusCheck.disabled = false;
+    }
+  };
+
   const campaignStatus = $("whatsappCampaignStatus");
   const campaignCheck = $("checkWhatsApp");
 
