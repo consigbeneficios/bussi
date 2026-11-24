@@ -84,11 +84,14 @@
   }
 
   function setComposer() {
-    input.disabled = !selected || !canReply;
+    const novus = isNovus();
+    $("bussiDeskComposer").hidden = novus;
+    $("bussiDeskOpenNovus").hidden = !novus;
+    input.disabled = novus || !selected || !canReply;
     send.disabled = sending || input.disabled || !input.value.trim();
-    $("bussiDeskWindow").classList.toggle("is-open", canReply);
-    $("bussiDeskWindow").textContent = selected ? (canReply ? "Atendimento aberto" : "Aguardando nova mensagem") : "";
-    if (selected && !canReply && !note.textContent) note.textContent = "A resposta livre fica disponível por 24 horas após a última mensagem do cliente.";
+    $("bussiDeskWindow").classList.toggle("is-open", !novus && canReply);
+    $("bussiDeskWindow").textContent = selected ? (novus ? "Somente consulta" : canReply ? "Atendimento aberto" : "Aguardando nova mensagem") : "";
+    if (!novus && selected && !canReply && !note.textContent) note.textContent = "A resposta livre fica disponível por 24 horas após a última mensagem do cliente.";
   }
 
   function renderMessages(scrollToEnd) {
@@ -221,7 +224,7 @@
   });
   $("bussiDeskComposer").addEventListener("submit",async event => {
     event.preventDefault();
-    if (!selected || !canReply || sending || !api) return;
+    if (isNovus() || !selected || !canReply || sending || !api) return;
     const phone = contactKey(selected);
     const key = draftKey(phone);
     const novus = isNovus();
@@ -232,12 +235,12 @@
     note.textContent = "Enviando resposta…";
     setComposer();
     try {
-      const {status} = await api({action:route("atendimento_enviar","novus_enviar"),...address(phone),texto:draft.text,pedido:draft.pedido});
+      const {status} = await api({action:"atendimento_enviar",telefone:phone,texto:draft.text,pedido:draft.pedido});
       if (["aceito","ja_registrado","incerto"].includes(status) && drafts.get(key) === draft) {
         drafts.delete(key);
         if (contactKey(selected) === phone) input.value = "";
       }
-      if (contactKey(selected) === phone) note.textContent = ({aceito:novus ? "Resposta registrada no Novus." : "Resposta aceita pela Meta.",ja_registrado:"Resposta já registrada.",
+      if (contactKey(selected) === phone) note.textContent = ({aceito:"Resposta aceita pela Meta.",ja_registrado:"Resposta já registrada.",
         recusado:"A resposta foi recusada. Confira o histórico.",incerto:"Resultado indeterminado. Confira o histórico."})[status] || "";
       void loadContacts();
       if (contactKey(selected) === phone) await loadHistory();
@@ -248,6 +251,7 @@
       setComposer();
     }
   });
+  setComposer();
   window.BussiDesk = {setConnection(value){api=value},open(contact){if (isNovus()) {provider.value="meta"; provider.dispatchEvent(new Event("change"));} nav.click(); choose(contact);}};
   window.setInterval(() => {
     if (!document.hidden && pane.classList.contains("active")) {

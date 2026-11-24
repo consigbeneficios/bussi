@@ -171,7 +171,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 #dashboardEventRows td:first-child{white-space:nowrap;font-variant-numeric:tabular-nums}
 
 </style>
-<link rel="stylesheet" href="bussi-layout.css?v=20261124-novus-desk">
+<link rel="stylesheet" href="bussi-layout.css?v=20261124-novus-consulta">
 </head>
 <body>
 <div class="authgate" id="authGate"><div class="authcard"><div class="authbrand"><b>CONSIG BENEFÍCIOS</b></div><h2>Acesso seguro</h2><p>Autenticando administrador...</p></div></div>
@@ -275,12 +275,13 @@ button:disabled{opacity:.5;cursor:not-allowed}
     <section class="view" id="inbox">
       <div class="section bussi-desk-section">
         <div class="sectionhead bussi-desk-toolbar">
-          <div><h2>Atendimento WhatsApp</h2><p>Leia e responda às conversas do número conectado.</p></div>
+          <div><h2>Atendimento WhatsApp</h2><p>Consulte as conversas do Novus e abra o atendimento para responder.</p></div>
           <div class="toolbar bussi-desk-shortcuts" aria-label="Atalhos do Bussi">
             <button class="btn ghost" type="button" data-desk-view="crm">Clientes</button>
             <button class="btn ghost" type="button" data-desk-view="campaigns">Campanhas</button>
             <button class="btn ghost" type="button" data-desk-view="charges">Faturas e Pix</button>
             <button class="btn ghost" type="button" id="bussiDeskRefresh">Atualizar</button>
+            <a class="btn primary" id="bussiDeskOpenNovus" href="https://app.novuscrm.com.br/chat" target="_blank" rel="noopener noreferrer">Abrir atendimento no Novus</a>
           </div>
         </div>
         <div class="bussi-desk">
@@ -1032,7 +1033,7 @@ window.addEventListener('hashchange',abrirAbaFaturas);abrirAbaFaturas();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.94.1/dist/umd/supabase.min.js"></script>
 <script src="bussi-client-stages.js?v=20261123-whatsapp-area"></script>
-<script src="bussi-desk.js?v=20261124-novus-desk"></script>
+<script src="bussi-desk.js?v=20261124-novus-consulta"></script>
 <script src="bussi-nitro.js?v=20261124-novus"></script>
 <script src="bussi-preview.js?v=20261123-campanhas-teste" defer></script>
 </body>

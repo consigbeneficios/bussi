@@ -11,7 +11,7 @@ globalThis.Deno = {env: {get: (name) => env[name]}};
 const row = {telefone: "5511999990000", nome: "Cliente de teste", original: 10000, desconto: 5000, contrato: "A123", email: "cliente@example.com", documento: "12345678909"};
 let delivery;
 let admin = false;
-let novusStatus = 200, novusRecent = true, novusSends = 0;
+let novusStatus = 200;
 const novusId = "3c90c3cc-0d44-4b50-8888-8dd25736052a";
 
 const recordedStatuses = [];
@@ -30,13 +30,9 @@ globalThis.fetch = async (url, options) => {
         DataDaCriacao:new Date().toISOString(), MensagensNaoLidas:1}],HasNext:true});
     }
     if (endpoint.pathname === "/v1/atendimento/" + novusId + "/mensagens") {
-      if (options.method === "POST") {
-        assert.deepEqual(body, {Texto:"Retorno de teste"});
-        novusSends++;
-        return Response.json({IdMensagem:"mensagem-novus",Status:"Enviada"});
-      }
+      assert.equal(options.method ?? "GET", "GET");
       return Response.json({Items:[{Id:"entrada", Corpo:"Olá", FromMe:false, Status:2,
-        DataDaCriacao:new Date(Date.now() - (novusRecent ? 60000 : 90000000)).toISOString()}]});
+        DataDaCriacao:new Date().toISOString()}]});
     }
     assert.equal(endpoint.pathname, "/v1/etiquetas");
     return new Response(null, {status:novusStatus});
@@ -107,13 +103,9 @@ assert.equal(deskList.conversas[0].id, novusId);
 assert.equal(deskList.conversas[0].nao_lidas, 1);
 assert.equal(deskList.mais, true);
 const chat = await (await handle(request({action:"novus_historico",id:novusId}))).json();
-assert.equal(chat.pode_responder, true);
+assert.equal(chat.pode_responder, false);
 assert.equal(chat.mensagens[0].texto, "Olá");
-const novusReply = {action:"novus_enviar",id:novusId,texto:"Retorno de teste"};
-assert.equal((await (await handle(request(novusReply))).json()).status, "aceito");
-novusRecent = false;
-assert.equal((await handle(request(novusReply))).status, 409);
-assert.equal(novusSends, 1);
+assert.equal((await handle(request({action:"novus_enviar",id:novusId,texto:"Retorno de teste"}))).status, 400);
 novusStatus = 401;
 assert.equal((await handle(request({action:"novus_status"}))).status, 503);
 env.BUSSI_BLACKFRIDAY_SENDING_ENABLED = "";

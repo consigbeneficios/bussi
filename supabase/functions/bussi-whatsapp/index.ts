@@ -318,14 +318,12 @@ async function offerArtwork() {
   }
 }
 
-async function novusRequest(path: string, payload?: object) {
+async function novusRequest(path: string) {
   const account = env("NOVUS_ACCOUNT_ID");
   const key = env("NOVUS_API_KEY");
   if (!/^\d+$/.test(account) || !key) return null;
   return fetch("https://api.novuscrm.com.br/v1/" + path, {
-    method: payload ? "POST" : "GET",
     headers: {"X-Ambiente": account, "X-Authorization": "X-Chave-Api " + key, "Content-Type": "application/json"},
-    body: payload ? JSON.stringify(payload) : undefined,
     redirect: "error",
     signal: AbortSignal.timeout(8000),
   }).catch(() => null);
@@ -357,30 +355,6 @@ async function novusDesk(body: Record<string, any>, json: (status: number, body:
   if (typeof id !== "string" || !/^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i.test(id)) return json(400, {});
   const path = "atendimento/" + id + "/mensagens";
   const baseQuery = "tipo=0&excluida=false&sort=-DataDaCriacao";
-  const since = new Date(Date.now() - 86400000).toISOString();
-  const inboundQuery = new URLSearchParams(baseQuery);
-  inboundQuery.set("fromMe", "false");
-  inboundQuery.set("pageSize", "1");
-  inboundQuery.set("dataInicial", since);
-  const fromCustomer = await novusRequest(path + "?" + inboundQuery);
-  if (!fromCustomer?.ok) return unavailable();
-  const inbound = (await fromCustomer.json()).Items?.[0];
-  const lastInbound = Date.parse(inbound?.DataDaCriacao ?? "");
-  const elapsed = Date.now() - lastInbound;
-  const pode_responder = elapsed >= 0 && elapsed < 86400000;
-  if (action === "novus_enviar") {
-    const text = typeof body.texto === "string" ? body.texto.trim() : "";
-    if (!text || text.length > 4000) return json(400, {erro:"Informe uma mensagem de até 4.000 caracteres."});
-    if (!pode_responder) return json(409, {erro:"A janela de resposta de 24 horas está fechada."});
-    const sent = await novusRequest(path, {Texto:text});
-    if (!sent || sent.status >= 500) return json(200, {status:"incerto"});
-    if (!sent.ok) return json(422, {erro:"O Novus recusou a resposta. Confira o estado da conversa."});
-    const data = await sent.json().catch(() => null);
-    if (!data?.IdMensagem) return json(200, {status:"incerto"});
-    if (/falha|failed|erro/i.test(String(data.Status ?? ""))) return json(200, {status:"recusado"});
-    return json(200, {status:"aceito"});
-  }
-
   const query = new URLSearchParams(baseQuery);
   query.set("pageSize", "50");
   if (body.antes != null) {
@@ -396,7 +370,7 @@ async function novusDesk(body: Record<string, any>, json: (status: number, body:
     texto:row.Corpo || row.MediaName || "Mensagem com conteúdo disponível no Novus",
     ocorrido_em:row.DataDaCriacao, estado:estados[row.Status],
   }));
-  return json(200, {mensagens, mais:data.HasNext === true, pode_responder});
+  return json(200, {mensagens, mais:data.HasNext === true, pode_responder:false});
 }
 
 
@@ -461,7 +435,7 @@ export async function handle(request: Request) {
     if (["atendimento_lista","atendimento_historico","atendimento_enviar"].includes(body.action)) {
       return await deskRequest(body,json);
     }
-    if (["novus_lista","novus_historico","novus_enviar"].includes(body.action)) return await novusDesk(body, json);
+    if (["novus_lista","novus_historico"].includes(body.action)) return await novusDesk(body, json);
     if (body.action === "novus_status") {
       const account = env("NOVUS_ACCOUNT_ID");
       const key = env("NOVUS_API_KEY");
