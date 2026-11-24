@@ -210,6 +210,10 @@ let novusOffer;
 const offerId = "6200c4b4-6134-40b2-ac19-dd1c7b0087b3";
 globalThis.fetch = async (url, options) => {
   const target = new URL(url);
+  if (target.pathname.endsWith("/bussi_whatsapp_abrir_fatura")) {
+    const {p_hash} = JSON.parse(options.body);
+    return Response.json(p_hash === novusOffer?.fatura_acesso_hash ? {numero:42, token:"a".repeat(64)} : null);
+  }
   if (!target.pathname.endsWith("/bussi_whatsapp_entregas")) return originalFetch(url, options);
   const filter = target.searchParams;
   const input = options.body && JSON.parse(options.body);
@@ -244,7 +248,7 @@ const invoiceLinks = await Promise.all([bridge("gerar_fatura"),bridge("gerar_fat
   return (await result.json()).url;
 }));
 assert.equal(invoiceLinks[0], invoiceLinks[1]);
-assert.match(invoiceLinks[0], /#[a-f0-9]{64}$/);
+assert.equal(invoiceLinks[0], "https://pay.consigbeneficio.com.br/fatura0042#" + "a".repeat(64));
 assert.equal(novusOffer.oferta_status, "aceito");
 assert.equal(novusOffer.resposta_id, "novus." + offerId);
 assert.equal(sent.length, 4);

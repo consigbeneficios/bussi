@@ -466,7 +466,15 @@ async function novusFlow(request: Request, raw: ArrayBuffer, json: (status: numb
     return json(409, {erro:"Fatura indisponível."});
   }
   if (!(Date.parse(row.fatura_expira_em) > Date.now())) return json(410, {erro:"O link da fatura expirou."});
-  return json(200, {url:invoiceButtonUrl + token});
+  const issued = await api("/rest/v1/rpc/bussi_whatsapp_abrir_fatura", env("SUPABASE_SERVICE_ROLE_KEY"),
+    "POST", {p_hash:hash});
+  if (!issued.ok) return json(503, {erro:"Não foi possível emitir o link da fatura."});
+  const invoice = await issued.json();
+  if (!Number.isSafeInteger(invoice?.numero) || invoice.numero < 1 || !/^[a-f0-9]{64}$/.test(invoice.token ?? "")) {
+    return json(503, {erro:"Não foi possível emitir o link da fatura."});
+  }
+  const url = "https://pay.consigbeneficio.com.br/fatura" + String(invoice.numero).padStart(4, "0") + "#" + invoice.token;
+  return json(200, {url});
 }
 
 export async function handle(request: Request) {

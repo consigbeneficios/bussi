@@ -509,7 +509,8 @@
   }
   function paidDocumentLink(row,page,label){
     if(!["fatura.html","comprovante-liquidacao.html"].includes(page))throw Error("Página de fatura inválida.");
-    const url=new URL(page,"https://consigbeneficios.github.io/bussi/");
+    const base=page==="comprovante-liquidacao.html" ? "https://pay.consigbeneficio.com.br/" : "https://consigbeneficios.github.io/bussi/";
+    const url=new URL(page,base);
     url.hash="numero="+encodeURIComponent(row.numero)+"&token="+encodeURIComponent(row.token);
     const a=document.createElement("a");a.href=url.href;a.textContent=label;a.target="_blank";a.rel="noopener noreferrer";return a;
   }

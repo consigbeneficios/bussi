@@ -31,7 +31,7 @@ No BUSSI, selecione o cliente e clique em **Preparar oferta para o Novus** após
 Configure um segredo aleatório dedicado de pelo menos 32 caracteres como `BUSSI_NOVUS_FLOW_TOKEN` no Supabase. No Novus, configure a autenticação do aplicativo para enviar `Authorization: Bearer <segredo>`. A URL da operação é `https://yzhjtqwpmxhigrijiuze.supabase.co/functions/v1/bussi-whatsapp?integracao=novus`, com método POST e JSON.
 
 - Antes de preencher os modelos, envie `{"action":"dados_oferta","telefone":"<telefone do contato>"}`. Use a resposta com nome, telefone, valor original e valor com desconto.
-- Após **GERAR FATURA**, envie `{"action":"gerar_fatura","telefone":"<telefone do contato>"}`. Responda ao cliente com a propriedade `url`. O link de acesso expira em 24 horas.
+- Após **GERAR FATURA**, envie `{"action":"gerar_fatura","telefone":"<telefone do contato>"}`. Responda ao cliente com a propriedade `url`. A URL abre diretamente em `pay.consigbeneficio.com.br`. A recuperação do link pelo Novus fica disponível por 24 horas, e a cobrança segue o vencimento da fatura.
 - Em **FALAR COM ATENDENTE**, use o modelo original e transfira para o Financeiro. A confirmação de pagamento continua manual.
 
 CPF/CNPJ, contrato e e-mail do pagador são usados no BUSSI para emissão. A resposta de integração entrega apenas os dados necessários à mensagem ou o link.
