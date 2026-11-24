@@ -318,6 +318,88 @@ async function offerArtwork() {
   }
 }
 
+async function novusRequest(path: string, payload?: object) {
+  const account = env("NOVUS_ACCOUNT_ID");
+  const key = env("NOVUS_API_KEY");
+  if (!/^\d+$/.test(account) || !key) return null;
+  return fetch("https://api.novuscrm.com.br/v1/" + path, {
+    method: payload ? "POST" : "GET",
+    headers: {"X-Ambiente": account, "X-Authorization": "X-Chave-Api " + key, "Content-Type": "application/json"},
+    body: payload ? JSON.stringify(payload) : undefined,
+    redirect: "error",
+    signal: AbortSignal.timeout(8000),
+  }).catch(() => null);
+}
+
+async function novusDesk(body: Record<string, any>, json: (status: number, body: object) => Response) {
+  const unavailable = () => json(503, {erro:"Não foi possível consultar o atendimento do Novus."});
+  const action = body.action;
+  if (action === "novus_lista") {
+    const offset = body.offset ?? 0;
+    if (!Number.isSafeInteger(offset) || offset < 0 || offset > 1000000 || offset % 50) return json(400, {});
+    const query = new URLSearchParams({page:String(offset / 50 + 1),pageSize:"50",sort:"-timestamp"});
+    if (typeof body.busca === "string" && body.busca.trim()) query.set("search", body.busca.trim().slice(0,120));
+    const response = await novusRequest("atendimento?" + query);
+    if (!response?.ok) return unavailable();
+    const data = await response.json();
+    const conversas = (data.Items ?? []).filter((row: any) => row.Id && Date.parse(row.DataDaUltimaMensagemEnviada || row.DataDaCriacao))
+      .map((row: any) => ({
+        id:row.Id, nome:row.NomeContato || row.TelefoneContato || "Contato Novus",
+        telefone:row.TelefoneContato || "", texto:row.UltimaMensagem || "",
+        ocorrido_em:row.DataDaUltimaMensagemEnviada || row.DataDaCriacao,
+        canal:row.NomeCanal || "", departamento:row.NomeDepartamento || "",
+        nao_lidas:row.MensagensNaoLidas || 0,
+      }));
+    return json(200, {conversas, mais:data.HasNext === true});
+  }
+
+  const id = body.id;
+  if (typeof id !== "string" || !/^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i.test(id)) return json(400, {});
+  const path = "atendimento/" + id + "/mensagens";
+  const baseQuery = "tipo=0&excluida=false&sort=-DataDaCriacao";
+  const since = new Date(Date.now() - 86400000).toISOString();
+  const inboundQuery = new URLSearchParams(baseQuery);
+  inboundQuery.set("fromMe", "false");
+  inboundQuery.set("pageSize", "1");
+  inboundQuery.set("dataInicial", since);
+  const fromCustomer = await novusRequest(path + "?" + inboundQuery);
+  if (!fromCustomer?.ok) return unavailable();
+  const inbound = (await fromCustomer.json()).Items?.[0];
+  const lastInbound = Date.parse(inbound?.DataDaCriacao ?? "");
+  const elapsed = Date.now() - lastInbound;
+  const pode_responder = elapsed >= 0 && elapsed < 86400000;
+  if (action === "novus_enviar") {
+    const text = typeof body.texto === "string" ? body.texto.trim() : "";
+    if (!text || text.length > 4000) return json(400, {erro:"Informe uma mensagem de até 4.000 caracteres."});
+    if (!pode_responder) return json(409, {erro:"A janela de resposta de 24 horas está fechada."});
+    const sent = await novusRequest(path, {Texto:text});
+    if (!sent || sent.status >= 500) return json(200, {status:"incerto"});
+    if (!sent.ok) return json(422, {erro:"O Novus recusou a resposta. Confira o estado da conversa."});
+    const data = await sent.json().catch(() => null);
+    if (!data?.IdMensagem) return json(200, {status:"incerto"});
+    if (/falha|failed|erro/i.test(String(data.Status ?? ""))) return json(200, {status:"recusado"});
+    return json(200, {status:"aceito"});
+  }
+
+  const query = new URLSearchParams(baseQuery);
+  query.set("pageSize", "50");
+  if (body.antes != null) {
+    if (typeof body.antes !== "string" || !Number.isFinite(Date.parse(body.antes))) return json(400, {});
+    query.set("dataFinal", new Date(Date.parse(body.antes)).toISOString());
+  }
+  const response = await novusRequest(path + "?" + query);
+  if (!response?.ok) return unavailable();
+  const data = await response.json();
+  const estados: Record<number, string> = {[-1]:"failed",0:"sent",1:"delivered",2:"read",3:"read"};
+  const mensagens = (data.Items ?? []).filter((row: any) => row.Id && Date.parse(row.DataDaCriacao)).map((row: any) => ({
+    id:row.Id, direcao:row.FromMe ? "saida" : "entrada",
+    texto:row.Corpo || row.MediaName || "Mensagem com conteúdo disponível no Novus",
+    ocorrido_em:row.DataDaCriacao, estado:estados[row.Status],
+  }));
+  return json(200, {mensagens, mais:data.HasNext === true, pode_responder});
+}
+
+
 export async function handle(request: Request) {
   const url = new URL(request.url);
   const headers = {
@@ -379,6 +461,7 @@ export async function handle(request: Request) {
     if (["atendimento_lista","atendimento_historico","atendimento_enviar"].includes(body.action)) {
       return await deskRequest(body,json);
     }
+    if (["novus_lista","novus_historico","novus_enviar"].includes(body.action)) return await novusDesk(body, json);
     if (body.action === "novus_status") {
       const account = env("NOVUS_ACCOUNT_ID");
       const key = env("NOVUS_API_KEY");

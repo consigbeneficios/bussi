@@ -171,7 +171,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 #dashboardEventRows td:first-child{white-space:nowrap;font-variant-numeric:tabular-nums}
 
 </style>
-<link rel="stylesheet" href="bussi-layout.css?v=20261123-campanhas-teste">
+<link rel="stylesheet" href="bussi-layout.css?v=20261124-novus-desk">
 </head>
 <body>
 <div class="authgate" id="authGate"><div class="authcard"><div class="authbrand"><b>CONSIG BENEFÍCIOS</b></div><h2>Acesso seguro</h2><p>Autenticando administrador...</p></div></div>
@@ -285,7 +285,13 @@ button:disabled{opacity:.5;cursor:not-allowed}
         </div>
         <div class="bussi-desk">
           <aside class="bussi-desk-list">
-            <h3 class="bussi-desk-list-heading">Conversas</h3>
+            <div class="bussi-desk-list-header">
+              <h3 class="bussi-desk-list-heading">Conversas</h3>
+              <select id="bussiDeskProvider" aria-label="Origem das conversas">
+                <option value="novus">Novus CRM</option>
+                <option value="meta">Meta direta</option>
+              </select>
+            </div>
             <label class="bussi-desk-search-label" for="bussiDeskSearch">Buscar conversa</label>
             <input id="bussiDeskSearch" type="search" placeholder="Nome ou telefone">
             <div id="bussiDeskThreads" class="bussi-desk-threads" aria-label="Conversas"></div>
@@ -1026,7 +1032,7 @@ window.addEventListener('hashchange',abrirAbaFaturas);abrirAbaFaturas();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.94.1/dist/umd/supabase.min.js"></script>
 <script src="bussi-client-stages.js?v=20261123-whatsapp-area"></script>
-<script src="bussi-desk.js?v=20261123-whatsapp-area"></script>
+<script src="bussi-desk.js?v=20261124-novus-desk"></script>
 <script src="bussi-nitro.js?v=20261124-novus"></script>
 <script src="bussi-preview.js?v=20261123-campanhas-teste" defer></script>
 </body>

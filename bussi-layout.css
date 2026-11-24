@@ -480,3 +480,9 @@ body { background: var(--bg); color: var(--ink); }
 #campaigns .bussi-preview-bubble:has(.bussi-message-media) { width: min(94%,415px); }
 #campaigns .bussi-message-media { display: block; width: 100%; }
 @media (max-width:460px) { .bussi-preview-steps { gap: 4px; padding-inline: 6px; } #campaigns .bussi-preview-bubble { font-size: 13px; } }
+
+.bussi-desk-list-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.bussi-desk-list-header .bussi-desk-list-heading { margin: 0; }
+#bussiDeskProvider { width: auto; max-width: 58%; min-height: 34px; padding: 4px 8px; }
+.bussi-desk-unread { display: block; width: max-content; min-width: 17px; margin: 4px 0 0 auto; padding: 1px 4px; border-radius: 9px; background: #71364c; color: #fff; text-align: center; }
+.bussi-desk-history { background-image: none; }

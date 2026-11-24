@@ -21,6 +21,12 @@
   let api, selected, canReply = false, sending = false, listSeq = 0, historySeq = 0, debounce;
   let contacts = [], chat = [], offset = 0;
   const drafts = new Map();
+  const provider = $("bussiDeskProvider");
+  const isNovus = () => provider.value === "novus";
+  const contactKey = contact => isNovus() ? contact?.id : contact?.telefone;
+  const draftKey = id => provider.value + ":" + id;
+  const route = (direct, novus) => isNovus() ? novus : direct;
+  const address = id => isNovus() ? {id} : {telefone:id};
 
   function initials(name) {
     const words = name.trim().split(/\s+/);
@@ -33,7 +39,7 @@
       const item = document.createElement("button");
       item.type = "button";
       item.className = "bussi-desk-thread";
-      item.setAttribute("aria-pressed",String(contact.telefone === selected?.telefone));
+      item.setAttribute("aria-pressed",String(contactKey(contact) === contactKey(selected)));
       const avatar = document.createElement("span");
       avatar.className = "bussi-desk-avatar";
       avatar.textContent = initials(contact.nome);
@@ -46,6 +52,12 @@
       when.dateTime = contact.ocorrido_em;
       when.textContent = shortTime.format(new Date(contact.ocorrido_em));
       details.append(name,text);
+      if (contact.nao_lidas > 0) {
+        const badge = document.createElement("span");
+        badge.className = "bussi-desk-unread";
+        badge.textContent = String(contact.nao_lidas);
+        when.append(badge);
+      }
       item.append(avatar,details,when);
       item.addEventListener("click",() => choose(contact));
       threadBox.append(item);
@@ -57,11 +69,11 @@
     const seq = ++listSeq;
     const page = append ? offset + 50 : 0;
     try {
-      const result = await api({action:"atendimento_lista",busca:search.value.trim(),offset:page});
+      const result = await api({action:route("atendimento_lista","novus_lista"),busca:search.value.trim(),offset:page});
       if (seq !== listSeq) return;
       offset = page;
-      const merged = new Map((append ? contacts : []).map(row => [row.telefone,row]));
-      for (const row of result.conversas) merged.set(row.telefone,row);
+      const merged = new Map((append ? contacts : []).map(row => [contactKey(row),row]));
+      for (const row of result.conversas) merged.set(contactKey(row),row);
       contacts = [...merged.values()];
       more.hidden = !result.mais;
       renderContacts();
@@ -109,12 +121,12 @@
 
   async function loadHistory(before) {
     if (!api || !selected) return;
-    const seq = ++historySeq, phone = selected.telefone;
+    const seq = ++historySeq, phone = contactKey(selected);
     const previousHeight = history.scrollHeight, previousTop = history.scrollTop;
     const atBottom = previousHeight-previousTop-history.clientHeight < 55;
     try {
-      const result = await api({action:"atendimento_historico",telefone:phone,antes:before ?? null});
-      if (seq !== historySeq || selected?.telefone !== phone) return;
+      const result = await api({action:route("atendimento_historico","novus_historico"),...address(phone),antes:before ?? null});
+      if (seq !== historySeq || contactKey(selected) !== phone) return;
       const hadMessages = chat.length > 0;
       const windowChanged = canReply !== result.pode_responder;
       canReply = result.pode_responder;
@@ -122,9 +134,9 @@
       const byId = new Map(chat.map(m => [m.id,m]));
       for (const item of result.mensagens) byId.set(item.id,item);
       const next = [...byId.values()];
-      const changed = next.length !== chat.length || next.some((item,i) => item.estado !== chat[i]?.estado);
+      const changed = next.length !== chat.length || next.some((item,i) => item.estado !== chat[i]?.estado || item.texto !== chat[i]?.texto);
       chat = next;
-      if (before || !hadMessages) older.hidden = !result.mais;
+      if (before || !hadMessages) older.hidden = !result.mais || Boolean(before && !changed);
       if (changed || !hadMessages) renderMessages(!before && (atBottom || !hadMessages));
       if (before) history.scrollTop = previousTop + history.scrollHeight - previousHeight;
       setComposer();
@@ -134,21 +146,21 @@
   }
 
   function choose(contact) {
-    if (!contact?.telefone) return;
-    if (selected?.telefone === contact.telefone) {
+    if (!contactKey(contact)) return;
+    if (contactKey(selected) === contactKey(contact)) {
       desk.classList.add("has-thread");
       void loadHistory();
       return;
     }
-    selected = {telefone:contact.telefone,nome:String(contact.nome || contact.telefone)};
+    selected = {...contact, nome:String(contact.nome || contact.telefone)};
     desk.classList.add("has-thread");
     chat = [];
     canReply = false;
     older.hidden = true;
     note.textContent = "";
-    input.value = drafts.get(selected.telefone)?.text ?? "";
+    input.value = drafts.get(draftKey(contactKey(selected)))?.text ?? "";
     $("bussiDeskContact").textContent = selected.nome;
-    $("bussiDeskPhone").textContent = selected.telefone;
+    $("bussiDeskPhone").textContent = [selected.telefone, selected.canal, selected.departamento].filter(Boolean).join(" · ");
     renderContacts();
     renderMessages(true);
     setComposer();
@@ -161,7 +173,32 @@
     debounce = setTimeout(() => void loadContacts(),250);
   });
   more.onclick = () => void loadContacts(true);
-  older.onclick = () => { if (chat.length) void loadHistory(Math.min(...chat.map(item => item.id))); };
+  older.onclick = () => {
+    if (!chat.length) return;
+    const cursor = isNovus()
+      ? chat.reduce((first, item) => item.ocorrido_em < first ? item.ocorrido_em : first, chat[0].ocorrido_em)
+      : Math.min(...chat.map(item => item.id));
+    void loadHistory(cursor);
+  };
+  provider.addEventListener("change", () => {
+    ++historySeq;
+    selected = null;
+    contacts = [];
+    chat = [];
+    canReply = false;
+    input.value = "";
+    note.textContent = "";
+    older.hidden = true;
+    more.hidden = true;
+    $("bussiDeskContact").textContent = "Selecione uma conversa";
+    $("bussiDeskPhone").textContent = "";
+    desk.classList.remove("has-thread");
+    renderContacts();
+    renderMessages(false);
+    setComposer();
+    $("bussiDeskListStatus").textContent = "Carregando conversas…";
+    void loadContacts();
+  });
   $("bussiDeskRefresh").onclick = () => {void loadContacts(); void loadHistory();};
   $("bussiDeskBack").onclick = () => {desk.classList.remove("has-thread"); search.focus();};
   nav.addEventListener("click",() => {void loadContacts(); void loadHistory();});
@@ -173,7 +210,7 @@
     });
   });
   input.addEventListener("input",() => {
-    if (selected) drafts.set(selected.telefone,{text:input.value,pedido:crypto.randomUUID()});
+    if (selected) drafts.set(draftKey(contactKey(selected)),{text:input.value,pedido:crypto.randomUUID()});
     setComposer();
   });
   input.addEventListener("keydown",event => {
@@ -185,31 +222,33 @@
   $("bussiDeskComposer").addEventListener("submit",async event => {
     event.preventDefault();
     if (!selected || !canReply || sending || !api) return;
-    const phone = selected.telefone;
-    const draft = drafts.get(phone) || {text:input.value,pedido:crypto.randomUUID()};
+    const phone = contactKey(selected);
+    const key = draftKey(phone);
+    const novus = isNovus();
+    const draft = drafts.get(key) || {text:input.value,pedido:crypto.randomUUID()};
     if (!draft.text.trim()) return;
-    drafts.set(phone,draft);
+    drafts.set(key,draft);
     sending = true;
     note.textContent = "Enviando resposta…";
     setComposer();
     try {
-      const {status} = await api({action:"atendimento_enviar",telefone:phone,texto:draft.text,pedido:draft.pedido});
-      if (["aceito","ja_registrado","recusado","incerto"].includes(status) && drafts.get(phone) === draft) {
-        drafts.delete(phone);
-        if (selected?.telefone === phone) input.value = "";
+      const {status} = await api({action:route("atendimento_enviar","novus_enviar"),...address(phone),texto:draft.text,pedido:draft.pedido});
+      if (["aceito","ja_registrado","incerto"].includes(status) && drafts.get(key) === draft) {
+        drafts.delete(key);
+        if (contactKey(selected) === phone) input.value = "";
       }
-      if (selected?.telefone === phone) note.textContent = ({aceito:"Resposta aceita pela Meta.",ja_registrado:"Resposta já registrada.",
-        recusado:"A Meta recusou a resposta. Confira o histórico.",incerto:"Resultado indeterminado. Confira o histórico."})[status] || "";
+      if (contactKey(selected) === phone) note.textContent = ({aceito:novus ? "Resposta registrada no Novus." : "Resposta aceita pela Meta.",ja_registrado:"Resposta já registrada.",
+        recusado:"A resposta foi recusada. Confira o histórico.",incerto:"Resultado indeterminado. Confira o histórico."})[status] || "";
       void loadContacts();
-      if (selected?.telefone === phone) await loadHistory();
+      if (contactKey(selected) === phone) await loadHistory();
     } catch (error) {
-      if (selected?.telefone === phone) note.textContent = error.message;
+      if (contactKey(selected) === phone) note.textContent = error.message;
     } finally {
       sending = false;
       setComposer();
     }
   });
-  window.BussiDesk = {setConnection(value){api=value},open(contact){nav.click(); choose(contact);}};
+  window.BussiDesk = {setConnection(value){api=value},open(contact){if (isNovus()) {provider.value="meta"; provider.dispatchEvent(new Event("change"));} nav.click(); choose(contact);}};
   window.setInterval(() => {
     if (!document.hidden && pane.classList.contains("active")) {
       void loadContacts();
