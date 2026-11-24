@@ -204,3 +204,50 @@ assert.equal(payment.status, 200);
 assert.deepEqual(await payment.json(), {status:"confirmacao_whatsapp_manual"});
 assert.equal(sent.length, 4);
 console.log("Atendimento, eventos de entrega e retenção do aviso final verificados.");
+
+const originalFetch = globalThis.fetch;
+let novusOffer;
+const offerId = "6200c4b4-6134-40b2-ac19-dd1c7b0087b3";
+globalThis.fetch = async (url, options) => {
+  const target = new URL(url);
+  if (!target.pathname.endsWith("/bussi_whatsapp_entregas")) return originalFetch(url, options);
+  const filter = target.searchParams;
+  const input = options.body && JSON.parse(options.body);
+  if (options.method === "POST" && input.campanha === "novus-blackfriday-2026") {
+    if (novusOffer) return Response.json([]);
+    novusOffer = {...input, fatura_pedido:offerId};
+    return Response.json([novusOffer]);
+  }
+  assert.equal(filter.get("campanha"), "eq.novus-blackfriday-2026");
+  assert.equal(filter.get("telefone"), "eq." + row.telefone);
+  if (options.method === "PATCH") {
+    if (novusOffer.fatura_acesso_hash) return Response.json([]);
+    Object.assign(novusOffer, input);
+  }
+  return Response.json(novusOffer ? [novusOffer] : []);
+};
+const prep = {...launch,action:"novus_preparar_oferta"};
+assert.equal((await handle(request({...prep,consentimento:false}))).status, 422);
+assert.deepEqual(await (await handle(request(prep))).json(), {status:"preparada"});
+assert.deepEqual(await (await handle(request(prep))).json(), {status:"ja_preparada"});
+const bridge = (action, secret = env.BUSSI_NOVUS_FLOW_TOKEN) => new Request(endpoint + "?integracao=novus", {
+  method:"POST", headers:{Authorization:"Bearer " + secret},
+  body:JSON.stringify({action,telefone:"+55 (11) 99999-0000"}),
+});
+env.BUSSI_NOVUS_FLOW_TOKEN = "chave-ficticia-de-integracao-123456";
+assert.equal((await handle(bridge("dados_oferta","outra-chave"))).status, 403);
+assert.deepEqual(await (await handle(bridge("dados_oferta"))).json(),
+  {nome:row.nome,telefone:row.telefone,original:"100,00",desconto:"50,00"});
+const invoiceLinks = await Promise.all([bridge("gerar_fatura"),bridge("gerar_fatura")].map(async req => {
+  const result = await handle(req);
+  assert.equal(result.status, 200);
+  return (await result.json()).url;
+}));
+assert.equal(invoiceLinks[0], invoiceLinks[1]);
+assert.match(invoiceLinks[0], /#[a-f0-9]{64}$/);
+assert.equal(novusOffer.oferta_status, "aceito");
+assert.equal(novusOffer.resposta_id, "novus." + offerId);
+assert.equal(sent.length, 4);
+novusOffer.fatura_expira_em = new Date(0).toISOString();
+assert.equal((await handle(bridge("gerar_fatura"))).status, 410);
+console.log("Novus: autorização, preenchimento, link estável e expiração verificados.");

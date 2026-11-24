@@ -400,6 +400,75 @@ async function novusDesk(body: Record<string, any>, json: (status: number, body:
 }
 
 
+const novusCampaign = "novus-blackfriday-2026";
+
+function novusOfferQuery(telefone: string) {
+  return new URLSearchParams({campanha:"eq." + novusCampaign, telefone:"eq." + telefone});
+}
+
+async function prepareNovusOffer(body: Record<string, any>, json: (status: number, body: object) => Response) {
+  const {nome, telefone, original, desconto} = body;
+  if (body.consentimento !== true || typeof telefone !== "string" || !/^55\d{10,11}$/.test(telefone) ||
+      typeof nome !== "string" || !/^[^\r\n\t]{2,120}$/.test(nome) ||
+      !Number.isInteger(original) || original < 200 || original > 999999999 || desconto !== Math.ceil(original / 2)) {
+    return json(422, {erro:"Confira o cadastro, os valores e o consentimento."});
+  }
+  const pagador = payerFor(body, nome, telefone);
+  if (!pagador) return json(422, {erro:"Complemente o cadastro do pagador no CRM."});
+  const fixtureQuery = new URLSearchParams({contrato:"eq." + pagador.contract.toUpperCase(), select:"id", limit:"1"});
+  const fixtures = await api("/rest/v1/bussi_testes_campanha?" + fixtureQuery, env("SUPABASE_SERVICE_ROLE_KEY"));
+  if (!fixtures.ok) return json(503, {erro:"Não foi possível conferir o cadastro."});
+  if ((await fixtures.json()).length) return json(409, {erro:"Use este cadastro somente na simulação."});
+  const [created] = await db("?on_conflict=campanha,telefone", "POST", {
+    campanha:novusCampaign, telefone, nome, original, desconto, pagador,
+  }, "resolution=ignore-duplicates,return=representation");
+  return json(200, {status:created ? "preparada" : "ja_preparada"});
+}
+
+async function novusFlow(request: Request, raw: ArrayBuffer, json: (status: number, body: object) => Response) {
+  const encode = (value: string) => new TextEncoder().encode(value);
+  const secret = env("BUSSI_NOVUS_FLOW_TOKEN");
+  if (secret.length < 32) return json(503, {erro:"Integração Novus ainda não configurada."});
+  const key = await crypto.subtle.importKey("raw", encode(secret), {name:"HMAC", hash:"SHA-256"}, false, ["sign","verify"]);
+  const expected = await crypto.subtle.sign("HMAC", key, encode("bussi-novus-auth"));
+  const provided = request.headers.get("Authorization")?.match(/^Bearer (\S+)$/)?.[1] ?? "";
+  const candidate = await crypto.subtle.importKey("raw", encode(provided || "-"), {name:"HMAC", hash:"SHA-256"}, false, ["verify"]);
+  if (!await crypto.subtle.verify("HMAC", candidate, expected, encode("bussi-novus-auth"))) return json(403, {});
+  const body = JSON.parse(new TextDecoder().decode(raw));
+  const action = body?.action;
+  const rawPhone = typeof body?.telefone === "string" ? body.telefone.replace(/\D/g, "") : "";
+  const telefone = rawPhone.length === 10 || rawPhone.length === 11 ? "55" + rawPhone : rawPhone;
+  if (!/^55\d{10,11}$/.test(telefone) || !["dados_oferta","gerar_fatura"].includes(action)) return json(400, {});
+  const query = novusOfferQuery(telefone);
+  query.set("select", "nome,telefone,original,desconto,fatura_pedido,fatura_acesso_hash,fatura_expira_em,atendente_em");
+  const [row] = await db("?" + query);
+  if (!row || row.atendente_em) return json(404, {erro:"Oferta indisponível."});
+  if (action === "dados_oferta") return json(200, {
+    nome:row.nome, telefone:row.telefone, original:money(row.original), desconto:money(row.desconto),
+  });
+
+  const bytes = await crypto.subtle.sign("HMAC", key, encode("bussi-novus-fatura:" + row.fatura_pedido));
+  const token = Array.from(new Uint8Array(bytes), value => value.toString(16).padStart(2, "0")).join("");
+  const hash = await hashToken(token);
+  if (!row.fatura_acesso_hash) {
+    query.set("fatura_acesso_hash", "is.null");
+    query.set("atendente_em", "is.null");
+    const [claimed] = await db("?" + query, "PATCH", {
+      oferta_status:"aceito", resposta_id:"novus." + row.fatura_pedido, resposta_em:new Date().toISOString(),
+      fatura_status:"aceito", fatura_acesso_hash:hash, fatura_expira_em:new Date(Date.now() + 86400000).toISOString(),
+    }, "return=representation");
+    query.delete("fatura_acesso_hash");
+    query.delete("atendente_em");
+    const active = claimed || (await db("?" + query))[0];
+    if (!active || active.atendente_em || active.fatura_acesso_hash !== hash) return json(409, {erro:"Fatura indisponível."});
+    row.fatura_expira_em = active.fatura_expira_em;
+  } else if (row.fatura_acesso_hash !== hash) {
+    return json(409, {erro:"Fatura indisponível."});
+  }
+  if (!(Date.parse(row.fatura_expira_em) > Date.now())) return json(410, {erro:"O link da fatura expirou."});
+  return json(200, {url:invoiceButtonUrl + token});
+}
+
 export async function handle(request: Request) {
   const url = new URL(request.url);
   const headers = {
@@ -437,6 +506,8 @@ export async function handle(request: Request) {
       return json(200, {});
     }
 
+    if (url.searchParams.get("integracao") === "novus") return await novusFlow(request, raw, json);
+
     if (!request.headers.has("Origin") && env("SUPABASE_SERVICE_ROLE_KEY") &&
         request.headers.get("Authorization") === "Bearer " + env("SUPABASE_SERVICE_ROLE_KEY")) {
       const event = JSON.parse(new TextDecoder().decode(raw));
@@ -462,6 +533,7 @@ export async function handle(request: Request) {
       return await deskRequest(body,json);
     }
     if (["novus_lista","novus_historico"].includes(body.action)) return await novusDesk(body, json);
+    if (body.action === "novus_preparar_oferta") return await prepareNovusOffer(body, json);
     if (body.action === "novus_sincronizar_contato") return await syncNovusContact(body, json);
     if (body.action === "novus_status") {
       const account = env("NOVUS_ACCOUNT_ID");

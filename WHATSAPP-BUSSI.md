@@ -23,3 +23,15 @@ O operador escolhe um cliente do CRM e envia a oferta manualmente. Depois, o pai
 5. Um retorno indeterminado exige conciliação antes de qualquer tentativa de reenvio.
 
 Teste simulado: `node supabase/functions/bussi-whatsapp/test.mjs`.
+
+## Fluxo pelo Novus CRM
+
+No BUSSI, selecione o cliente e clique em **Preparar oferta para o Novus** após confirmar o consentimento. Isso registra a oferta e os dados de emissão, sem disparar uma mensagem.
+
+Configure um segredo aleatório dedicado de pelo menos 32 caracteres como `BUSSI_NOVUS_FLOW_TOKEN` no Supabase. No Novus, configure a autenticação do aplicativo para enviar `Authorization: Bearer <segredo>`. A URL da operação é `https://yzhjtqwpmxhigrijiuze.supabase.co/functions/v1/bussi-whatsapp?integracao=novus`, com método POST e JSON.
+
+- Antes de preencher os modelos, envie `{"action":"dados_oferta","telefone":"<telefone do contato>"}`. Use a resposta com nome, telefone, valor original e valor com desconto.
+- Após **GERAR FATURA**, envie `{"action":"gerar_fatura","telefone":"<telefone do contato>"}`. Responda ao cliente com a propriedade `url`. O link de acesso expira em 24 horas.
+- Em **FALAR COM ATENDENTE**, use o modelo original e transfira para o Financeiro. A confirmação de pagamento continua manual.
+
+CPF/CNPJ, contrato e e-mail do pagador são usados no BUSSI para emissão. A resposta de integração entrega apenas os dados necessários à mensagem ou o link.

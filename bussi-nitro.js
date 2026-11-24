@@ -155,6 +155,29 @@
   const flowPrevious = $("whatsappFlowPrevious"), flowNext = $("whatsappFlowNext");
   let flowOffset = 0, flowBusy = false;
 
+  const prepareNovus = $("prepareNovusOffer");
+  if (prepareNovus) prepareNovus.onclick = async () => {
+    const selected = campaignRecipients().find(({telefone}) => telefone === recipientSelect.value);
+    if (!selected) {
+      campaignStatus.textContent = "Selecione um cliente com cadastro completo.";
+      return;
+    }
+    if (!window.confirm("Confirma que o cliente autorizou o contato desta campanha pelo WhatsApp? A preparação não envia mensagem.")) return;
+    prepareNovus.disabled = true;
+    try {
+      const result = await api("/functions/v1/bussi-whatsapp", {
+        action:"novus_preparar_oferta", consentimento:true, ...selected,
+      });
+      campaignStatus.textContent = result.status === "ja_preparada"
+        ? "Já existe uma oferta para este cliente no Novus."
+        : "Oferta preparada para o Novus. Nenhuma mensagem enviada.";
+    } catch (error) {
+      campaignStatus.textContent = error.message;
+    } finally {
+      prepareNovus.disabled = false;
+    }
+  };
+
   function fillCampaignRecipients() {
     const selected = recipientSelect.value;
     recipientSelect.replaceChildren(new Option("Selecione um cliente", ""));
