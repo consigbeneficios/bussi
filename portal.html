@@ -474,6 +474,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
             <div class="integration-head"><div><h3>Novus CRM</h3><p>Verifique a conexão da conta usada no atendimento WhatsApp.</p></div></div>
             <div class="toolbar">
               <button class="btn ghost" type="button" id="checkNovus">Verificar conexão</button>
+              <button class="btn ghost" type="button" id="syncNovusClients">Sincronizar contatos</button>
               <a class="btn ghost" href="https://app.novuscrm.com.br/fluxos/dca7fe86-5d37-460f-97bd-ed1fdb5088e5" target="_blank" rel="noopener noreferrer">Abrir fluxo no Novus</a>
             </div>
             <p id="novusStatus" role="status"></p>
@@ -1034,7 +1035,7 @@ window.addEventListener('hashchange',abrirAbaFaturas);abrirAbaFaturas();
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.94.1/dist/umd/supabase.min.js"></script>
 <script src="bussi-client-stages.js?v=20261123-whatsapp-area"></script>
 <script src="bussi-desk.js?v=20261124-novus-consulta"></script>
-<script src="bussi-nitro.js?v=20261124-novus"></script>
+<script src="bussi-nitro.js?v=20261124-novus-contatos"></script>
 <script src="bussi-preview.js?v=20261123-campanhas-teste" defer></script>
 </body>
 </html>

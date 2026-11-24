@@ -58,6 +58,52 @@
     }
   };
 
+  const syncNovus = $("syncNovusClients");
+  if (syncNovus) syncNovus.onclick = async () => {
+    const result = $("novusStatus");
+    const records = new Map();
+    let skipped = 0;
+    for (const client of clients) {
+      if (seededFake(client) || isCampaignTestClient(client)) continue;
+      const raw = digits(client.phone);
+      const telefone = raw.length === 10 || raw.length === 11 ? "55" + raw : raw;
+      const nome = String(client.name ?? "").trim();
+      if (!/^55\d{10,11}$/.test(telefone) || !/^[^\r\n\t]{2,120}$/.test(nome)) {
+        skipped++;
+        continue;
+      }
+      if (records.has(telefone)) {
+        records.set(telefone, null);
+        continue;
+      }
+      records.set(telefone, {telefone, nome});
+    }
+    const contacts = [...records.values()].filter(Boolean);
+    skipped += records.size - contacts.length;
+    if (!contacts.length) {
+      result.textContent = "Nenhum contato com nome e telefone únicos está disponível para sincronizar.";
+      return;
+    }
+    syncNovus.disabled = true;
+    novusCheck.disabled = true;
+    let created = 0, existing = 0;
+    try {
+      for (const [index, contact] of contacts.entries()) {
+        result.textContent = "Sincronizando " + (index + 1) + " de " + contacts.length + " contatos…";
+        const {status} = await api("/functions/v1/bussi-whatsapp", {action:"novus_sincronizar_contato", ...contact});
+        if (status === "criado") created++;
+        else if (status === "existente") existing++;
+        else throw Error("O Novus retornou uma situação inesperada.");
+      }
+      result.textContent = "Novos: " + created + " · Já existentes: " + existing + " · Para revisar: " + skipped;
+    } catch (error) {
+      result.textContent = "Interrompida após " + (created + existing) + " de " + contacts.length + " contatos. " + error.message;
+    } finally {
+      syncNovus.disabled = false;
+      novusCheck.disabled = false;
+    }
+  };
+
   const campaignStatus = $("whatsappCampaignStatus");
   const campaignCheck = $("checkWhatsApp");
 

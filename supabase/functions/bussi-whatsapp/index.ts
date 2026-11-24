@@ -318,15 +318,41 @@ async function offerArtwork() {
   }
 }
 
-async function novusRequest(path: string) {
+async function novusRequest(path: string, payload?: object) {
   const account = env("NOVUS_ACCOUNT_ID");
   const key = env("NOVUS_API_KEY");
   if (!/^\d+$/.test(account) || !key) return null;
   return fetch("https://api.novuscrm.com.br/v1/" + path, {
+    method: payload ? "POST" : "GET",
+    body: payload ? JSON.stringify(payload) : undefined,
     headers: {"X-Ambiente": account, "X-Authorization": "X-Chave-Api " + key, "Content-Type": "application/json"},
     redirect: "error",
     signal: AbortSignal.timeout(8000),
   }).catch(() => null);
+}
+
+async function syncNovusContact(body: Record<string, any>, json: (status: number, body: object) => Response) {
+  const phone = body.telefone;
+  const name = typeof body.nome === "string" ? body.nome.trim() : "";
+  if (typeof phone !== "string" || !/^55\d{10,11}$/.test(phone) || !/^[^\r\n\t]{2,120}$/.test(name)) {
+    return json(400, {erro:"Nome ou telefone inválido."});
+  }
+  const query = new URLSearchParams({telefone:phone, pageSize:"20"});
+  const response = await novusRequest("contatodechat/filtrar?" + query);
+  if (!response?.ok) return json(503, {erro:"Não foi possível conferir se o contato já existe."});
+  const result = await response.json();
+  if (!Array.isArray(result.Items)) return json(503, {erro:"O Novus retornou uma lista de contatos inesperada."});
+  const existing = result.Items.some((item: {Telefone?: string}) => {
+    const digits = String(item.Telefone ?? "").replace(/\D/g, "");
+    return digits === phone || digits === phone.slice(2);
+  });
+  if (existing) return json(200, {status:"existente"});
+  if (result.Items.length || result.HasNext) return json(409, {erro:"A busca trouxe contatos que exigem conferência manual."});
+  const created = await novusRequest("contatodechat", {Nome:name, Telefone:phone});
+  if (!created?.ok) return json(503, {erro:"Cadastro não confirmado pelo Novus. Consulte o contato antes de repetir."});
+  const saved = await created.json().catch(() => null);
+  if (!saved?.Id) return json(503, {erro:"Cadastro não confirmado pelo Novus. Consulte o contato antes de repetir."});
+  return json(200, {status:"criado"});
 }
 
 async function novusDesk(body: Record<string, any>, json: (status: number, body: object) => Response) {
@@ -436,6 +462,7 @@ export async function handle(request: Request) {
       return await deskRequest(body,json);
     }
     if (["novus_lista","novus_historico"].includes(body.action)) return await novusDesk(body, json);
+    if (body.action === "novus_sincronizar_contato") return await syncNovusContact(body, json);
     if (body.action === "novus_status") {
       const account = env("NOVUS_ACCOUNT_ID");
       const key = env("NOVUS_API_KEY");

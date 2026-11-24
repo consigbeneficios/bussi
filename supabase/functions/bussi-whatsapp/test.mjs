@@ -11,7 +11,7 @@ globalThis.Deno = {env: {get: (name) => env[name]}};
 const row = {telefone: "5511999990000", nome: "Cliente de teste", original: 10000, desconto: 5000, contrato: "A123", email: "cliente@example.com", documento: "12345678909"};
 let delivery;
 let admin = false;
-let novusStatus = 200;
+let novusStatus = 200, novusContactCreated = false;
 const novusId = "3c90c3cc-0d44-4b50-8888-8dd25736052a";
 
 const recordedStatuses = [];
@@ -23,6 +23,16 @@ globalThis.fetch = async (url, options) => {
 
     assert.equal(options.headers["X-Ambiente"], "12345");
     assert.equal(options.headers["X-Authorization"], "X-Chave-Api ficticia");
+    if (endpoint.pathname === "/v1/contatodechat/filtrar") {
+      assert.equal(endpoint.searchParams.get("telefone"), row.telefone);
+      return Response.json({Items:novusContactCreated ? [{Telefone:"+55 (11) 99999-0000"}] : []});
+    }
+    if (endpoint.pathname === "/v1/contatodechat") {
+      assert.equal(options.method, "POST");
+      assert.deepEqual(body, {Nome:row.nome, Telefone:row.telefone});
+      novusContactCreated = true;
+      return Response.json({Id:"contato-teste"}, {status:201});
+    }
     if (endpoint.pathname === "/v1/atendimento") {
       assert.equal(endpoint.searchParams.get("page"), "2");
       assert.equal(endpoint.searchParams.get("search"), "Cliente");
@@ -98,6 +108,10 @@ assert.equal((await handle(request({action:"novus_status"}))).status, 503);
 env.NOVUS_ACCOUNT_ID = "12345";
 env.NOVUS_API_KEY = "ficticia";
 assert.deepEqual(await (await handle(request({action:"novus_status"}))).json(), {status:"conectado"});
+const syncContact = {action:"novus_sincronizar_contato",telefone:row.telefone,nome:row.nome,documento:row.documento};
+assert.deepEqual(await (await handle(request(syncContact))).json(), {status:"criado"});
+assert.deepEqual(await (await handle(request(syncContact))).json(), {status:"existente"});
+assert.equal((await handle(request({...syncContact,telefone:"inválido"}))).status, 400);
 const deskList = await (await handle(request({action:"novus_lista",busca:"Cliente",offset:50}))).json();
 assert.equal(deskList.conversas[0].id, novusId);
 assert.equal(deskList.conversas[0].nao_lidas, 1);
