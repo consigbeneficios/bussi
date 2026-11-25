@@ -59,7 +59,55 @@
   };
 
   const syncNovus = $("syncNovusClients");
+  const novusQueueKey = "bussi.novus.pending.v1";
+  let novusQueueRunning = false;
+  const pendingNovus = () => JSON.parse(localStorage.getItem(novusQueueKey) || "[]");
+  const saveNovusQueue = queue => localStorage.setItem(novusQueueKey, JSON.stringify(queue));
+  const syncNovusContact = contact => api("/functions/v1/bussi-whatsapp", {action:"novus_sincronizar_contato", ...contact});
+
+  async function flushNovusQueue() {
+    if (novusQueueRunning || syncNovus?.disabled) return;
+    const queue = pendingNovus();
+    if (!queue.length) return;
+    novusQueueRunning = true;
+    const result = $("novusStatus");
+    if (syncNovus) syncNovus.disabled = true;
+    try {
+      for (const {id, ...contact} of queue) {
+        result.textContent = "Sincronizando alterações de cadastro com o Novus…";
+        const {status} = await syncNovusContact(contact);
+        if (!["criado","atualizado","existente"].includes(status)) throw Error("Resposta inesperada do Novus.");
+        saveNovusQueue(pendingNovus().filter(entry => entry.id !== id));
+      }
+      const remaining = pendingNovus().length;
+      result.textContent = remaining ? remaining + " alteração(ões) aguardando sincronização." : "Alterações de cadastro sincronizadas.";
+      if (remaining) setTimeout(flushNovusQueue, 0);
+    } catch (error) {
+      result.textContent = pendingNovus().length + " alteração(ões) pendente(s). " + error.message;
+    } finally {
+      novusQueueRunning = false;
+      if (syncNovus) syncNovus.disabled = false;
+    }
+  }
+
+  window.addEventListener("bussi:client-saved", ({detail:{client,previous}}) => {
+    if (seededFake(client) || isCampaignTestClient(client)) return;
+    const telefone = clientNovusPhone(client.phone);
+    const oldPhone = clientNovusPhone(previous?.phone);
+    if (previous?.name === client.name && oldPhone === telefone) return;
+    const queue = pendingNovus();
+    queue.push({id:crypto.randomUUID(), nome:client.name, telefone,
+      telefone_anterior:/^55\d{10,11}$/.test(oldPhone) ? oldPhone : telefone});
+    saveNovusQueue(queue);
+    void flushNovusQueue();
+  });
+  window.addEventListener("online", flushNovusQueue);
+  window.addEventListener("focus", flushNovusQueue);
+  auth.auth.onAuthStateChange((_event, session) => { if (session) setTimeout(flushNovusQueue, 0); });
+
   if (syncNovus) syncNovus.onclick = async () => {
+    await flushNovusQueue();
+    if (pendingNovus().length) return;
     const result = $("novusStatus");
     const records = new Map();
     let skipped = 0;
@@ -86,21 +134,23 @@
     }
     syncNovus.disabled = true;
     novusCheck.disabled = true;
-    let created = 0, existing = 0;
+    let created = 0, existing = 0, updated = 0;
     try {
       for (const [index, contact] of contacts.entries()) {
         result.textContent = "Sincronizando " + (index + 1) + " de " + contacts.length + " contatos…";
-        const {status} = await api("/functions/v1/bussi-whatsapp", {action:"novus_sincronizar_contato", ...contact});
+        const {status} = await syncNovusContact(contact);
         if (status === "criado") created++;
+        else if (status === "atualizado") updated++;
         else if (status === "existente") existing++;
         else throw Error("O Novus retornou uma situação inesperada.");
       }
-      result.textContent = "Novos: " + created + " · Já existentes: " + existing + " · Para revisar: " + skipped;
+      result.textContent = "Novos: " + created + " · Atualizados: " + updated + " · Já existentes: " + existing + " · Para revisar: " + skipped;
     } catch (error) {
-      result.textContent = "Interrompida após " + (created + existing) + " de " + contacts.length + " contatos. " + error.message;
+      result.textContent = "Interrompida após " + (created + updated + existing) + " de " + contacts.length + " contatos. " + error.message;
     } finally {
       syncNovus.disabled = false;
       novusCheck.disabled = false;
+      if (pendingNovus().length) void flushNovusQueue();
     }
   };
 

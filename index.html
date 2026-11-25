@@ -616,6 +616,8 @@ document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{document.quer
 function openModal(id){$(id).classList.add('open')}function closeModal(id){$(id).classList.remove('open')}document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>closeModal(b.dataset.close));
 $('newClient').onclick=()=>{editClientIndex=-1;$('clientModalTitle').textContent='Novo cliente';['cName','cContract','cPhone','cDocument','cEmail','cOriginal','cFinal'].forEach(x=>$(x).value='');$('cEmail').value='sac@consigbeneficio.com.br';openModal('clientModal')};
 function onlyDigits(v){return String(v||'').replace(/\D/g,'')}
+function clientNovusPhone(value){const raw=onlyDigits(value);return /^\d{10,11}$/.test(raw)?'55'+raw:raw}
+function queueNovusClient(client,previous){window.dispatchEvent(new CustomEvent('bussi:client-saved',{detail:{client,previous}}))}
 function seededFake(c){return (/^Cliente Teste (0[1-9]|1[0-9]|20)$/.test(String(c?.name||'')) && /^TESTE-00(0[1-9]|1[0-9]|20)$/.test(String(c?.contract||'')) && onlyDigits(c?.phone).startsWith('0090000')) || (c?.name==='Test'&&c?.contract==='1111'&&c?.phone==='1111111')}
 function checkClient(c, existingIndex=-1){
  const n=String(c.name||'').trim(), contract=String(c.contract||'').trim(), phone=onlyDigits(c.phone), doc=onlyDigits(c.document), email=String(c.email||'').trim();
@@ -627,6 +629,7 @@ function checkClient(c, existingIndex=-1){
  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return 'Informe um e-mail válido.';
  if(!(Number.isFinite(c.original)&&c.original>0&&c.original<=9999999.99&&Number.isFinite(c.final)&&c.final>0&&c.final<=c.original))return 'Confira os valores originais e com desconto.';
  if(Math.abs(c.final-Math.ceil(Math.round(c.original*100)/2)/100)>.011)return 'Esta emissão exige 50% de desconto. Confira o valor final.';
+ if(clients.some((other,i)=>i!==existingIndex&&clientNovusPhone(other.phone)===clientNovusPhone(phone)))return 'Telefone já cadastrado em outro cliente.';
  if(clients.some((other,i)=>i!==existingIndex&&(String(other.contract||'').trim().toLowerCase()===contract.toLowerCase() || (onlyDigits(other.document)===doc&&doc.length>0))))return 'Contrato ou CPF/CNPJ já cadastrado; use Editar.';
  return '';
 }
@@ -634,8 +637,9 @@ const cleanedClients=clients.filter(c=>!seededFake(c));if(cleanedClients.length!
 $('saveClient').onclick=()=>{
  const c={name:$('cName').value.trim(),contract:$('cContract').value.trim(),phone:$('cPhone').value.trim(),document:onlyDigits($('cDocument').value),email:$('cEmail').value.trim().toLowerCase(),original:parseMoney($('cOriginal').value),final:parseMoney($('cFinal').value)};
  const problem=checkClient(c,editClientIndex);if(problem)return alert(problem);
+ const previous=clients[editClientIndex];
  if(editClientIndex>=0)clients[editClientIndex]=c;else clients.push(c);
- save(K.clients,clients);closeModal('clientModal');renderAll();
+ save(K.clients,clients);queueNovusClient(c,previous);closeModal('clientModal');renderAll();
 };
 function editClient(i){editClientIndex=i;const c=clients[i];$('clientModalTitle').textContent='Editar cliente';$('cName').value=c.name;$('cContract').value=c.contract;$('cPhone').value=c.phone;$('cDocument').value=c.document||'';$('cEmail').value=c.email||'sac@consigbeneficio.com.br';$('cOriginal').value=fmtInput(c.original);$('cFinal').value=fmtInput(c.final);openModal('clientModal')}
 function delClient(i){const c=clients[i];if(!c)return;if(!confirm('Excluir o cadastro de '+c.name+' do CRM?\n\nAs faturas, comprovantes e registros financeiros já emitidos serão preservados.'))return;clients.splice(i,1);save(K.clients,clients);renderAll()}
@@ -655,14 +659,17 @@ $('importFile').onchange=async e=>{
   const ws=wb.Sheets[wb.SheetNames[0]];if(!ws)throw Error('Planilha sem aba de clientes.');
   const rows=XLSX.utils.sheet_to_json(ws,{defval:'',raw:true});
   if(rows.length>5000)throw Error('Importe no máximo 5.000 clientes por planilha.');
-  let added=0,skipped=0;const reasons=[];
+  let added=0,updated=0,skipped=0;const reasons=[],changes=[];
   for(const [i,r] of rows.entries()){
    const c={name:String(r['Nome completo']||r.Nome||r.nome||'').trim(),contract:String(r.Contrato||r.contrato||'').trim(),phone:String(r.Telefone||r.telefone||'').trim(),document:onlyDigits(r['CPF/CNPJ']||r.CPF||r.CNPJ||r.document||''),email:String(r['E-mail']||r.Email||r.email||'').trim().toLowerCase(),original:parseMoney(r['Valor original']??r.original??0),final:parseMoney(r['Valor com 50% de desconto']??r['Valor com desconto']??r.final??0)};
-   const problem=checkClient(c);if(problem){skipped++;if(reasons.length<5)reasons.push('Linha '+(i+2)+': '+problem);continue;}
-   clients.push(c);added++;
+   const existing=clients.findIndex(other=>String(other.contract||'').trim().toLowerCase()===c.contract.toLowerCase() && onlyDigits(other.document)===c.document);
+   const problem=checkClient(c,existing);if(problem){skipped++;if(reasons.length<5)reasons.push('Linha '+(i+2)+': '+problem);continue;}
+   changes.push({client:c,previous:clients[existing]});
+   if(existing>=0){clients[existing]=c;updated++;}else{clients.push(c);added++;}
   }
-  if(added)save(K.clients,clients);renderAll();
-  alert(added+' cliente(s) verdadeiro(s) importado(s). '+skipped+' linha(s) ignorada(s).'+(reasons.length?'\n'+reasons.join('\n'):''));
+  if(changes.length){save(K.clients,clients);changes.forEach(({client,previous})=>queueNovusClient(client,previous));}
+  renderAll();
+  alert(added+' cliente(s) novo(s), '+updated+' atualizado(s). '+skipped+' linha(s) ignorada(s).'+(reasons.length?'\n'+reasons.join('\n'):''));
  }catch(err){alert('Falha na importação: '+err.message)}
  finally{e.target.value=''}
 };
@@ -1036,7 +1043,7 @@ window.addEventListener('hashchange',abrirAbaFaturas);abrirAbaFaturas();
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.94.1/dist/umd/supabase.min.js"></script>
 <script src="bussi-client-stages.js?v=20261123-whatsapp-area"></script>
 <script src="bussi-desk.js?v=20261124-novus-consulta"></script>
-<script src="bussi-nitro.js?v=20261124-comprovante-pay"></script>
+<script src="bussi-nitro.js?v=20261125-novus-sync"></script>
 <script src="bussi-preview.js?v=20261123-campanhas-teste" defer></script>
 </body>
 </html>

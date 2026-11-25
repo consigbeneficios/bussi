@@ -318,12 +318,12 @@ async function offerArtwork() {
   }
 }
 
-async function novusRequest(path: string, payload?: object) {
+async function novusRequest(path: string, payload?: object, method = payload ? "POST" : "GET") {
   const account = env("NOVUS_ACCOUNT_ID");
   const key = env("NOVUS_API_KEY");
   if (!/^\d+$/.test(account) || !key) return null;
   return fetch("https://api.novuscrm.com.br/v1/" + path, {
-    method: payload ? "POST" : "GET",
+    method,
     body: payload ? JSON.stringify(payload) : undefined,
     headers: {"X-Ambiente": account, "X-Authorization": "X-Chave-Api " + key, "Content-Type": "application/json"},
     redirect: "error",
@@ -331,28 +331,66 @@ async function novusRequest(path: string, payload?: object) {
   }).catch(() => null);
 }
 
-async function syncNovusContact(body: Record<string, any>, json: (status: number, body: object) => Response) {
-  const phone = body.telefone;
-  const name = typeof body.nome === "string" ? body.nome.trim() : "";
-  if (typeof phone !== "string" || !/^55\d{10,11}$/.test(phone) || !/^[^\r\n\t]{2,120}$/.test(name)) {
-    return json(400, {erro:"Nome ou telefone inválido."});
-  }
+type NovusContact = Record<string, unknown> & {Id: string; Telefone: string; Nome?: string};
+
+function novusPhone(value: unknown) {
+  const digits = String(value ?? "").replace(/\D/g, "");
+  return /^\d{10,11}$/.test(digits) ? "55" + digits : digits;
+}
+
+async function findNovusContact(phone: string): Promise<NovusContact | null> {
   const query = new URLSearchParams({telefone:phone, pageSize:"20"});
   const response = await novusRequest("contatodechat/filtrar?" + query);
-  if (!response?.ok) return json(503, {erro:"Não foi possível conferir se o contato já existe."});
+  if (!response?.ok) throw new Error("consulta");
   const result = await response.json();
-  if (!Array.isArray(result.Items)) return json(503, {erro:"O Novus retornou uma lista de contatos inesperada."});
-  const existing = result.Items.some((item: {Telefone?: string}) => {
-    const digits = String(item.Telefone ?? "").replace(/\D/g, "");
-    return digits === phone || digits === phone.slice(2);
-  });
-  if (existing) return json(200, {status:"existente"});
-  if (result.Items.length || result.HasNext) return json(409, {erro:"A busca trouxe contatos que exigem conferência manual."});
-  const created = await novusRequest("contatodechat", {Nome:name, Telefone:phone});
-  if (!created?.ok) return json(503, {erro:"Cadastro não confirmado pelo Novus. Consulte o contato antes de repetir."});
-  const saved = await created.json().catch(() => null);
-  if (!saved?.Id) return json(503, {erro:"Cadastro não confirmado pelo Novus. Consulte o contato antes de repetir."});
-  return json(200, {status:"criado"});
+  if (!Array.isArray(result.Items)) throw new Error("consulta");
+  const matches = result.Items.filter((item: NovusContact) => novusPhone(item.Telefone) === phone);
+  if (matches.length > 1 || result.HasNext || (!matches.length && result.Items.length)) throw new Error("conflito");
+  return matches[0] ?? null;
+}
+
+async function syncNovusContact(body: Record<string, any>, json: (status: number, body: object) => Response) {
+  const phone = body.telefone;
+  const previous = body.telefone_anterior ?? phone;
+  const name = typeof body.nome === "string" ? body.nome.trim() : "";
+  if (typeof phone !== "string" || typeof previous !== "string" || !/^55\d{10,11}$/.test(phone) ||
+      !/^55\d{10,11}$/.test(previous) || !/^[^\r\n\t]{2,120}$/.test(name)) {
+    return json(400, {erro:"Nome ou telefone inválido."});
+  }
+
+  try {
+    const current = await findNovusContact(phone);
+    const old = previous === phone ? current : await findNovusContact(previous);
+    if (previous !== phone && current && old && current.Id !== old.Id) throw new Error("conflito");
+    if (previous !== phone && current && !old && current.Nome !== name) throw new Error("conflito");
+    const existing = old ?? current;
+    if (existing) {
+      if (existing.Nome === name && novusPhone(existing.Telefone) === phone) return json(200, {status:"existente"});
+      if (!/^[\da-f-]{36}$/i.test(existing.Id)) throw new Error("consulta");
+      const path = "contatodechat/" + existing.Id;
+      const details = await novusRequest(path);
+      if (!details?.ok) throw new Error("consulta");
+      const contact = await details.json();
+      if (contact.Id !== existing.Id || contact.EhGrupo || ![phone,previous].includes(novusPhone(contact.Telefone))) throw new Error("conflito");
+      const fields = ["TipoDeContato","NomeNaAgenda","Apelido","Email","Observacao","EhGrupo","Principal",
+        "ProfilePicUrl","IdPessoa","IdCanal","IdUsuarioFidelizado","IdDepartamentoTransbordo","EnviarParaGrupoDeChatCasoUsuarioOffline"];
+      const payload = Object.fromEntries(fields.filter(field => field in contact).map(field => [field,contact[field]]));
+      const updated = await novusRequest(path, {...payload, Nome:name, Telefone:phone}, "PUT");
+      const saved = updated?.ok ? await updated.json().catch(() => null) : null;
+      if (saved?.Id !== existing.Id || saved?.Nome !== name || novusPhone(saved?.Telefone) !== phone) throw new Error("atualização");
+      return json(200, {status:"atualizado"});
+    }
+
+    const created = await novusRequest("contatodechat", {Nome:name, Telefone:phone});
+    const saved = created?.ok ? await created.json().catch(() => null) : null;
+    if (!saved?.Id || saved.Nome !== name || novusPhone(saved.Telefone) !== phone) throw new Error("cadastro");
+    return json(200, {status:"criado"});
+  } catch (error) {
+    if (error instanceof Error && error.message === "conflito") {
+      return json(409, {erro:"Há contatos conflitantes no Novus. Confira os números antes de sincronizar."});
+    }
+    return json(503, {erro:"O Novus não confirmou a sincronização. Tente novamente."});
+  }
 }
 
 async function novusDesk(body: Record<string, any>, json: (status: number, body: object) => Response) {
