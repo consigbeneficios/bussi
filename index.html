@@ -902,7 +902,7 @@ function restoreChargeDraft(){
  }catch{}
 }
 for(const id of ['chargeClient','chargeClientSearch','chargeOriginal','chargeDiscount','chargeDesc','chargeDue']){
- $(id).addEventListener('input',saveChargeDraft);$(id).addEventListener('change',saveChargeDraft)
+ $(id).addEventListener('input',saveChargeDraft);$(id).addEventListener('change',()=>{saveChargeDraft();if(id==='chargeDesc')window.dispatchEvent(new Event('bussi:datachange'))})
 }
 const settingFields={pixType:'pixType',pixKey:'pixKey',pixName:'pixName',pixCity:'pixCity',pixTxid:'pixTxid',pixDesc:'pixDesc',trackingEndpoint:'trackingEndpoint',trackingEndpoint2:'trackingEndpoint',metaPhoneId:'metaPhoneId',metaWabaId:'metaWabaId',trackingEnv:'trackingEnv',paymentProvider:'paymentProvider',paymentWebhook:'paymentWebhook',paymentStatusEndpoint:'paymentStatusEndpoint',authEmail:'authEmail',authResetEndpoint:'authResetEndpoint'};
 for(const [id,key] of Object.entries(settingFields)){
