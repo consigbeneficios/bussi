@@ -326,7 +326,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 
     <section class="view" id="campaigns">
       <div class="section">
-        <div class="sectionhead bussi-campaign-heading"><div><h2>Campanhas do WhatsApp</h2><p>Prévia, envio e acompanhamento das conversas.</p></div><button class="btn ghost" id="newCampaign">Nova campanha</button></div>
+        <div class="sectionhead bussi-campaign-heading"><div><h2>Campanhas do WhatsApp</h2><p>Prévia, envio e acompanhamento das conversas.</p></div><div class="toolbar"><div class="field"><label for="bussiParcelMonth">Mês da parcela</label><select id="bussiParcelMonth"><option value="2026-12">Dezembro de 2026</option><option value="2027-01">Janeiro de 2027</option></select></div><button class="btn ghost" id="newCampaign">Nova campanha</button></div></div>
         <div class="bussi-campaign-layout">
           <div class="bussi-inbox bussi-campaign-conversation" aria-label="Conversas da campanha">
           <aside class="bussi-inbox-list">
@@ -367,7 +367,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
           <details class="bussi-campaign-settings"><summary>Configuração e testes da campanha</summary>
           <div class="bussi-campaign-controls">
             <section class="bussi-campaign-send" aria-labelledby="bussiCampaignSendTitle">
-              <h3 id="bussiCampaignSendTitle">Modelo Black Friday</h3>
+              <h3 id="bussiCampaignSendTitle">Modelo de WhatsApp</h3>
               <div class="field">
                 <label for="blackFridayRecipient">Cliente</label>
                 <select id="blackFridayRecipient"><option value="">Selecione um cliente</option></select>
@@ -382,7 +382,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
                 <button class="btn ghost" id="checkWhatsApp" type="button">Verificar modelos</button>
                 <button class="btn primary" id="sendBlackFriday" type="button" disabled>Envio pausado</button>
               </div>
-              <p id="whatsappCampaignStatus" role="status" aria-live="polite">O envio real depende da aprovação do novo modelo na Meta.</p>
+              <p id="whatsappCampaignStatus" role="status" aria-live="polite">Envio pausado. Use Verificar modelos para conferir o mês selecionado.</p>
             </section>
             <section class="bussi-campaign-send bussi-batch" aria-labelledby="bussiBatchTitle">
               <h3 id="bussiBatchTitle">Simular rodadas de envio</h3>
@@ -1037,13 +1037,25 @@ function dueTomorrow(){const p=Object.fromEntries(new Intl.DateTimeFormat('en-CA
 $('chargeDue').value=dueTomorrow();
 $('chargeDue').readOnly=true;
 window.addEventListener('focus',()=>{if($('chargeDue'))$('chargeDue').value=dueTomorrow();});
-function abrirAbaFaturas(){if(location.hash==='#faturas')document.querySelector('.nav button[data-view="charges"]')?.click()}
-window.addEventListener('hashchange',abrirAbaFaturas);abrirAbaFaturas();
+function abrirAbaDoLink() {
+  if (location.hash === '#faturas') {
+    document.querySelector('.nav button[data-view="charges"]')?.click();
+    return;
+  }
+  const mes = new URLSearchParams(location.hash.slice(1)).get('campanha');
+  if (mes !== '2026-12' && mes !== '2027-01') return;
+  const seletor = $('bussiParcelMonth');
+  seletor.value = mes;
+  seletor.dispatchEvent(new Event('change'));
+  document.querySelector('.nav button[data-view="campaigns"]')?.click();
+}
+window.addEventListener('hashchange', abrirAbaDoLink);
+abrirAbaDoLink();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.94.1/dist/umd/supabase.min.js"></script>
 <script src="bussi-client-stages.js?v=20261123-whatsapp-area"></script>
 <script src="bussi-desk.js?v=20261124-novus-consulta"></script>
-<script src="bussi-nitro.js?v=20261125-novus-sync"></script>
-<script src="bussi-preview.js?v=20261123-campanhas-teste" defer></script>
+<script src="bussi-nitro.js?v=20261127-painel-fatura"></script>
+<script src="bussi-preview.js?v=20261127-mes-parcela" defer></script>
 </body>
 </html>

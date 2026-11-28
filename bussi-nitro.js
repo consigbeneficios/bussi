@@ -40,6 +40,20 @@
     return data;
   }
 
+  if (window.parent !== window && location.hash === "#bussi-extension") {
+    document.addEventListener("bussi:companion-request", async ({detail}) => {
+      if (!detail || typeof detail.id !== "string" ||
+          !["status", "piloto_oferta", "piloto_fatura_manual"].includes(detail.body?.action)) return;
+      let result;
+      try {
+        result = {value: await api("/functions/v1/bussi-whatsapp", detail.body)};
+      } catch (error) {
+        result = {error: error.message};
+      }
+      document.dispatchEvent(new CustomEvent("bussi:companion-result", {detail: {id: detail.id, ...result}}));
+    });
+  }
+
   window.BussiDesk?.setConnection(body => api("/functions/v1/bussi-whatsapp", body));
   window.BussiClientStages?.setFixturesLoader(() => api("/functions/v1/bussi-whatsapp",{action:"clientes_teste"}));
   window.BussiClientStages?.setLoader(() => api("/functions/v1/bussi-whatsapp", {action:"etapas_clientes"}));
@@ -156,6 +170,7 @@
 
   const campaignStatus = $("whatsappCampaignStatus");
   const campaignCheck = $("checkWhatsApp");
+  const parcelMonth = $("bussiParcelMonth");
 
   function campaignRecipients() {
     const numbers = new Map();
@@ -186,17 +201,26 @@
     return eligible;
   }
 
-  async function withCampaign(action) {
-    campaignCheck.disabled = true;
-    try { await action(); }
-    catch (error) { campaignStatus.textContent = error.message; }
-    finally { campaignCheck.disabled = false; }
-  }
-
-  campaignCheck.onclick = () => void withCampaign(async () => {
-    await api("/functions/v1/bussi-whatsapp", {action: "status"});
-    campaignStatus.textContent = "Modelos aprovados. Cadastros elegíveis neste painel: " + campaignRecipients().length + ".";
+  parcelMonth.addEventListener("change", () => {
+    campaignStatus.textContent = "Envio pausado. Use Verificar modelos para conferir o mês selecionado.";
   });
+
+  campaignCheck.onclick = async () => {
+    const month = parcelMonth.value;
+    const label = parcelMonth.selectedOptions[0].textContent;
+    campaignCheck.disabled = true;
+    campaignStatus.textContent = "Verificando modelos de " + label.toLowerCase() + "…";
+    try {
+      await api("/functions/v1/bussi-whatsapp", {action: "status", mes_parcela: month});
+      if (parcelMonth.value === month) {
+        campaignStatus.textContent = "Modelos aprovados para " + label.toLowerCase() + ". Cadastros elegíveis neste painel: " + campaignRecipients().length + ".";
+      }
+    } catch (error) {
+      if (parcelMonth.value === month) campaignStatus.textContent = error.message;
+    } finally {
+      campaignCheck.disabled = false;
+    }
+  };
 
   const recipientSelect = $("blackFridayRecipient");
   const flowRefresh = $("refreshWhatsAppFlow");

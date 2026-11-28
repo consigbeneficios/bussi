@@ -26,6 +26,7 @@
   const caption = document.getElementById("bussiPreviewCaption");
   const reset = document.getElementById("bussiPreviewReset");
   const selection = document.getElementById("blackFridayRecipient");
+  const parcelMonth = document.getElementById("bussiParcelMonth");
   const money = new Intl.NumberFormat("pt-BR", {minimumFractionDigits:2,maximumFractionDigits:2});
   const testPhone = "5511959322028";
   const sample = {nome:"Cliente Exemplo",telefone:testPhone,original:10000,desconto:5000};
@@ -88,6 +89,8 @@
     active = "";
     chat.replaceChildren();
     const person = example || client || sample;
+    const january = parcelMonth.value === "2027-01";
+    const month = january ? "janeiro" : "dezembro";
     const original = money.format(person.original / 100);
     const discounted = money.format(person.desconto / 100);
     title.textContent = "Consig Benefícios";
@@ -96,18 +99,20 @@
       client ? "Prévia com o cadastro selecionado. Nenhuma mensagem é enviada." : "Simulação com dados fictícios. Nenhuma mensagem é enviada.";
     reset.hidden = false;
     renderList();
-    const offer = bubble("*Black Friday 50%OFF - P/Referente ao Mês - 12/Dezembro*\nConfirme os dados, a baixo!\n\nNome: " +
+    const offer = january
+      ? bubble("Olá, *" + person.nome.replaceAll("*", "") + "*!\n\n*ANTECIPAÇÃO | 50% DE DESCONTO*\nAntecipe o pagamento da sua parcela de janeiro.\n\nParcela original: *R$ " + original + "*\nParcela com desconto: *R$ " + discounted + "*\n\nToque em *EU QUERO* para conferir os dados.")
+      : bubble("*Black Friday 50%OFF - Parcela de dezembro*\nConfira os dados abaixo!\n\nNome: " +
       person.nome.replaceAll("*","") + "\nTelefone:" + person.telefone + "\nParcela original: *R$" + original +
       "*\nValor com desconto: *R$" + discounted + "*\n\nDados incorretos? Selecione *\"Falar com Atendente\"*");
     const image = document.createElement("img");
     image.className = "bussi-message-media";
     image.alt = "Imagem da campanha Black Friday";
     image.src = mediaPreview || officialArtwork;
-    offer.prepend(image);
-    actions(offer, [["EU QUERO", () => {
+    if (!january) offer.prepend(image);
+    const offerActions = [["EU QUERO", () => {
       setTestStep(1);
       bubble("EU QUERO", true);
-      const invoice = bubble("Olá, " + person.nome.replaceAll("*", "") + ". Você solicitou os detalhes da antecipação de sua parcela.\nTelefone: " + person.telefone + "\nParcela original: R$ " + original + "\nValor com desconto: R$ " + discounted + "\nToque em Gerar fatura para abrir a página da Consig Benefícios e continuar.");
+      const invoice = bubble("Olá, " + person.nome.replaceAll("*", "") + ". Você solicitou os detalhes da antecipação de sua parcela de " + month + ".\nTelefone: " + person.telefone + "\nParcela original: R$ " + original + "\nValor com desconto: R$ " + discounted + "\nToque em Gerar fatura para abrir a página da Consig Benefícios e continuar.");
       actions(invoice, [
         ["Gerar fatura", () => {
           setTestStep(2);
@@ -122,10 +127,12 @@
           bubble("Estamos transferindo para um de nossos atendentes. Aguarde, por favor.");
         }],
       ]);
-    }],["Falar com atendente", () => {
+    }]];
+    if (!january) offerActions.push(["Falar com atendente", () => {
       bubble("Falar com atendente",true);
       bubble("Estamos transferindo para um de nossos atendentes. Aguarde, por favor.");
-    }]]);
+    }]);
+    actions(offer, offerActions);
     chat.scrollTop = 0;
   }
 
@@ -241,6 +248,7 @@
     renderList();
   });
   reset.addEventListener("click", start);
+  parcelMonth.addEventListener("change", start);
   document.addEventListener("bussi:open-test-client", ({detail}) => {
     manualPhone = "";
     example = {...detail,key:detail.id};

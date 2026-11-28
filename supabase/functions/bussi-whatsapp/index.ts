@@ -1,15 +1,23 @@
 const env = (key: string) => Deno.env.get(key) || "";
 const origin = "https://consigbeneficios.github.io";
-const campaign = "blackfriday-2026";
-const offerTemplate = "blackconsig";
+const parcelCampaigns = {
+  "2026-12": {campaign: "blackfriday-2026", offer: "blackconsig", confirmation: "blackconsigconfe"},
+  "2027-01": {campaign: "bussi-janeiro-2027", offer: "blackconsig_janeiro", confirmation: "blackconsigconfe_janeiro"},
+} as const;
+const supportedCampaigns = "in.(" + Object.values(parcelCampaigns).map((item) => item.campaign).join(",") + ")";
+
+function parcelCampaign(month: unknown) {
+  if (month === undefined || month === "2026-12") return parcelCampaigns["2026-12"];
+  if (month === "2027-01") return parcelCampaigns["2027-01"];
+  return null;
+}
 const table = "/rest/v1/bussi_whatsapp_entregas";
 const campaignReply = "BUSSI_BLACKFRIDAY_EU_QUERO";
 const handoffReply = "BUSSI_FATURA_ATENDENTE";
 const language = {code: "pt_BR"};
-const invoiceTemplate = "blackconsigconfe";
 const invoiceButtonUrl = origin + "/bussi/fatura-whatsapp.html#";
 const invoiceReply = "BUSSI_GERAR_FATURA";
-const handoffTemplate = "blackdireatendente";
+const handoffTemplate = "blackatendente";
 function bodyParameters(template: any, values: string[]) {
   const text = template.components?.find((part: any) => part.type === "BODY")?.text ?? "";
   const names: string[] = [...new Set<string>(Array.from(text.matchAll(/\{\{([a-zA-Z0-9_]+)\}\}/g), (m: any) => m[1]))];
@@ -70,8 +78,8 @@ function money(value: number) {
   return (value / 100).toLocaleString("pt-BR", {minimumFractionDigits: 2, maximumFractionDigits: 2});
 }
 
-async function approvedTemplates() {
-  const result = await Promise.all([offerTemplate, invoiceTemplate, handoffTemplate].map(async (name) => {
+async function approvedTemplates(templates: NonNullable<ReturnType<typeof parcelCampaign>>) {
+  const result = await Promise.all([templates.offer, templates.confirmation, handoffTemplate].map(async (name) => {
     const query = new URLSearchParams({name, fields: "name,status,language,components"});
     const account = env("META_MESSAGING_ACCOUNT_ID") || env("META_WABA_ID");
     const response = await graph(account + "/message_templates?" + query);
@@ -110,7 +118,7 @@ async function handleHandoff(message: Record<string, any>) {
   if (!deskId(message.context?.id) || !deskId(message.id) ||
       typeof message.from !== "string" || !/^55\d{10,11}$/.test(message.from)) return;
   const query = new URLSearchParams({
-    campanha: "eq." + campaign, telefone: "eq." + message.from,
+    campanha: supportedCampaigns, telefone: "eq." + message.from,
     or: "(fatura_mensagem.eq." + message.context.id + ",mensagem.eq." + message.context.id + ")",
     atendente_em: "is.null", encerramento_status: "is.null",
   });
@@ -127,7 +135,7 @@ async function handleHandoff(message: Record<string, any>) {
 
 async function sendInvoiceLink(message: Record<string, any>) {
   if (!deskId(message.context?.id) || !deskId(message.id) || !deskPhone(message.from)) return;
-  const query = new URLSearchParams({campanha:"eq."+campaign, telefone:"eq."+message.from,
+  const query = new URLSearchParams({campanha:supportedCampaigns, telefone:"eq."+message.from,
     fatura_mensagem:"eq."+message.context.id, fatura_status:"eq.aceito",
     fatura_acesso_hash:"is.null", atendente_em:"is.null"});
   const token = crypto.randomUUID().replaceAll("-", "") + crypto.randomUUID().replaceAll("-", "");
@@ -155,16 +163,20 @@ async function handleReply(message: Record<string, any>) {
       typeof message.id !== "string" || !message.id) return;
 
   const query = new URLSearchParams({
-    campanha: "eq." + campaign, telefone: "eq." + message.from, oferta_status: "eq.aceito",
+    campanha: supportedCampaigns, telefone: "eq." + message.from, oferta_status: "eq.aceito", limit: "2",
     criada_em: "gte." + new Date(Date.now() - 14 * 86400000).toISOString(),
   });
   if (type === "button" || message.context?.id) {
     if (typeof message.context?.id !== "string") return;
     query.set("mensagem", "eq." + message.context.id);
   }
-  const [row] = await db("?" + query);
-  if (!row || row.resposta_id || row.atendente_em || !row.pagador) return;
-  const {invoiceButton, handoffButton, confirmation} = await approvedTemplates();
+  const [row, ambiguous] = await db("?" + query);
+  if (!row || ambiguous || row.resposta_id || row.atendente_em || !row.pagador) return;
+  const templates = Object.values(parcelCampaigns).find((item) => item.campaign === row.campanha);
+  if (!templates) return;
+  query.delete("limit");
+  query.set("campanha", "eq." + templates.campaign);
+  const {invoiceButton, handoffButton, confirmation} = await approvedTemplates(templates);
   const parameters = bodyParameters(confirmation, [row.nome, row.telefone, money(row.original), money(row.desconto)]);
   query.set("resposta_id", "is.null");
   query.set("atendente_em", "is.null");
@@ -172,7 +184,7 @@ async function handleReply(message: Record<string, any>) {
     resposta_id: message.id, resposta_em: new Date().toISOString(), fatura_status: "reservado",
   }, "return=representation");
   if (!claimed) return;
-  const result = await sendTemplate(row.telefone, invoiceTemplate, [
+  const result = await sendTemplate(row.telefone, templates.confirmation, [
     {type:"body",parameters},
     {type:"button",sub_type:"quick_reply",index:String(invoiceButton),parameters:[{type:"payload",payload:invoiceReply}]},
     {type:"button",sub_type:"quick_reply",index:String(handoffButton),parameters:[{type:"payload",payload:handoffReply}]},
@@ -245,7 +257,7 @@ async function recordIncoming(message: Record<string, any>, contacts: Array<Reco
   if (!response.ok) throw Error("Não foi possível registrar a mensagem recebida.");
 }
 
-async function deskRequest(body: Record<string, any>, json: (status:number, body:object) => Response) {
+async function deskRequest(body: Record<string, any>, json: (status:number, body: object) => Response) {
   const service = env("SUPABASE_SERVICE_ROLE_KEY");
   if (body.action === "atendimento_lista") {
     const offset = body.offset ?? 0;
@@ -466,24 +478,46 @@ async function prepareNovusOffer(body: Record<string, any>, json: (status: numbe
 async function novusFlow(request: Request, raw: ArrayBuffer, json: (status: number, body: object) => Response) {
   const encode = (value: string) => new TextEncoder().encode(value);
   const secret = env("BUSSI_NOVUS_FLOW_TOKEN");
-  if (secret.length < 32) return json(503, {erro:"Integração Novus ainda não configurada."});
+  if (secret.length < 32) { console.warn("novus_fluxo_sem_token_configurado"); return json(503, {erro:"Integração Novus ainda não configurada."}); }
   const key = await crypto.subtle.importKey("raw", encode(secret), {name:"HMAC", hash:"SHA-256"}, false, ["sign","verify"]);
   const expected = await crypto.subtle.sign("HMAC", key, encode("bussi-novus-auth"));
   const provided = request.headers.get("Authorization")?.match(/^Bearer (\S+)$/)?.[1] ?? "";
   const candidate = await crypto.subtle.importKey("raw", encode(provided || "-"), {name:"HMAC", hash:"SHA-256"}, false, ["verify"]);
-  if (!await crypto.subtle.verify("HMAC", candidate, expected, encode("bussi-novus-auth"))) return json(403, {});
+  if (!await crypto.subtle.verify("HMAC", candidate, expected, encode("bussi-novus-auth"))) {
+    console.warn("novus_fluxo_token_invalido", provided ? "token_enviado" : "sem_cabecalho_bearer");
+    return json(403, {});
+  }
   const body = JSON.parse(new TextDecoder().decode(raw));
   const action = body?.action;
   const rawPhone = typeof body?.telefone === "string" ? body.telefone.replace(/\D/g, "") : "";
   const telefone = rawPhone.length === 10 || rawPhone.length === 11 ? "55" + rawPhone : rawPhone;
-  if (!/^55\d{10,11}$/.test(telefone) || !["dados_oferta","gerar_fatura"].includes(action)) return json(400, {});
+  const validAction = ["dados_oferta","gerar_fatura"].includes(action);
+  // Names and sizes only; the phone is masked to its first 4 and last 4 digits.
+  console.info("novus_fluxo_pedido", validAction ? action : "acao_invalida", "digitos_telefone", rawPhone.length,
+    "telefone_mascarado", telefone.length >= 12 ? telefone.slice(0, 4) + "..." + telefone.slice(-4) : "curto",
+    "campos", body && typeof body === "object" ? Object.keys(body).join(",") : "corpo_invalido");
+  if (!/^55\d{10,11}$/.test(telefone) || !validAction) return json(400, {});
   const query = novusOfferQuery(telefone);
-  query.set("select", "nome,telefone,original,desconto,fatura_pedido,fatura_acesso_hash,fatura_expira_em,atendente_em");
+  query.set("select", "nome,telefone,original,desconto,pagador,fatura_pedido,fatura_acesso_hash,fatura_expira_em,atendente_em");
   const [row] = await db("?" + query);
-  if (!row || row.atendente_em) return json(404, {erro:"Oferta indisponível."});
-  if (action === "dados_oferta") return json(200, {
-    nome:row.nome, telefone:row.telefone, original:money(row.original), desconto:money(row.desconto),
-  });
+  if (!row && action === "dados_oferta") {
+    const offer = await currentNovusContract(telefone);
+    if (!offer) return json(404, {erro:"Oferta indisponível."});
+    return json(200, {nome:offer.nome, telefone, original:money(offer.original), desconto:money(offer.desconto)});
+  }
+  if (!row || row.atendente_em) {
+    console.warn("novus_fluxo_oferta_indisponivel", action, row ? "em_atendimento" : "sem_registro_preparado");
+    return json(404, {erro:"Oferta indisponível."});
+  }
+  const current = row.fatura_acesso_hash ? null : await currentNovusContract(telefone, row.pagador?.contract);
+  if (!current && !row.fatura_acesso_hash) return json(409, {erro:"Confira o contrato no BUSSI."});
+  if (action === "dados_oferta") {
+    const messageOffer = current ?? row;
+    console.info("novus_fluxo_dados_oferta_ok");
+    return json(200, {
+      nome:messageOffer.nome, telefone:row.telefone, original:money(messageOffer.original), desconto:money(messageOffer.desconto),
+    });
+  }
 
   const bytes = await crypto.subtle.sign("HMAC", key, encode("bussi-novus-fatura:" + row.fatura_pedido));
   const token = Array.from(new Uint8Array(bytes), value => value.toString(16).padStart(2, "0")).join("");
@@ -492,7 +526,7 @@ async function novusFlow(request: Request, raw: ArrayBuffer, json: (status: numb
     query.set("fatura_acesso_hash", "is.null");
     query.set("atendente_em", "is.null");
     const [claimed] = await db("?" + query, "PATCH", {
-      oferta_status:"aceito", resposta_id:"novus." + row.fatura_pedido, resposta_em:new Date().toISOString(),
+      ...current, oferta_status:"aceito", resposta_id:"novus." + row.fatura_pedido, resposta_em:new Date().toISOString(),
       fatura_status:"aceito", fatura_acesso_hash:hash, fatura_expira_em:new Date(Date.now() + 86400000).toISOString(),
     }, "return=representation");
     query.delete("fatura_acesso_hash");
@@ -506,13 +540,189 @@ async function novusFlow(request: Request, raw: ArrayBuffer, json: (status: numb
   if (!(Date.parse(row.fatura_expira_em) > Date.now())) return json(410, {erro:"O link da fatura expirou."});
   const issued = await api("/rest/v1/rpc/bussi_whatsapp_abrir_fatura", env("SUPABASE_SERVICE_ROLE_KEY"),
     "POST", {p_hash:hash});
-  if (!issued.ok) return json(503, {erro:"Não foi possível emitir o link da fatura."});
+  if (!issued.ok) { console.warn("novus_fluxo_abrir_fatura_falhou", issued.status); return json(503, {erro:"Não foi possível emitir o link da fatura."}); }
   const invoice = await issued.json();
   if (!Number.isSafeInteger(invoice?.numero) || invoice.numero < 1 || !/^[a-f0-9]{64}$/.test(invoice.token ?? "")) {
+    console.warn("novus_fluxo_fatura_resposta_invalida");
     return json(503, {erro:"Não foi possível emitir o link da fatura."});
   }
   const url = "https://pay.consigbeneficio.com.br/fatura" + String(invoice.numero).padStart(4, "0") + "#" + invoice.token;
+  console.info("novus_fluxo_gerar_fatura_ok", invoice.numero);
   return json(200, {url});
+}
+
+type Respond = (status: number, body: object) => Response;
+type Query = (query: string, method?: string, body?: unknown, prefer?: string) => Promise<any[]>;
+
+// Mensagens usam o último cadastro salvo pela conta BUSSI da integração.
+async function currentNovusContract(telefone: string, contract?: string, includeSimulation = false) {
+  const query = new URLSearchParams({
+    owner_id: "eq.62102276-1162-4b87-a368-4cc5a4ca0ec2",
+    select: "clients:conteudo->clients", order: "criado_em.desc,id.desc", limit: "1",
+  });
+  const response = await api("/rest/v1/bussi_portal_arquivos?" + query, env("SUPABASE_SERVICE_ROLE_KEY"));
+  if (!response.ok) throw new Error("Falha ao consultar contratos.");
+  const [record] = await response.json();
+  if (!Array.isArray(record?.clients)) return null;
+  const candidates = record.clients.filter((client: any) => novusPhone(client?.phone) === telefone);
+  if (!candidates.length) return null;
+  const matches = [];
+  for (const client of candidates) {
+    if (typeof client.contract !== "string" || !client.contract.trim()) continue;
+    if (includeSimulation) {
+      matches.push(client);
+      continue;
+    }
+    const testQuery = new URLSearchParams({contrato:"eq." + client.contract.trim().toUpperCase(), select:"id", limit:"1"});
+    const tests = await api("/rest/v1/bussi_testes_campanha?" + testQuery, env("SUPABASE_SERVICE_ROLE_KEY"));
+    if (!tests.ok) throw new Error("Falha ao conferir contratos de simulação.");
+    if (!(await tests.json()).length) matches.push(client);
+  }
+  if (matches.length !== 1) return null;
+  const client = matches[0];
+  if ((contract !== undefined && client.contract.trim() !== contract) ||
+      typeof client.name !== "string" || typeof client.original !== "number" || typeof client.final !== "number") return null;
+  const nome = client.name.trim();
+  const original = Math.round(client.original * 100);
+  const desconto = Math.round(client.final * 100);
+  const pagador = payerFor({contrato:client.contract.trim(), email:client.email, documento:client.document}, nome, telefone);
+  if (!pagador || !Number.isSafeInteger(original) || original < 200 || original > 999999999 ||
+      desconto !== Math.ceil(original / 2)) return null;
+  return {nome, original, desconto, pagador};
+}
+
+async function offerPreview(
+  body: Record<string, unknown>,
+  db: Query,
+  json: Respond,
+) {
+  const { action, telefone } = body;
+  if (action !== "previa_oferta") return json(403, {erro:"Edite o contrato no BUSSI."});
+  if (typeof telefone !== "string" || !/^55\d{10,11}$/.test(telefone)) {
+    return json(422, { erro: "Telefone inválido." });
+  }
+  const query = new URLSearchParams({
+    campanha: "eq.novus-blackfriday-2026",
+    telefone: "eq." + telefone,
+    select: "nome,original,desconto,oferta_status,fatura_status,fatura_acesso_hash,atendente_em,pagador,fatura_pedido",
+  });
+  const [offer] = await db("?" + query);
+  if (offer && (offer.atendente_em || !offer.pagador?.contract)) {
+    return json(409, { erro: "Confira o atendimento ou a fatura existente no BUSSI." });
+  }
+  const current = await currentNovusContract(telefone, offer?.pagador?.contract, true);
+  if (!current) return json(409, {erro:"Confira o contrato no BUSSI."});
+  if (offer) {
+    const reserved = offer.oferta_status === "reservado" && !offer.fatura_status && !offer.fatura_acesso_hash;
+    const accepted = offer.oferta_status === "aceito" && offer.fatura_status === "aceito" &&
+      offer.fatura_acesso_hash && offer.nome === current.nome &&
+      offer.original === current.original && offer.desconto === current.desconto;
+    if (!reserved && !accepted) return json(409, {erro:"Confira a fatura existente e os dados do contrato no BUSSI."});
+  }
+  const snapshot = {
+    nome: current.nome,
+    telefone,
+    original: current.original,
+    desconto: current.desconto,
+    contrato: current.pagador.contract,
+    referencia: offer?.fatura_pedido ?? current.pagador.contract,
+  };
+  return json(200, snapshot);
+}
+
+async function novusPreview(request: Request, raw: ArrayBuffer, json: (status: number, body: object) => Response) {
+  const secret = env("BUSSI_NOVUS_PREVIEW_TOKEN");
+  const provided = request.headers.get("Authorization")?.match(/^Bearer (\S+)$/)?.[1];
+  if (secret.length < 32) return json(503, { erro: "Credencial da prévia ainda não configurada." });
+  if (!provided) return json(403, {});
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", encoder.encode(secret), {name:"HMAC", hash:"SHA-256"}, false, ["sign"]);
+  const expected = await crypto.subtle.sign("HMAC", key, encoder.encode("bussi-novus-preview"));
+  const candidate = await crypto.subtle.importKey("raw", encoder.encode(provided), {name:"HMAC", hash:"SHA-256"}, false, ["verify"]);
+  if (!await crypto.subtle.verify("HMAC", candidate, expected, encoder.encode("bussi-novus-preview"))) return json(403, {});
+  const body = JSON.parse(new TextDecoder().decode(raw));
+  if (!body || typeof body !== "object" || Array.isArray(body)) return json(400, {});
+  if (body.action === "previa_oferta" && typeof body.contato_id === "string") {
+    const id = body.contato_id;
+    if (!/^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i.test(id)) return json(422, {});
+    const response = await novusRequest("contatodechat/" + id);
+    if (!response?.ok) return json(409, {erro:"Contato indisponível no Novus."});
+    const contact = await response.json();
+    if (contact.Id !== id || contact.EhGrupo) return json(409, {erro:"Contato indisponível no Novus."});
+    body.telefone = novusPhone(contact.Telefone);
+  }
+  return await offerPreview(body, db, json);
+}
+
+async function pilotOffer(body: Record<string, unknown>, json: (status: number, body: object) => Response) {
+  const templates = parcelCampaign(body.mes_parcela);
+  if (!templates || body.mes_parcela === undefined || !deskPhone(body.telefone) ||
+      typeof body.contrato !== "string" || body.contrato.length < 1 || body.contrato.length > 80) {
+    return json(422, {erro: "Confira o mês, o contrato e o telefone da oferta."});
+  }
+  const lookup = new URLSearchParams({
+    campanha: "eq." + templates.campaign,
+    telefone: "eq." + body.telefone,
+  });
+  const [row] = await db("?" + lookup);
+  if (!row || row.pagador?.contract !== body.contrato) {
+    return body.action === "piloto_oferta"
+      ? json(200, {status: "sem_oferta", emitir: false})
+      : json(404, {erro: "Não há oferta deste contrato no mês escolhido."});
+  }
+
+  let delivered = false;
+  if (row.oferta_status === "aceito" && deskId(row.mensagem)) {
+    const evidence = new URLSearchParams({
+      mensagem: "eq." + row.mensagem,
+      estado: "in.(sent,delivered,read)",
+      select: "estado",
+      limit: "1",
+    });
+    if (row.resposta_id) delivered = true;
+    else {
+      const events = await api("/rest/v1/bussi_whatsapp_eventos?" + evidence, env("SUPABASE_SERVICE_ROLE_KEY"));
+      if (!events.ok) return json(503, {erro: "Não foi possível conferir o envio da oferta."});
+      delivered = (await events.json()).length > 0;
+    }
+  }
+  const enabled = env("BUSSI_PILOT_MANUAL_INVOICE_ENABLED") === "true";
+  if (body.action === "piloto_oferta") return json(200, {
+    status: delivered ? "enviada" : row.oferta_status,
+    emitir: enabled && delivered,
+    original: row.original, desconto: row.desconto,
+    fatura: Boolean(row.fatura_acesso_hash),
+  });
+
+  if (!enabled || !delivered || body.confirmado !== true) {
+    return json(409, {erro: "A emissão manual exige uma oferta enviada e a confirmação do operador."});
+  }
+  let active = row;
+  if (!active.fatura_acesso_hash) {
+    const random = crypto.randomUUID().replaceAll("-", "") + crypto.randomUUID().replaceAll("-", "");
+    const claim = new URLSearchParams(lookup);
+    claim.set("fatura_acesso_hash", "is.null");
+    claim.set("mensagem", "eq." + row.mensagem);
+    claim.set("oferta_status", "eq.aceito");
+    const [reserved] = await db("?" + claim, "PATCH", {
+      fatura_acesso_hash: await hashToken(random),
+      fatura_expira_em: new Date(Date.now() + 86400000).toISOString(),
+      fatura_manual_em: new Date().toISOString(),
+    }, "return=representation");
+    active = reserved || (await db("?" + lookup))[0];
+  }
+  if (!active?.fatura_acesso_hash || !(Date.parse(active.fatura_expira_em) > Date.now())) {
+    return json(409, {erro: "O acesso desta fatura expirou ou está indisponível."});
+  }
+  const response = await api("/rest/v1/rpc/bussi_whatsapp_abrir_fatura", env("SUPABASE_SERVICE_ROLE_KEY"),
+    "POST", {p_hash: active.fatura_acesso_hash});
+  const invoice = response.ok ? await response.json() : null;
+  if (!Number.isSafeInteger(invoice?.numero) || invoice.numero < 1 ||
+      !/^[a-f0-9]{64}$/.test(invoice.token ?? "")) {
+    return json(503, {erro: "Não foi possível obter o link da fatura."});
+  }
+  const url = "https://pay.consigbeneficio.com.br/fatura" + String(invoice.numero).padStart(4, "0") + "#" + invoice.token;
+  return json(200, {url, numero: invoice.numero});
 }
 
 export async function handle(request: Request) {
@@ -552,7 +762,21 @@ export async function handle(request: Request) {
       return json(200, {});
     }
 
+    if (url.searchParams.get("integracao") === "novus-previa") return await novusPreview(request, raw, json);
     if (url.searchParams.get("integracao") === "novus") return await novusFlow(request, raw, json);
+
+    // Tolerance for a Novus flow whose URL lost "?integracao=novus": a server-to-server call (no Origin) with a
+    // bearer token and one of the flow actions is routed to the flow handler, which still verifies the flow token.
+    const authorization = request.headers.get("Authorization") ?? "";
+    if (!request.headers.has("Origin") && /^Bearer \S+$/.test(authorization) &&
+        authorization !== "Bearer " + env("SUPABASE_SERVICE_ROLE_KEY")) {
+      let probe: any = null;
+      try { probe = JSON.parse(new TextDecoder().decode(raw)); } catch { /* not JSON: falls through */ }
+      if (["dados_oferta","gerar_fatura"].includes(probe?.action)) {
+        console.warn("novus_fluxo_url_sem_parametro_integracao");
+        return await novusFlow(request, raw, json);
+      }
+    }
 
     if (!request.headers.has("Origin") && env("SUPABASE_SERVICE_ROLE_KEY") &&
         request.headers.get("Authorization") === "Bearer " + env("SUPABASE_SERVICE_ROLE_KEY")) {
@@ -561,7 +785,11 @@ export async function handle(request: Request) {
       return json(200, {status: "confirmacao_whatsapp_manual"});
 
     }
-    if (request.headers.get("Origin") !== origin) return json(403, {});
+    if (request.headers.get("Origin") !== origin) {
+      console.warn("bussi_whatsapp_chamada_sem_origem_valida", request.headers.has("Origin") ? "origem_diferente" : "sem_origem",
+        request.headers.has("Authorization") ? "com_authorization" : "sem_authorization");
+      return json(403, {});
+    }
     const body = JSON.parse(new TextDecoder().decode(raw));
     if (body.action === "abrir_fatura") {
       if (typeof body.token !== "string" || !/^[a-f0-9]{64}$/.test(body.token)) return json(404, {});
@@ -579,6 +807,7 @@ export async function handle(request: Request) {
       return await deskRequest(body,json);
     }
     if (["novus_lista","novus_historico"].includes(body.action)) return await novusDesk(body, json);
+    if (body.action === "piloto_oferta" || body.action === "piloto_fatura_manual") return await pilotOffer(body, json);
     if (body.action === "novus_preparar_oferta") return await prepareNovusOffer(body, json);
     if (body.action === "novus_sincronizar_contato") return await syncNovusContact(body, json);
     if (body.action === "novus_status") {
@@ -620,8 +849,10 @@ export async function handle(request: Request) {
     if (!["META_GRAPH_VERSION", "META_WABA_ID", "META_PHONE_NUMBER_ID", "META_WHATSAPP_TOKEN", "META_APP_SECRET",
       "META_WEBHOOK_VERIFY_TOKEN"].every((key) => env(key))) return json(503, {erro: "Conexão do WhatsApp ainda não configurada no servidor."});
 
+    const templates = parcelCampaign(body.mes_parcela);
+    if (!templates) return json(422, {erro: "Mês da parcela inválido."});
     if (body.action === "status") {
-      await approvedTemplates();
+      await approvedTemplates(templates);
       return json(200, {status: "pronto"});
     }
     if (body.action === "enviar" && env("BUSSI_BLACKFRIDAY_SENDING_ENABLED") !== "true") {
@@ -639,7 +870,7 @@ export async function handle(request: Request) {
     const fixture = await api("/rest/v1/bussi_testes_campanha?"+fixtureFilter,env("SUPABASE_SERVICE_ROLE_KEY"));
     if (!fixture.ok) return json(503,{erro:"Não foi possível conferir a classificação do cliente."});
     if ((await fixture.json()).length) return json(409,{erro:"Use este cadastro somente na simulação."});
-    const {offerButton: button, offerImage, offerText, offerHandoff, offer} = await approvedTemplates();
+    const {offerButton: button, offerImage, offerText, offerHandoff, offer} = await approvedTemplates(templates);
     const normalized = offerText.normalize("NFD").replace(/\p{Diacritic}/gu, "").toUpperCase();
     if (/SUA\s+CONTA\s+SERA\s+BLOQUEADA/.test(normalized)) {
       return json(409, {erro: "Revise a abertura do modelo Black Friday antes do disparo."});
@@ -648,7 +879,7 @@ export async function handle(request: Request) {
     const image = /^\d+$/.test(mediaId) ? {id:mediaId} : {link:env("SUPABASE_URL") + "/functions/v1/bussi-whatsapp?imagem=blackfriday"};
     const parameters = bodyParameters(offer, [nome, money(original), money(desconto)]);
     const [reserved] = await db("?on_conflict=campanha,telefone", "POST",
-      {campanha: campaign, telefone, nome, original, desconto, pagador}, "resolution=ignore-duplicates,return=representation");
+      {campanha: templates.campaign, telefone, nome, original, desconto, pagador}, "resolution=ignore-duplicates,return=representation");
     if (!reserved) return json(200, {status: "ja_registrado"});
 
     const components: unknown[] = [{type:"body", parameters}];
@@ -657,11 +888,12 @@ export async function handle(request: Request) {
       parameters: [{type: "payload", payload: campaignReply}]});
     if (offerHandoff >= 0) components.push({type:"button",sub_type:"quick_reply",index:String(offerHandoff),
       parameters:[{type:"payload",payload:handoffReply}]});
-    const result = await sendTemplate(telefone, offerTemplate, components);
-    const filter = new URLSearchParams({campanha: "eq." + campaign, telefone: "eq." + telefone});
+    const result = await sendTemplate(telefone, templates.offer, components);
+    const filter = new URLSearchParams({campanha: "eq." + templates.campaign, telefone: "eq." + telefone});
     await db("?" + filter, "PATCH", {oferta_status: result.state, mensagem: result.id});
     return json(200, {status: result.state});
   } catch (error) {
+    console.warn("bussi_whatsapp_erro", error instanceof Error ? error.message : "desconhecido");
     return json(503, {erro: error instanceof Error && /modelos/.test(error.message) ? error.message : "Integração indisponível. Confira o histórico antes de repetir."});
   }
 }
