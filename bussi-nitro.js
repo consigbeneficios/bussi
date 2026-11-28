@@ -40,6 +40,20 @@
     return data;
   }
 
+  if (window.parent !== window && location.hash === "#bussi-extension") {
+    document.addEventListener("bussi:companion-request", async ({detail}) => {
+      if (!detail || typeof detail.id !== "string" ||
+          !["status", "piloto_oferta", "piloto_fatura_manual"].includes(detail.body?.action)) return;
+      let result;
+      try {
+        result = {value: await api("/functions/v1/bussi-whatsapp", detail.body)};
+      } catch (error) {
+        result = {error: error.message};
+      }
+      document.dispatchEvent(new CustomEvent("bussi:companion-result", {detail: {id: detail.id, ...result}}));
+    });
+  }
+
   window.BussiDesk?.setConnection(body => api("/functions/v1/bussi-whatsapp", body));
   window.BussiClientStages?.setFixturesLoader(() => api("/functions/v1/bussi-whatsapp",{action:"clientes_teste"}));
   window.BussiClientStages?.setLoader(() => api("/functions/v1/bussi-whatsapp", {action:"etapas_clientes"}));
