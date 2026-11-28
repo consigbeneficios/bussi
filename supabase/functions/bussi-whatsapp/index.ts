@@ -1,15 +1,23 @@
 const env = (key: string) => Deno.env.get(key) || "";
 const origin = "https://consigbeneficios.github.io";
-const campaign = "blackfriday-2026";
-const offerTemplate = "blackconsig";
+const parcelCampaigns = {
+  "2026-12": {campaign: "blackfriday-2026", offer: "blackconsig", confirmation: "blackconsigconfe"},
+  "2027-01": {campaign: "bussi-janeiro-2027", offer: "blackconsig_janeiro", confirmation: "blackconsigconfe_janeiro"},
+} as const;
+const supportedCampaigns = "in.(" + Object.values(parcelCampaigns).map((item) => item.campaign).join(",") + ")";
+
+function parcelCampaign(month: unknown) {
+  if (month === undefined || month === "2026-12") return parcelCampaigns["2026-12"];
+  if (month === "2027-01") return parcelCampaigns["2027-01"];
+  return null;
+}
 const table = "/rest/v1/bussi_whatsapp_entregas";
 const campaignReply = "BUSSI_BLACKFRIDAY_EU_QUERO";
 const handoffReply = "BUSSI_FATURA_ATENDENTE";
 const language = {code: "pt_BR"};
-const invoiceTemplate = "blackconsigconfe";
 const invoiceButtonUrl = origin + "/bussi/fatura-whatsapp.html#";
 const invoiceReply = "BUSSI_GERAR_FATURA";
-const handoffTemplate = "blackdireatendente";
+const handoffTemplate = "blackatendente";
 function bodyParameters(template: any, values: string[]) {
   const text = template.components?.find((part: any) => part.type === "BODY")?.text ?? "";
   const names: string[] = [...new Set<string>(Array.from(text.matchAll(/\{\{([a-zA-Z0-9_]+)\}\}/g), (m: any) => m[1]))];
@@ -70,8 +78,8 @@ function money(value: number) {
   return (value / 100).toLocaleString("pt-BR", {minimumFractionDigits: 2, maximumFractionDigits: 2});
 }
 
-async function approvedTemplates() {
-  const result = await Promise.all([offerTemplate, invoiceTemplate, handoffTemplate].map(async (name) => {
+async function approvedTemplates(templates: NonNullable<ReturnType<typeof parcelCampaign>>) {
+  const result = await Promise.all([templates.offer, templates.confirmation, handoffTemplate].map(async (name) => {
     const query = new URLSearchParams({name, fields: "name,status,language,components"});
     const account = env("META_MESSAGING_ACCOUNT_ID") || env("META_WABA_ID");
     const response = await graph(account + "/message_templates?" + query);
@@ -110,7 +118,7 @@ async function handleHandoff(message: Record<string, any>) {
   if (!deskId(message.context?.id) || !deskId(message.id) ||
       typeof message.from !== "string" || !/^55\d{10,11}$/.test(message.from)) return;
   const query = new URLSearchParams({
-    campanha: "eq." + campaign, telefone: "eq." + message.from,
+    campanha: supportedCampaigns, telefone: "eq." + message.from,
     or: "(fatura_mensagem.eq." + message.context.id + ",mensagem.eq." + message.context.id + ")",
     atendente_em: "is.null", encerramento_status: "is.null",
   });
@@ -127,7 +135,7 @@ async function handleHandoff(message: Record<string, any>) {
 
 async function sendInvoiceLink(message: Record<string, any>) {
   if (!deskId(message.context?.id) || !deskId(message.id) || !deskPhone(message.from)) return;
-  const query = new URLSearchParams({campanha:"eq."+campaign, telefone:"eq."+message.from,
+  const query = new URLSearchParams({campanha:supportedCampaigns, telefone:"eq."+message.from,
     fatura_mensagem:"eq."+message.context.id, fatura_status:"eq.aceito",
     fatura_acesso_hash:"is.null", atendente_em:"is.null"});
   const token = crypto.randomUUID().replaceAll("-", "") + crypto.randomUUID().replaceAll("-", "");
@@ -155,16 +163,20 @@ async function handleReply(message: Record<string, any>) {
       typeof message.id !== "string" || !message.id) return;
 
   const query = new URLSearchParams({
-    campanha: "eq." + campaign, telefone: "eq." + message.from, oferta_status: "eq.aceito",
+    campanha: supportedCampaigns, telefone: "eq." + message.from, oferta_status: "eq.aceito", limit: "2",
     criada_em: "gte." + new Date(Date.now() - 14 * 86400000).toISOString(),
   });
   if (type === "button" || message.context?.id) {
     if (typeof message.context?.id !== "string") return;
     query.set("mensagem", "eq." + message.context.id);
   }
-  const [row] = await db("?" + query);
-  if (!row || row.resposta_id || row.atendente_em || !row.pagador) return;
-  const {invoiceButton, handoffButton, confirmation} = await approvedTemplates();
+  const [row, ambiguous] = await db("?" + query);
+  if (!row || ambiguous || row.resposta_id || row.atendente_em || !row.pagador) return;
+  const templates = Object.values(parcelCampaigns).find((item) => item.campaign === row.campanha);
+  if (!templates) return;
+  query.delete("limit");
+  query.set("campanha", "eq." + templates.campaign);
+  const {invoiceButton, handoffButton, confirmation} = await approvedTemplates(templates);
   const parameters = bodyParameters(confirmation, [row.nome, row.telefone, money(row.original), money(row.desconto)]);
   query.set("resposta_id", "is.null");
   query.set("atendente_em", "is.null");
@@ -172,7 +184,7 @@ async function handleReply(message: Record<string, any>) {
     resposta_id: message.id, resposta_em: new Date().toISOString(), fatura_status: "reservado",
   }, "return=representation");
   if (!claimed) return;
-  const result = await sendTemplate(row.telefone, invoiceTemplate, [
+  const result = await sendTemplate(row.telefone, templates.confirmation, [
     {type:"body",parameters},
     {type:"button",sub_type:"quick_reply",index:String(invoiceButton),parameters:[{type:"payload",payload:invoiceReply}]},
     {type:"button",sub_type:"quick_reply",index:String(handoffButton),parameters:[{type:"payload",payload:handoffReply}]},
@@ -620,8 +632,10 @@ export async function handle(request: Request) {
     if (!["META_GRAPH_VERSION", "META_WABA_ID", "META_PHONE_NUMBER_ID", "META_WHATSAPP_TOKEN", "META_APP_SECRET",
       "META_WEBHOOK_VERIFY_TOKEN"].every((key) => env(key))) return json(503, {erro: "Conexão do WhatsApp ainda não configurada no servidor."});
 
+    const templates = parcelCampaign(body.mes_parcela);
+    if (!templates) return json(422, {erro: "Mês da parcela inválido."});
     if (body.action === "status") {
-      await approvedTemplates();
+      await approvedTemplates(templates);
       return json(200, {status: "pronto"});
     }
     if (body.action === "enviar" && env("BUSSI_BLACKFRIDAY_SENDING_ENABLED") !== "true") {
@@ -639,7 +653,7 @@ export async function handle(request: Request) {
     const fixture = await api("/rest/v1/bussi_testes_campanha?"+fixtureFilter,env("SUPABASE_SERVICE_ROLE_KEY"));
     if (!fixture.ok) return json(503,{erro:"Não foi possível conferir a classificação do cliente."});
     if ((await fixture.json()).length) return json(409,{erro:"Use este cadastro somente na simulação."});
-    const {offerButton: button, offerImage, offerText, offerHandoff, offer} = await approvedTemplates();
+    const {offerButton: button, offerImage, offerText, offerHandoff, offer} = await approvedTemplates(templates);
     const normalized = offerText.normalize("NFD").replace(/\p{Diacritic}/gu, "").toUpperCase();
     if (/SUA\s+CONTA\s+SERA\s+BLOQUEADA/.test(normalized)) {
       return json(409, {erro: "Revise a abertura do modelo Black Friday antes do disparo."});
@@ -648,7 +662,7 @@ export async function handle(request: Request) {
     const image = /^\d+$/.test(mediaId) ? {id:mediaId} : {link:env("SUPABASE_URL") + "/functions/v1/bussi-whatsapp?imagem=blackfriday"};
     const parameters = bodyParameters(offer, [nome, money(original), money(desconto)]);
     const [reserved] = await db("?on_conflict=campanha,telefone", "POST",
-      {campanha: campaign, telefone, nome, original, desconto, pagador}, "resolution=ignore-duplicates,return=representation");
+      {campanha: templates.campaign, telefone, nome, original, desconto, pagador}, "resolution=ignore-duplicates,return=representation");
     if (!reserved) return json(200, {status: "ja_registrado"});
 
     const components: unknown[] = [{type:"body", parameters}];
@@ -657,8 +671,8 @@ export async function handle(request: Request) {
       parameters: [{type: "payload", payload: campaignReply}]});
     if (offerHandoff >= 0) components.push({type:"button",sub_type:"quick_reply",index:String(offerHandoff),
       parameters:[{type:"payload",payload:handoffReply}]});
-    const result = await sendTemplate(telefone, offerTemplate, components);
-    const filter = new URLSearchParams({campanha: "eq." + campaign, telefone: "eq." + telefone});
+    const result = await sendTemplate(telefone, templates.offer, components);
+    const filter = new URLSearchParams({campanha: "eq." + templates.campaign, telefone: "eq." + telefone});
     await db("?" + filter, "PATCH", {oferta_status: result.state, mensagem: result.id});
     return json(200, {status: result.state});
   } catch (error) {
