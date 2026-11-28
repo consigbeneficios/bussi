@@ -527,6 +527,77 @@ async function novusFlow(request: Request, raw: ArrayBuffer, json: (status: numb
   return json(200, {url});
 }
 
+async function pilotOffer(body: Record<string, unknown>, json: (status: number, body: object) => Response) {
+  const templates = parcelCampaign(body.mes_parcela);
+  if (!templates || body.mes_parcela === undefined || !deskPhone(body.telefone) ||
+      typeof body.contrato !== "string" || body.contrato.length < 1 || body.contrato.length > 80) {
+    return json(422, {erro: "Confira o mês, o contrato e o telefone da oferta."});
+  }
+  const lookup = new URLSearchParams({
+    campanha: "eq." + templates.campaign,
+    telefone: "eq." + body.telefone,
+  });
+  const [row] = await db("?" + lookup);
+  if (!row || row.pagador?.contract !== body.contrato) {
+    return body.action === "piloto_oferta"
+      ? json(200, {status: "sem_oferta", emitir: false})
+      : json(404, {erro: "Não há oferta deste contrato no mês escolhido."});
+  }
+
+  let delivered = false;
+  if (row.oferta_status === "aceito" && deskId(row.mensagem)) {
+    const evidence = new URLSearchParams({
+      mensagem: "eq." + row.mensagem,
+      estado: "in.(sent,delivered,read)",
+      select: "estado",
+      limit: "1",
+    });
+    if (row.resposta_id) delivered = true;
+    else {
+      const events = await api("/rest/v1/bussi_whatsapp_eventos?" + evidence, env("SUPABASE_SERVICE_ROLE_KEY"));
+      if (!events.ok) return json(503, {erro: "Não foi possível conferir o envio da oferta."});
+      delivered = (await events.json()).length > 0;
+    }
+  }
+  const enabled = env("BUSSI_PILOT_MANUAL_INVOICE_ENABLED") === "true";
+  if (body.action === "piloto_oferta") return json(200, {
+    status: delivered ? "enviada" : row.oferta_status,
+    emitir: enabled && delivered,
+    original: row.original, desconto: row.desconto,
+    fatura: Boolean(row.fatura_acesso_hash),
+  });
+
+  if (!enabled || !delivered || body.confirmado !== true) {
+    return json(409, {erro: "A emissão manual exige uma oferta enviada e a confirmação do operador."});
+  }
+  let active = row;
+  if (!active.fatura_acesso_hash) {
+    const random = crypto.randomUUID().replaceAll("-", "") + crypto.randomUUID().replaceAll("-", "");
+    const claim = new URLSearchParams(lookup);
+    claim.set("fatura_acesso_hash", "is.null");
+    claim.set("mensagem", "eq." + row.mensagem);
+    claim.set("oferta_status", "eq.aceito");
+    const [reserved] = await db("?" + claim, "PATCH", {
+      fatura_acesso_hash: await hashToken(random),
+      fatura_expira_em: new Date(Date.now() + 86400000).toISOString(),
+      fatura_manual_em: new Date().toISOString(),
+    }, "return=representation");
+    active = reserved || (await db("?" + lookup))[0];
+  }
+  if (!active?.fatura_acesso_hash || !(Date.parse(active.fatura_expira_em) > Date.now())) {
+    return json(409, {erro: "O acesso desta fatura expirou ou está indisponível."});
+  }
+  const response = await api("/rest/v1/rpc/bussi_whatsapp_abrir_fatura", env("SUPABASE_SERVICE_ROLE_KEY"),
+    "POST", {p_hash: active.fatura_acesso_hash});
+  const invoice = response.ok ? await response.json() : null;
+  if (!Number.isSafeInteger(invoice?.numero) || invoice.numero < 1 ||
+      !/^[a-f0-9]{64}$/.test(invoice.token ?? "")) {
+    return json(503, {erro: "Não foi possível obter o link da fatura."});
+  }
+  const url = "https://pay.consigbeneficio.com.br/fatura" + String(invoice.numero).padStart(4, "0") + "#" + invoice.token;
+  return json(200, {url, numero: invoice.numero});
+}
+
 export async function handle(request: Request) {
   const url = new URL(request.url);
   const headers = {
@@ -591,6 +662,7 @@ export async function handle(request: Request) {
       return await deskRequest(body,json);
     }
     if (["novus_lista","novus_historico"].includes(body.action)) return await novusDesk(body, json);
+    if (body.action === "piloto_oferta" || body.action === "piloto_fatura_manual") return await pilotOffer(body, json);
     if (body.action === "novus_preparar_oferta") return await prepareNovusOffer(body, json);
     if (body.action === "novus_sincronizar_contato") return await syncNovusContact(body, json);
     if (body.action === "novus_status") {
