@@ -1037,8 +1037,20 @@ function dueTomorrow(){const p=Object.fromEntries(new Intl.DateTimeFormat('en-CA
 $('chargeDue').value=dueTomorrow();
 $('chargeDue').readOnly=true;
 window.addEventListener('focus',()=>{if($('chargeDue'))$('chargeDue').value=dueTomorrow();});
-function abrirAbaFaturas(){if(location.hash==='#faturas')document.querySelector('.nav button[data-view="charges"]')?.click()}
-window.addEventListener('hashchange',abrirAbaFaturas);abrirAbaFaturas();
+function abrirAbaDoLink() {
+  if (location.hash === '#faturas') {
+    document.querySelector('.nav button[data-view="charges"]')?.click();
+    return;
+  }
+  const mes = new URLSearchParams(location.hash.slice(1)).get('campanha');
+  if (mes !== '2026-12' && mes !== '2027-01') return;
+  const seletor = $('bussiParcelMonth');
+  seletor.value = mes;
+  seletor.dispatchEvent(new Event('change'));
+  document.querySelector('.nav button[data-view="campaigns"]')?.click();
+}
+window.addEventListener('hashchange', abrirAbaDoLink);
+abrirAbaDoLink();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.94.1/dist/umd/supabase.min.js"></script>
 <script src="bussi-client-stages.js?v=20261123-whatsapp-area"></script>
