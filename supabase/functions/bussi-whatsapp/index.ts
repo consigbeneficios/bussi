@@ -257,7 +257,7 @@ async function recordIncoming(message: Record<string, any>, contacts: Array<Reco
   if (!response.ok) throw Error("Não foi possível registrar a mensagem recebida.");
 }
 
-async function deskRequest(body: Record<string, any>, json: (status:number, body:object) => Response) {
+async function deskRequest(body: Record<string, any>, json: (status:number, body: object) => Response) {
   const service = env("SUPABASE_SERVICE_ROLE_KEY");
   if (body.action === "atendimento_lista") {
     const offset = body.offset ?? 0;
@@ -478,24 +478,46 @@ async function prepareNovusOffer(body: Record<string, any>, json: (status: numbe
 async function novusFlow(request: Request, raw: ArrayBuffer, json: (status: number, body: object) => Response) {
   const encode = (value: string) => new TextEncoder().encode(value);
   const secret = env("BUSSI_NOVUS_FLOW_TOKEN");
-  if (secret.length < 32) return json(503, {erro:"Integração Novus ainda não configurada."});
+  if (secret.length < 32) { console.warn("novus_fluxo_sem_token_configurado"); return json(503, {erro:"Integração Novus ainda não configurada."}); }
   const key = await crypto.subtle.importKey("raw", encode(secret), {name:"HMAC", hash:"SHA-256"}, false, ["sign","verify"]);
   const expected = await crypto.subtle.sign("HMAC", key, encode("bussi-novus-auth"));
   const provided = request.headers.get("Authorization")?.match(/^Bearer (\S+)$/)?.[1] ?? "";
   const candidate = await crypto.subtle.importKey("raw", encode(provided || "-"), {name:"HMAC", hash:"SHA-256"}, false, ["verify"]);
-  if (!await crypto.subtle.verify("HMAC", candidate, expected, encode("bussi-novus-auth"))) return json(403, {});
+  if (!await crypto.subtle.verify("HMAC", candidate, expected, encode("bussi-novus-auth"))) {
+    console.warn("novus_fluxo_token_invalido", provided ? "token_enviado" : "sem_cabecalho_bearer");
+    return json(403, {});
+  }
   const body = JSON.parse(new TextDecoder().decode(raw));
   const action = body?.action;
   const rawPhone = typeof body?.telefone === "string" ? body.telefone.replace(/\D/g, "") : "";
   const telefone = rawPhone.length === 10 || rawPhone.length === 11 ? "55" + rawPhone : rawPhone;
-  if (!/^55\d{10,11}$/.test(telefone) || !["dados_oferta","gerar_fatura"].includes(action)) return json(400, {});
+  const validAction = ["dados_oferta","gerar_fatura"].includes(action);
+  // Names and sizes only; the phone is masked to its first 4 and last 4 digits.
+  console.info("novus_fluxo_pedido", validAction ? action : "acao_invalida", "digitos_telefone", rawPhone.length,
+    "telefone_mascarado", telefone.length >= 12 ? telefone.slice(0, 4) + "..." + telefone.slice(-4) : "curto",
+    "campos", body && typeof body === "object" ? Object.keys(body).join(",") : "corpo_invalido");
+  if (!/^55\d{10,11}$/.test(telefone) || !validAction) return json(400, {});
   const query = novusOfferQuery(telefone);
-  query.set("select", "nome,telefone,original,desconto,fatura_pedido,fatura_acesso_hash,fatura_expira_em,atendente_em");
+  query.set("select", "nome,telefone,original,desconto,pagador,fatura_pedido,fatura_acesso_hash,fatura_expira_em,atendente_em");
   const [row] = await db("?" + query);
-  if (!row || row.atendente_em) return json(404, {erro:"Oferta indisponível."});
-  if (action === "dados_oferta") return json(200, {
-    nome:row.nome, telefone:row.telefone, original:money(row.original), desconto:money(row.desconto),
-  });
+  if (!row && action === "dados_oferta") {
+    const offer = await currentNovusContract(telefone);
+    if (!offer) return json(404, {erro:"Oferta indisponível."});
+    return json(200, {nome:offer.nome, telefone, original:money(offer.original), desconto:money(offer.desconto)});
+  }
+  if (!row || row.atendente_em) {
+    console.warn("novus_fluxo_oferta_indisponivel", action, row ? "em_atendimento" : "sem_registro_preparado");
+    return json(404, {erro:"Oferta indisponível."});
+  }
+  const current = row.fatura_acesso_hash ? null : await currentNovusContract(telefone, row.pagador?.contract);
+  if (!current && !row.fatura_acesso_hash) return json(409, {erro:"Confira o contrato no BUSSI."});
+  if (action === "dados_oferta") {
+    const messageOffer = current ?? row;
+    console.info("novus_fluxo_dados_oferta_ok");
+    return json(200, {
+      nome:messageOffer.nome, telefone:row.telefone, original:money(messageOffer.original), desconto:money(messageOffer.desconto),
+    });
+  }
 
   const bytes = await crypto.subtle.sign("HMAC", key, encode("bussi-novus-fatura:" + row.fatura_pedido));
   const token = Array.from(new Uint8Array(bytes), value => value.toString(16).padStart(2, "0")).join("");
@@ -504,7 +526,7 @@ async function novusFlow(request: Request, raw: ArrayBuffer, json: (status: numb
     query.set("fatura_acesso_hash", "is.null");
     query.set("atendente_em", "is.null");
     const [claimed] = await db("?" + query, "PATCH", {
-      oferta_status:"aceito", resposta_id:"novus." + row.fatura_pedido, resposta_em:new Date().toISOString(),
+      ...current, oferta_status:"aceito", resposta_id:"novus." + row.fatura_pedido, resposta_em:new Date().toISOString(),
       fatura_status:"aceito", fatura_acesso_hash:hash, fatura_expira_em:new Date(Date.now() + 86400000).toISOString(),
     }, "return=representation");
     query.delete("fatura_acesso_hash");
@@ -518,13 +540,118 @@ async function novusFlow(request: Request, raw: ArrayBuffer, json: (status: numb
   if (!(Date.parse(row.fatura_expira_em) > Date.now())) return json(410, {erro:"O link da fatura expirou."});
   const issued = await api("/rest/v1/rpc/bussi_whatsapp_abrir_fatura", env("SUPABASE_SERVICE_ROLE_KEY"),
     "POST", {p_hash:hash});
-  if (!issued.ok) return json(503, {erro:"Não foi possível emitir o link da fatura."});
+  if (!issued.ok) { console.warn("novus_fluxo_abrir_fatura_falhou", issued.status); return json(503, {erro:"Não foi possível emitir o link da fatura."}); }
   const invoice = await issued.json();
   if (!Number.isSafeInteger(invoice?.numero) || invoice.numero < 1 || !/^[a-f0-9]{64}$/.test(invoice.token ?? "")) {
+    console.warn("novus_fluxo_fatura_resposta_invalida");
     return json(503, {erro:"Não foi possível emitir o link da fatura."});
   }
   const url = "https://pay.consigbeneficio.com.br/fatura" + String(invoice.numero).padStart(4, "0") + "#" + invoice.token;
+  console.info("novus_fluxo_gerar_fatura_ok", invoice.numero);
   return json(200, {url});
+}
+
+type Respond = (status: number, body: object) => Response;
+type Query = (query: string, method?: string, body?: unknown, prefer?: string) => Promise<any[]>;
+
+// Mensagens usam o último cadastro salvo pela conta BUSSI da integração.
+async function currentNovusContract(telefone: string, contract?: string, includeSimulation = false) {
+  const query = new URLSearchParams({
+    owner_id: "eq.62102276-1162-4b87-a368-4cc5a4ca0ec2",
+    select: "clients:conteudo->clients", order: "criado_em.desc,id.desc", limit: "1",
+  });
+  const response = await api("/rest/v1/bussi_portal_arquivos?" + query, env("SUPABASE_SERVICE_ROLE_KEY"));
+  if (!response.ok) throw new Error("Falha ao consultar contratos.");
+  const [record] = await response.json();
+  if (!Array.isArray(record?.clients)) return null;
+  const candidates = record.clients.filter((client: any) => novusPhone(client?.phone) === telefone);
+  if (!candidates.length) return null;
+  const matches = [];
+  for (const client of candidates) {
+    if (typeof client.contract !== "string" || !client.contract.trim()) continue;
+    if (includeSimulation) {
+      matches.push(client);
+      continue;
+    }
+    const testQuery = new URLSearchParams({contrato:"eq." + client.contract.trim().toUpperCase(), select:"id", limit:"1"});
+    const tests = await api("/rest/v1/bussi_testes_campanha?" + testQuery, env("SUPABASE_SERVICE_ROLE_KEY"));
+    if (!tests.ok) throw new Error("Falha ao conferir contratos de simulação.");
+    if (!(await tests.json()).length) matches.push(client);
+  }
+  if (matches.length !== 1) return null;
+  const client = matches[0];
+  if ((contract !== undefined && client.contract.trim() !== contract) ||
+      typeof client.name !== "string" || typeof client.original !== "number" || typeof client.final !== "number") return null;
+  const nome = client.name.trim();
+  const original = Math.round(client.original * 100);
+  const desconto = Math.round(client.final * 100);
+  const pagador = payerFor({contrato:client.contract.trim(), email:client.email, documento:client.document}, nome, telefone);
+  if (!pagador || !Number.isSafeInteger(original) || original < 200 || original > 999999999 ||
+      desconto !== Math.ceil(original / 2)) return null;
+  return {nome, original, desconto, pagador};
+}
+
+async function offerPreview(
+  body: Record<string, unknown>,
+  db: Query,
+  json: Respond,
+) {
+  const { action, telefone } = body;
+  if (action !== "previa_oferta") return json(403, {erro:"Edite o contrato no BUSSI."});
+  if (typeof telefone !== "string" || !/^55\d{10,11}$/.test(telefone)) {
+    return json(422, { erro: "Telefone inválido." });
+  }
+  const query = new URLSearchParams({
+    campanha: "eq.novus-blackfriday-2026",
+    telefone: "eq." + telefone,
+    select: "nome,original,desconto,oferta_status,fatura_status,fatura_acesso_hash,atendente_em,pagador,fatura_pedido",
+  });
+  const [offer] = await db("?" + query);
+  if (offer && (offer.atendente_em || !offer.pagador?.contract)) {
+    return json(409, { erro: "Confira o atendimento ou a fatura existente no BUSSI." });
+  }
+  const current = await currentNovusContract(telefone, offer?.pagador?.contract, true);
+  if (!current) return json(409, {erro:"Confira o contrato no BUSSI."});
+  if (offer) {
+    const reserved = offer.oferta_status === "reservado" && !offer.fatura_status && !offer.fatura_acesso_hash;
+    const accepted = offer.oferta_status === "aceito" && offer.fatura_status === "aceito" &&
+      offer.fatura_acesso_hash && offer.nome === current.nome &&
+      offer.original === current.original && offer.desconto === current.desconto;
+    if (!reserved && !accepted) return json(409, {erro:"Confira a fatura existente e os dados do contrato no BUSSI."});
+  }
+  const snapshot = {
+    nome: current.nome,
+    telefone,
+    original: current.original,
+    desconto: current.desconto,
+    contrato: current.pagador.contract,
+    referencia: offer?.fatura_pedido ?? current.pagador.contract,
+  };
+  return json(200, snapshot);
+}
+
+async function novusPreview(request: Request, raw: ArrayBuffer, json: (status: number, body: object) => Response) {
+  const secret = env("BUSSI_NOVUS_PREVIEW_TOKEN");
+  const provided = request.headers.get("Authorization")?.match(/^Bearer (\S+)$/)?.[1];
+  if (secret.length < 32) return json(503, { erro: "Credencial da prévia ainda não configurada." });
+  if (!provided) return json(403, {});
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", encoder.encode(secret), {name:"HMAC", hash:"SHA-256"}, false, ["sign"]);
+  const expected = await crypto.subtle.sign("HMAC", key, encoder.encode("bussi-novus-preview"));
+  const candidate = await crypto.subtle.importKey("raw", encoder.encode(provided), {name:"HMAC", hash:"SHA-256"}, false, ["verify"]);
+  if (!await crypto.subtle.verify("HMAC", candidate, expected, encoder.encode("bussi-novus-preview"))) return json(403, {});
+  const body = JSON.parse(new TextDecoder().decode(raw));
+  if (!body || typeof body !== "object" || Array.isArray(body)) return json(400, {});
+  if (body.action === "previa_oferta" && typeof body.contato_id === "string") {
+    const id = body.contato_id;
+    if (!/^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i.test(id)) return json(422, {});
+    const response = await novusRequest("contatodechat/" + id);
+    if (!response?.ok) return json(409, {erro:"Contato indisponível no Novus."});
+    const contact = await response.json();
+    if (contact.Id !== id || contact.EhGrupo) return json(409, {erro:"Contato indisponível no Novus."});
+    body.telefone = novusPhone(contact.Telefone);
+  }
+  return await offerPreview(body, db, json);
 }
 
 async function pilotOffer(body: Record<string, unknown>, json: (status: number, body: object) => Response) {
@@ -635,7 +762,21 @@ export async function handle(request: Request) {
       return json(200, {});
     }
 
+    if (url.searchParams.get("integracao") === "novus-previa") return await novusPreview(request, raw, json);
     if (url.searchParams.get("integracao") === "novus") return await novusFlow(request, raw, json);
+
+    // Tolerance for a Novus flow whose URL lost "?integracao=novus": a server-to-server call (no Origin) with a
+    // bearer token and one of the flow actions is routed to the flow handler, which still verifies the flow token.
+    const authorization = request.headers.get("Authorization") ?? "";
+    if (!request.headers.has("Origin") && /^Bearer \S+$/.test(authorization) &&
+        authorization !== "Bearer " + env("SUPABASE_SERVICE_ROLE_KEY")) {
+      let probe: any = null;
+      try { probe = JSON.parse(new TextDecoder().decode(raw)); } catch { /* not JSON: falls through */ }
+      if (["dados_oferta","gerar_fatura"].includes(probe?.action)) {
+        console.warn("novus_fluxo_url_sem_parametro_integracao");
+        return await novusFlow(request, raw, json);
+      }
+    }
 
     if (!request.headers.has("Origin") && env("SUPABASE_SERVICE_ROLE_KEY") &&
         request.headers.get("Authorization") === "Bearer " + env("SUPABASE_SERVICE_ROLE_KEY")) {
@@ -644,7 +785,11 @@ export async function handle(request: Request) {
       return json(200, {status: "confirmacao_whatsapp_manual"});
 
     }
-    if (request.headers.get("Origin") !== origin) return json(403, {});
+    if (request.headers.get("Origin") !== origin) {
+      console.warn("bussi_whatsapp_chamada_sem_origem_valida", request.headers.has("Origin") ? "origem_diferente" : "sem_origem",
+        request.headers.has("Authorization") ? "com_authorization" : "sem_authorization");
+      return json(403, {});
+    }
     const body = JSON.parse(new TextDecoder().decode(raw));
     if (body.action === "abrir_fatura") {
       if (typeof body.token !== "string" || !/^[a-f0-9]{64}$/.test(body.token)) return json(404, {});
@@ -748,6 +893,7 @@ export async function handle(request: Request) {
     await db("?" + filter, "PATCH", {oferta_status: result.state, mensagem: result.id});
     return json(200, {status: result.state});
   } catch (error) {
+    console.warn("bussi_whatsapp_erro", error instanceof Error ? error.message : "desconhecido");
     return json(503, {erro: error instanceof Error && /modelos/.test(error.message) ? error.message : "Integração indisponível. Confira o histórico antes de repetir."});
   }
 }
