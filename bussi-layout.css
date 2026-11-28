@@ -487,3 +487,43 @@ body { background: var(--bg); color: var(--ink); }
 .bussi-desk-unread { display: block; width: max-content; min-width: 17px; margin: 4px 0 0 auto; padding: 1px 4px; border-radius: 9px; background: #71364c; color: #fff; text-align: center; }
 .bussi-desk-history { background-image: none; }
 #bussiDeskOpenNovus[hidden], #bussiDeskComposer[hidden] { display: none; }
+
+/* Chat do Bussi */
+#inbox .bussi-desk {
+  --chat-border: #49404b;
+  --chat-panel: #241d27;
+  --chat-highlight: #f0a7be;
+  border-color: var(--chat-border);
+  border-radius: 16px;
+}
+#inbox .bussi-desk-list,
+#inbox .bussi-desk-contact,
+#inbox .bussi-desk-composer { background: var(--chat-panel); border-color: var(--chat-border); }
+#inbox .bussi-desk-list-header { flex-wrap: wrap; }
+#inbox .bussi-desk-thread { min-height: 64px; border-radius: 10px; text-align: start; }
+#inbox .bussi-desk-thread[aria-pressed="true"] {
+  background: #432636;
+  border-color: #8a5369;
+  box-shadow: inset 3px 0 var(--chat-highlight);
+}
+#inbox .bussi-desk-thread:focus-visible,
+#inbox .bussi-desk-compose-row :is(textarea,button):focus-visible {
+  outline: 2px solid var(--chat-highlight);
+  outline-offset: -2px;
+}
+#inbox .bussi-desk-history {
+  background-color: #16131b;
+  background-image: radial-gradient(ellipse at top left, #292132 0, transparent 67%);
+}
+#inbox .bussi-desk-bubble {
+  background: #312936;
+  border-color: #504358;
+  border-radius: 5px 14px 14px;
+}
+#inbox .bussi-desk-bubble.outbound {
+  background: #553044;
+  border-color: #81516a;
+  border-radius: 14px 5px 14px 14px;
+}
+#inbox .bussi-desk-compose-row textarea { border-radius: 12px; background: #19151d; }
+#inbox #bussiDeskSend { border-radius: 12px; }
